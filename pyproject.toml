@@ -6,10 +6,6 @@ authors = [
     {name = "Lukas Santing",email = "lukas.santing@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-    "fastapi (>=0.115.12,<0.116.0)"
-]
 
 [tool.poetry]
 name = "leaf"
@@ -19,7 +15,7 @@ authors = ["Lukas Santing <lukas.santing@gmail.com>"]
 packages = [{include = "leaf", from = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.10"
 fastapi = "^0.109.0"
 uvicorn = "^0.27.0"
 
