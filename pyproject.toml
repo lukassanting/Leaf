@@ -1,7 +1,7 @@
 [project]
 name = "leaf"
 version = "0.1.0"
-description = ""
+description = "Leaf API Service"
 authors = [
     {name = "Lukas Santing",email = "lukas.santing@gmail.com"}
 ]
@@ -12,9 +12,17 @@ dependencies = [
 ]
 
 [tool.poetry]
+name = "leaf"
+version = "0.1.0"
+description = "Leaf API Service"
+authors = ["Lukas Santing <lukas.santing@gmail.com>"]
 packages = [{include = "leaf", from = "src"}]
 
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.109.0"
+uvicorn = "^0.27.0"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
