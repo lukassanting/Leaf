@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.routes.leaf.leaf_crud_controller import router as leaf_router
+from app.api.routes.leaf.leaf_crud_controller import router as leaf_router
 
 router = APIRouter()
 

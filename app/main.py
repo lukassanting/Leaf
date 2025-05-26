@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from app.routes.api import router as api_router
-from app.database.config import get_database_settings
+from app.api.routes.api import router as api_router
+from app.config import get_settings
 import alembic.config
 import alembic.command
 import os
@@ -22,7 +22,7 @@ async def startup_event():
     """
     Run database migrations on startup
     """
-    settings = get_database_settings()
+    settings = get_settings()
     if settings.ENVIRONMENT == "development":
         # In development, we want to see the migrations
         alembic_cfg = alembic.config.Config("alembic.ini")
