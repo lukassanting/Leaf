@@ -1,0 +1,33 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install poetry
+RUN pip install poetry==1.7.1
+
+# Configure poetry
+ENV POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_IN_PROJECT=1 \
+    POETRY_VIRTUALENVS_CREATE=1 \
+    POETRY_CACHE_DIR=/tmp/poetry_cache
+
+# Copy the entire project first
+COPY . .
+
+# Install dependencies including dev dependencies
+RUN poetry install
+
+# Create virtual environment directory
+RUN mkdir -p /app/.venv
+
+# Expose the port your FastAPI app runs on
+EXPOSE 8000
+
+# Command to run the application (will be overridden by docker-compose)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"] 

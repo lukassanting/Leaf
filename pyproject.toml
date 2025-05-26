@@ -12,12 +12,18 @@ name = "leaf"
 version = "0.1.0"
 description = "Leaf API Service"
 authors = ["Lukas Santing <lukas.santing@gmail.com>"]
-packages = [{include = "leaf", from = "src"}]
+packages = [{include = "app"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 fastapi = "^0.109.0"
 uvicorn = "^0.27.0"
+loguru = "^0.7.3"
+sqlalchemy = "^2.0.41"
+alembic = "^1.16.1"
+psycopg2-binary = "^2.9.10"
+asyncpg = "^0.30.0"
+pydantic-settings = "^2.9.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
