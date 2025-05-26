@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import relationship
 from pydantic import BaseModel, ConfigDict
 
-from app.database.connectors.postgres import Base
+from app.database.connectors.base import Base
 
 class LeafBase(BaseModel):
     title: str

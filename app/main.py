@@ -1,9 +1,31 @@
+from contextlib import asynccontextmanager
+import logging
+from starlette.concurrency import run_in_threadpool
 from fastapi import FastAPI
-from app.api.routes.api import router as api_router
-from app.config import get_settings
 import alembic.config
 import alembic.command
-import os
+
+
+from app.api.routes.api import router as api_router
+from app.config import ConfigSettings
+from app.database.connectors.postgres import migrate_database
+from app.exceptions.exception_handler import leaf_exception_handler
+from app.exceptions.exceptions import LeafException
+
+config = ConfigSettings()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await on_startup()
+    yield
+    await on_cleanup()
+
+async def on_startup():
+    logging.info("Starting up...")
+    await migrate_database()
+
+async def on_cleanup():
+    logging.info("Shutting down...")
 
 app = FastAPI(
     title="Leaf API",
@@ -14,24 +36,10 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-app.include_router(api_router, prefix="/api")
+app.include_router(api_router)
 
+app.add_exception_handler(LeafException, leaf_exception_handler)
 
-@app.on_event("startup")
-async def startup_event():
-    """
-    Run database migrations on startup
-    """
-    settings = get_settings()
-    if settings.ENVIRONMENT == "development":
-        # In development, we want to see the migrations
-        alembic_cfg = alembic.config.Config("alembic.ini")
-        alembic.command.upgrade(alembic_cfg, "head")
-    else:
-        # In production, we want to run migrations silently
-        alembic_cfg = alembic.config.Config("alembic.ini")
-        alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
-        alembic.command.upgrade(alembic_cfg, "head")
 
 
 

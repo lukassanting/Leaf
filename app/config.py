@@ -1,54 +1,32 @@
-from typing import Optional
-from pydantic_settings import BaseSettings
-from functools import lru_cache
+from dotenv import load_dotenv
+from starlette.config import Config
 
 
-class Settings(BaseSettings):
-    # Database configuration
-    POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: str = "5432"
-    POSTGRES_DB: str = "postgres"
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres"
-    
-    # Application configuration
-    ENVIRONMENT: str = "development"
-    DEBUG: bool = False
+class ConfigSettings():
 
-    @property
-    def DATABASE_URL(self) -> str:
-        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+    POSTGRES_HOST: str
+    POSTGRES_PORT: str
+    POSTGRES_DB: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    ENVIRONMENT: str
+    DEBUG: bool
 
-    model_config = {
-        "env_file": ".env",
-        "case_sensitive": True,
-        "extra": "allow"
-    }
+    DATABASE_URL: str
 
-    @property
-    def db_url_async(self) -> str:
-        if self.DATABASE_URL:
-            return self.DATABASE_URL
-        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+    def __init__(self):
+        load_dotenv()
+        
+        self.config = Config(".env")
+
+        self.POSTGRES_HOST = self.config("POSTGRES_HOST", cast=str)
+        self.POSTGRES_PORT = self.config("POSTGRES_PORT", cast=int)
+        self.POSTGRES_DB = self.config("POSTGRES_DB", cast=str)
+        self.POSTGRES_USER = self.config("POSTGRES_USER", cast=str)
+        self.POSTGRES_PASSWORD = self.config("POSTGRES_PASSWORD", cast=str)
 
 
-@lru_cache()
-def get_settings() -> Settings:
-    """
-    Get settings from environment variables.
-    Uses .env for both development and production.
-    """
-    return Settings()
+        self.ENVIRONMENT = self.config("ENVIRONMENT", default="development")
+        self.DEBUG = self.config("DEBUG", default=False, cast=bool)
 
-
-# Export settings instance
-settings = get_settings()
-
-
-def get_database_url() -> str:
-    """
-    Get the database URL from environment variables.
-    Falls back to local database if DATABASE_URL is not set.
-    """
-    settings = get_settings()
-    return settings.DATABASE_URL
+        self.DATABASE_URL = f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

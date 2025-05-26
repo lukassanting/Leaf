@@ -26,24 +26,31 @@ A FastAPI-based service with PostgreSQL database support.
 
 The project uses Alembic for database migrations. Migrations are automatically applied when the application starts.
 
-To manually run migrations:
+### Async vs Sync Database URLs
+- **App runtime:** Uses the async driver (`postgresql+asyncpg://...`).
+- **Alembic migrations:** Must use the sync driver (`postgresql+psycopg2://...`).
+
+> **Troubleshooting:**
+> If you see an error like `MissingGreenlet: greenlet_spawn has not been called; can't call await_only() here`, it means Alembic is trying to use the async driver. Make sure your Alembic config uses the sync driver (`psycopg2`).
+
+### Running Alembic inside Docker (Recommended)
+
+**It is recommended to enter the API container and run Alembic commands from inside.** This ensures the correct environment and network settings (e.g., the `db` hostname) are used.
+
+#### Enter the container:
 
 ```bash
-# Development
-docker compose -f docker-compose.dev.yml exec api poetry run alembic upgrade head
-
-# Production
-docker compose exec api poetry run alembic upgrade head
+docker exec -it leaf-api-1 sh
 ```
 
-To create a new migration:
+#### Then, inside the container, run Alembic commands:
 
-```bash
-# Development
-docker compose -f docker-compose.dev.yml exec api poetry run alembic revision --autogenerate -m "description of changes"
+```sh
+# Create a new migration
+alembic revision --autogenerate -m "description of changes"
 
-# Production
-docker compose exec api poetry run alembic revision --autogenerate -m "description of changes"
+# Apply migrations
+alembic upgrade head
 ```
 
 ## Development Features
@@ -66,13 +73,13 @@ docker compose exec api poetry run alembic revision --autogenerate -m "descripti
 poetry run alembic init alembic 
 ```
 
-In `alembic.ini`, set `sqlalchemy.url = postgresql+asyncpg://postgres:postgres@db:5432/postgres`
+In `alembic.ini`, set `sqlalchemy.url = postgresql+psycopg2://user:pass@host:5432/db`
 
 In `alembic/env.py`, update
 
 ```python
 from app.database.models.leaf_model import Leaf
-from app.database.connectors.postgres import Base
+from app.database.connectors.base import Base
 
 target_metadata = Base.metadata
 ```
@@ -91,5 +98,5 @@ docker compose up --build
 ```
 
 ```bash
-docker compose down -f  
+docker compose down -v
 ```
