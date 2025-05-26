@@ -7,7 +7,7 @@ from app.database.connectors.postgres import async_session
 from app.database.models.leaf_model import Leaf, LeafCreate
 from app.database.operations.leaf_operations import LeafOperations
 
-router = APIRouter(prefix="/leaf", tags=["leaf"])
+router = APIRouter()
 
 async def get_db():
     async with async_session() as session:
@@ -38,9 +38,3 @@ async def update_leaf(leaf_id: UUID, leaf: LeafCreate, db: AsyncSession = Depend
 async def delete_leaf(leaf_id: UUID, db: AsyncSession = Depends(get_db)):
     leaf_ops = LeafOperations(db)
     return await leaf_ops.delete_leaf(leaf_id)
-
-
-
-
-
-
