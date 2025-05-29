@@ -1,29 +1,38 @@
 services:
-  db:
-    image: postgres:16
-    env_file:
-      - .env
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   api:
-    build: .
+    container_name: leafapi
+    image: leafapi:latest
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./migrations:/app/migrations
+      - ./app:/app/app
     env_file:
       - .env
     environment:
       - ENVIRONMENT=production
+      - MYSQL_PORT=3306
+      - MYSQL_HOST=mysqldb
     ports:
       - "8000:8000"
     depends_on:
-      db:
+      mysqldb:
         condition: service_healthy
+    command: ["/bin/sh", "-c", "./wait-for-it.sh mysqldb:3306 -- /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]
 
-volumes:
-  postgres_data:
+  mysqldb:
+    container_name: mysqldb
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_DATABASE: leaf
+      MYSQL_ROOT_PASSWORD: securepass123
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s

@@ -1,6 +1,6 @@
 # Leaf
 
-A FastAPI-based service with PostgreSQL database support.
+A FastAPI-based service with MySQL database support.
 
 ## Development Setup
 
@@ -27,11 +27,11 @@ A FastAPI-based service with PostgreSQL database support.
 The project uses Alembic for database migrations. Migrations are automatically applied when the application starts.
 
 ### Async vs Sync Database URLs
-- **App runtime:** Uses the async driver (`postgresql+asyncpg://...`).
-- **Alembic migrations:** Must use the sync driver (`postgresql+psycopg2://...`).
+- **App runtime:** Uses the async driver (`mysql+aiomysql://...`).
+- **Alembic migrations:** Must use the sync driver (`mysql+pymysql://...`).
 
 > **Troubleshooting:**
-> If you see an error like `MissingGreenlet: greenlet_spawn has not been called; can't call await_only() here`, it means Alembic is trying to use the async driver. Make sure your Alembic config uses the sync driver (`psycopg2`).
+> If you see an error like `MissingGreenlet: greenlet_spawn has not been called; can't call await_only() here`, it means Alembic is trying to use the async driver. Make sure your Alembic config uses the sync driver (`pymysql`).
 
 ### Running Alembic inside Docker (Recommended)
 
@@ -40,23 +40,20 @@ The project uses Alembic for database migrations. Migrations are automatically a
 #### Enter the container:
 
 ```bash
-docker exec -it leaf-api-1 sh
+docker exec -it leaf-api sh
 ```
 
-#### Then, inside the container, run Alembic commands:
+#### Then, inside the container, cd into the right directory and  run Alembic commands:
 
 ```sh
-# Create a new migration
-alembic revision --autogenerate -m "description of changes"
-
-# Apply migrations
-alembic upgrade head
+cd /app
+poetry run alembic revision --autogenerate -m "your message"
 ```
 
 ## Development Features
 
 - Hot-reloading enabled in development
-- Local PostgreSQL database with persistent storage
+- Local MySQL database with persistent storage
 - Poetry for dependency management
 - Alembic for database migrations
 - Docker Compose for easy setup
@@ -67,13 +64,13 @@ alembic upgrade head
 - Optimized Docker image
 - Environment variable configuration
 - Health checks for database
-- Production-ready PostgreSQL setup
+- Production-ready MySQL setup
 
 ```bash
 poetry run alembic init alembic 
 ```
 
-In `alembic.ini`, set `sqlalchemy.url = postgresql+psycopg2://user:pass@host:5432/db`
+In `alembic.ini`, set `sqlalchemy.url = mysql+pymysql://user:pass@host:3306/db`
 
 In `alembic/env.py`, update
 

@@ -6,7 +6,6 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from app.database.models.leaf_model import Leaf
 from app.database.connectors.base import Base
 
 # this is the Alembic Config object, which provides
@@ -29,7 +28,7 @@ target_metadata = Base.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-config.set_main_option("sqlalchemy.url", f"postgresql+psycopg2://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}:{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DB')}")
+config.set_main_option("sqlalchemy.url", f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{os.getenv('MYSQL_PASSWORD')}@{os.getenv('MYSQL_HOST')}:{os.getenv('MYSQL_PORT')}/{os.getenv('MYSQL_DATABASE')}")
 
 
 def run_migrations_offline() -> None:

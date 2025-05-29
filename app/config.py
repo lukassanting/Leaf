@@ -3,30 +3,31 @@ from starlette.config import Config
 
 
 class ConfigSettings():
-
-    POSTGRES_HOST: str
-    POSTGRES_PORT: str
-    POSTGRES_DB: str
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
     ENVIRONMENT: str
     DEBUG: bool
 
-    DATABASE_URL: str
+    MYSQL_USER: str
+    MYSQL_PASSWORD: str
+    MYSQL_HOST: str
+    MYSQL_PORT: str
+    MYSQL_DATABASE: str
+
+    ALEMBIC_SCRIPT_LOCATION: str
 
     def __init__(self):
         load_dotenv()
         
-        self.config = Config(".env")
-
-        self.POSTGRES_HOST = self.config("POSTGRES_HOST", cast=str)
-        self.POSTGRES_PORT = self.config("POSTGRES_PORT", cast=int)
-        self.POSTGRES_DB = self.config("POSTGRES_DB", cast=str)
-        self.POSTGRES_USER = self.config("POSTGRES_USER", cast=str)
-        self.POSTGRES_PASSWORD = self.config("POSTGRES_PASSWORD", cast=str)
-
+        self.config = Config( ".env")
 
         self.ENVIRONMENT = self.config("ENVIRONMENT", default="development")
-        self.DEBUG = self.config("DEBUG", default=False, cast=bool)
+        self.DEBUG = self.config("DEBUG", cast=bool, default=False)
 
-        self.DATABASE_URL = f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        self.MYSQL_USER = self.config("MYSQL_USER", cast=str, default="root")
+        self.MYSQL_PASSWORD = self.config("MYSQL_PASSWORD", cast=str, default="securepass123")
+        self.MYSQL_HOST = self.config("MYSQL_HOST", cast=str, default="mysqldb")
+        self.MYSQL_PORT = self.config("MYSQL_PORT", cast=int, default=3306)
+        self.MYSQL_DATABASE = self.config("MYSQL_DATABASE", cast=str, default="leaf")
+
+        self.ALEMBIC_SCRIPT_LOCATION = self.config("ALEMBIC_SCRIPT_LOCATION", cast=str, default="migrations")
+
+        # self.DATABASE_URL = f"mysql+pymysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"

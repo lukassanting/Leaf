@@ -4,11 +4,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models.leaf_model import LeafModel, Leaf, LeafCreate
-from app.database.connectors.postgres import PostgresDatabaseConnector, get_db_connector
+from app.database.connectors.mysql import MySQLDatabaseConnector, get_db_connector
 from app.exceptions.exceptions import LeafException
 
 class LeafOperations:
-    def __init__(self, db_connector: PostgresDatabaseConnector = Depends(get_db_connector)):
+    def __init__(self, db_connector: MySQLDatabaseConnector = Depends(get_db_connector)):
         self.db = db_connector.get_db_session()
 
     async def create_leaf(self, leaf: LeafCreate) -> Leaf:

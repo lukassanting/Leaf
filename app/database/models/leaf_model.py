@@ -2,7 +2,6 @@ from datetime import datetime
 from uuid import UUID, uuid4
 from typing import Optional, List
 from sqlalchemy import Column, String, ForeignKey, DateTime, Text
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import relationship
 from pydantic import BaseModel, ConfigDict
 
@@ -27,10 +26,10 @@ class Leaf(LeafBase):
 class LeafModel(Base):
     __tablename__ = "leaves"
 
-    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
     title = Column(String(255), nullable=False)
     content = Column(Text, nullable=True)
-    parent_id = Column(PGUUID(as_uuid=True), ForeignKey("leaves.id"), nullable=True)
+    parent_id = Column(String(36), ForeignKey("leaves.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

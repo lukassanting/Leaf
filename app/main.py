@@ -4,11 +4,11 @@ from starlette.concurrency import run_in_threadpool
 from fastapi import FastAPI
 import alembic.config
 import alembic.command
-
+import os
 
 from app.api.routes.api import router as api_router
 from app.config import ConfigSettings
-from app.database.connectors.postgres import migrate_database
+from app.database.connectors.mysql import migrate_database
 from app.exceptions.exception_handler import leaf_exception_handler
 from app.exceptions.exceptions import LeafException
 
@@ -22,7 +22,8 @@ async def lifespan(app: FastAPI):
 
 async def on_startup():
     logging.info("Starting up...")
-    await migrate_database()
+    logging.info("Migrating database on startup...")
+    migrate_database()
 
 async def on_cleanup():
     logging.info("Shutting down...")
@@ -34,6 +35,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=lifespan
 )
 
 app.include_router(api_router)
