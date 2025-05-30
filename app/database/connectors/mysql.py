@@ -34,12 +34,6 @@ class MySQLDatabaseConnector:
     # Private methods
     def _get_engine(self):
 
-        print(self.config.MYSQL_USER)
-        print(self.config.MYSQL_PASSWORD)
-        print(self.config.MYSQL_HOST)
-        print(self.config.MYSQL_PORT)
-        print(self.config.MYSQL_DATABASE)
-
         return create_engine(
             "mysql+pymysql://{}:{}@{}:{}/{}".format(
                 self.config.MYSQL_USER,
