@@ -1,15 +1,15 @@
 from uuid import UUID
 from fastapi import Depends
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models.leaf_model import LeafModel, Leaf, LeafCreate
+from app.database.models.mysql_models import LeafModel
 from app.database.connectors.mysql import MySQLDatabaseConnector, get_db_connector
-from app.exceptions.exceptions import LeafException
+from app.exceptions.exceptions import FailedToCreateLeaf, LeafException
+from app.dtos.leaf_dtos import Leaf, LeafCreate
 
 class LeafOperations:
-    def __init__(self, db_connector: MySQLDatabaseConnector = Depends(get_db_connector)):
-        self.db = db_connector.get_db_session()
+    def __init__(self, db_session):
+        self.db = db_session
 
     async def create_leaf(self, leaf: LeafCreate) -> Leaf:
         try:
@@ -19,7 +19,7 @@ class LeafOperations:
             await self.db.refresh(db_leaf)
             return db_leaf.to_pydantic()
         except Exception as e:
-            raise LeafException(status_code=500, detail=str(e))
+            raise FailedToCreateLeaf(leaf=leaf, detail=str(e))
     
     async def get_all_leaves(self) -> list[Leaf]:
         try:

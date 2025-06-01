@@ -40,14 +40,14 @@ The project uses Alembic for database migrations. Migrations are automatically a
 #### Enter the container:
 
 ```bash
-docker exec -it leaf-api sh
+docker exec -it leafapi sh
 ```
 
 #### Then, inside the container, cd into the right directory and  run Alembic commands:
 
 ```sh
 cd /app
-poetry run alembic revision --autogenerate -m "your message"
+alembic revision --autogenerate -m "your message"
 ```
 
 ## Development Features
@@ -75,11 +75,12 @@ In `alembic.ini`, set `sqlalchemy.url = mysql+pymysql://user:pass@host:3306/db`
 In `alembic/env.py`, update
 
 ```python
-from app.database.models.leaf_model import Leaf
-from app.database.connectors.base import Base
+from app.database.models.leaf_model import Leaf, Base
 
 target_metadata = Base.metadata
 ```
+
+This makes sure that alembic takes any changes to your models into account when running the migrations
 
 Then create and run the migrations:
 

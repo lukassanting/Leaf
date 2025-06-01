@@ -1,27 +1,12 @@
 from datetime import datetime
 from uuid import UUID, uuid4
-from typing import Optional, List
+from typing import Optional
 from sqlalchemy import Column, String, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import declarative_base
 from pydantic import BaseModel, ConfigDict
 
-from app.database.connectors.base import Base
-
-class LeafBase(BaseModel):
-    title: str
-    content: Optional[str] = None
-    parent_id: Optional[UUID] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-class LeafCreate(LeafBase):
-    pass
-
-class Leaf(LeafBase):
-    id: UUID
-    created_at: datetime
-    updated_at: datetime
-    children: List['Leaf'] = []
+Base = declarative_base()
 
 class LeafModel(Base):
     __tablename__ = "leaves"
@@ -36,13 +21,13 @@ class LeafModel(Base):
     children = relationship("LeafModel", back_populates="parent")
     parent = relationship("LeafModel", back_populates="children", remote_side=[id])
 
-    def to_pydantic(self) -> Leaf:
-        return Leaf(
-            id=self.id,
-            title=self.title,
-            content=self.content,
-            parent_id=self.parent_id,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-            children=[child.to_pydantic() for child in self.children]
-        )
+    # def to_pydantic(self) -> Leaf:
+    #     return Leaf(
+    #         id=self.id,
+    #         title=self.title,
+    #         content=self.content,
+    #         parent_id=self.parent_id,
+    #         created_at=self.created_at,
+    #         updated_at=self.updated_at,
+    #         children=[child.to_pydantic() for child in self.children]
+    #     )
