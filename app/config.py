@@ -1,7 +1,6 @@
 from dotenv import load_dotenv
 from starlette.config import Config
 
-
 class ConfigSettings():
     ENVIRONMENT: str
     DEBUG: bool

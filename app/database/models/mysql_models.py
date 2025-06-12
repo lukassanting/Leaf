@@ -1,10 +1,8 @@
 from datetime import datetime
-from uuid import UUID, uuid4
-from typing import Optional
+from uuid import uuid4
 from sqlalchemy import Column, String, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import declarative_base
-from pydantic import BaseModel, ConfigDict
 
 Base = declarative_base()
 

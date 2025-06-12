@@ -1,12 +1,8 @@
 from contextlib import asynccontextmanager
 import logging
-from starlette.concurrency import run_in_threadpool
 from fastapi import FastAPI
-import alembic.config
-import alembic.command
-import os
-import logging
 
+# Local imports
 from app.api.routes.api import router as api_router
 from app.config import ConfigSettings
 from app.database.connectors.mysql import migrate_database

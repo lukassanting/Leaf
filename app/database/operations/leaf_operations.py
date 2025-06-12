@@ -2,8 +2,8 @@ from datetime import datetime
 from uuid import UUID
 from fastapi import Depends
 from loguru import logger
-from sqlalchemy import select
 
+# Local imports
 from app.database.models.mysql_models import LeafModel
 from app.database.connectors.mysql import MySQLDatabaseConnector, get_db_connector
 from app.exceptions.exceptions import FailedToCreateLeaf, LeafException, LeafNotFound

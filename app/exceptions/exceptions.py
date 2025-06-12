@@ -2,6 +2,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from loguru import logger
 
+# Local imports
 from app.dtos.leaf_dtos import LeafCreate
 
 class LeafException(HTTPException):
@@ -16,7 +17,7 @@ class LeafException(HTTPException):
 
 class LeafNotFound(HTTPException):
     """
-    LeafNotFound is a custom exception that is used to handle errors in the Leaf API.
+    LeafNotFound is an exception for when the MySQL database does not contain a leaf with the given id.
     """
     def __init__(self, status_code: int = 404, detail: str = "Leaf not found", leaf_id: UUID = None):
         self.status_code = status_code
@@ -25,7 +26,7 @@ class LeafNotFound(HTTPException):
 
 class LeafAlreadyExists(HTTPException):
     """
-    LeafAlreadyExists is a custom exception that is used to handle errors in the Leaf API.
+    LeafAlreadyExists is an exception for when the MySQL database already contains a leaf with the given id.
     """
     def __init__(self, status_code: int = 400, detail: str = "Leaf already exists", leaf: LeafCreate = None):
         self.status_code = status_code
@@ -34,7 +35,7 @@ class LeafAlreadyExists(HTTPException):
 
 class FailedToCreateLeaf(HTTPException):
     """
-    FailedToCreateLeaf is a custom exception that is used to handle errors in the Leaf API.
+    FailedToCreateLeaf is an exception for when the MySQL database fails to create a leaf.
     """
     def __init__(self, status_code: int = 400, detail: str = "Failed to create leaf", leaf: LeafCreate = None):
         self.status_code = status_code
