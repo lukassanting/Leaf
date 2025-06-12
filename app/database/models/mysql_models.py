@@ -20,14 +20,3 @@ class LeafModel(Base):
 
     children = relationship("LeafModel", back_populates="parent")
     parent = relationship("LeafModel", back_populates="children", remote_side=[id])
-
-    # def to_pydantic(self) -> Leaf:
-    #     return Leaf(
-    #         id=self.id,
-    #         title=self.title,
-    #         content=self.content,
-    #         parent_id=self.parent_id,
-    #         created_at=self.created_at,
-    #         updated_at=self.updated_at,
-    #         children=[child.to_pydantic() for child in self.children]
-    #     )
