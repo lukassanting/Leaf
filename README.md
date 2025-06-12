@@ -4,17 +4,31 @@ A FastAPI-based service with MySQL database support.
 
 ## Development Setup
 
-1. Start the development environment:
+1. Install and set up Poetry (if not already installed)
+
+2. Install project dependencies
+
+   ```bash
+   poetry install
+   ```
+
+In order to the docker you will have to have Docker running on your device.
+
+3. Start the development environment:
    ```bash
    docker compose -f docker-compose.dev.yml up --build
    ```
-   The environment file (.env) will be automatically created from .env.example if it doesn't exist.
 
-2. The API will be available at http://localhost:8000
+   Down the docker with
+   ```
+   docker compose down -v
+   ```
+
+4. The API will be available at http://localhost:8000
    - API documentation: http://localhost:8000/docs
    - ReDoc documentation: http://localhost:8000/redoc
 
-## Production Setup
+## Production Setup (NOTE: Placeholder, Untested)
 
 1. Start the production environment:
    ```bash
@@ -59,7 +73,7 @@ alembic revision --autogenerate -m "your message"
 - Docker Compose for easy setup
 - Automatic environment file creation
 
-## Production Features
+## Production Features (Placeholder, Untested)
 
 - Optimized Docker image
 - Environment variable configuration
@@ -87,14 +101,4 @@ Then create and run the migrations:
 ```bash
 poetry run alembic revision --autogenerate -m "create leaves table"
 poetry run alembic upgrade head
-```
-
-## Running
-
-```bash
-docker compose up --build
-```
-
-```bash
-docker compose down -v
 ```
