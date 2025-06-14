@@ -64,6 +64,14 @@ cd /app
 alembic revision --autogenerate -m "your message"
 ```
 
+### Inspecting the persistent database
+
+The MySQL db can be intentionally deleted with:
+
+```sh
+docker volume rm mysql_data
+```
+
 ## Development Features
 
 - Hot-reloading enabled in development
