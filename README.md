@@ -1,6 +1,6 @@
 # Leaf
 
-A FastAPI-based service with MySQL database support.
+Soon to be my attempt at making a simple Markdown text editor, with page storage and generative AI integration. A FastAPI-based service with MySQL database support.
 
 ## Development Setup
 
