@@ -1,6 +1,6 @@
 # Leaf
 
-Soon to be my attempt at making a simple Markdown text editor, with page storage and generative AI integration. A FastAPI-based service with MySQL database support.
+An ongoing project for a simple Markdown text editor, with page storage and generative AI integration. A FastAPI-based service with MySQL database support.
 
 ## Development Setup
 
