@@ -61,7 +61,8 @@ docker exec -it leafapi sh
 
 ```sh
 cd /app
-alembic revision --autogenerate -m "your message"
+alembic revision --autogenerate -m "Description of update"
+alembic upgrade head
 ```
 
 ### Inspecting the persistent database
@@ -93,10 +94,10 @@ This should reveal something like:
 ```
 
 
-The MySQL db can be intentionally deleted with:
+When the volume is not in use, the MySQL db can be intentionally deleted with:
 
 ```sh
-docker volume rm mysql_data
+docker volume rm backend_mysql_data
 ```
 
 ## Development Features
