@@ -66,6 +66,33 @@ alembic revision --autogenerate -m "your message"
 
 ### Inspecting the persistent database
 
+Inspect the MySQL volume
+
+```sh
+docker volume inspect backend_mysql_data
+```
+
+This should reveal something like:
+```sh
+[
+    {
+        "CreatedAt": "2025-06-14T11:06:32Z",
+        "Driver": "local",
+        "Labels": {
+            "com.docker.compose.config-hash": "567e60c16fe07cb5369dbae37739c19ead97ec4cf900ed9031152476c2c08e69",
+            "com.docker.compose.project": "backend",
+            "com.docker.compose.version": "2.34.0",
+            "com.docker.compose.volume": "mysql_data"
+        },
+        "Mountpoint": "/var/lib/docker/volumes/backend_mysql_data/_data",
+        "Name": "backend_mysql_data",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+```
+
+
 The MySQL db can be intentionally deleted with:
 
 ```sh
