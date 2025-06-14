@@ -53,7 +53,7 @@ class LeafOperations:
             with self.db.get_db_session() as db_session:
                 leaves : list[LeafModel] = db_session.query(LeafModel).all()
                 if not leaves:
-                    raise LeafNotFound()
+                    return []
                 return [Leaf(
                     id=leaf.id,
                     title=leaf.title,
