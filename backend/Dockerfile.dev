@@ -17,6 +17,7 @@ RUN poetry install --no-root --no-dev
 
 # Copy application code
 COPY . .
+RUN sed -i 's/\r//' wait-for-it.sh && chmod +x wait-for-it.sh
 
 # Install the project
 RUN poetry install --no-dev

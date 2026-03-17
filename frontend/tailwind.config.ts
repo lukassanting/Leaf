@@ -1,5 +1,4 @@
 import type { Config } from 'tailwindcss'
-
 import typography from '@tailwindcss/typography'
 
 const config: Config = {
@@ -33,12 +32,12 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
-        serif: ['var(--font-merriweather)', 'Georgia', 'serif'],
-        mono: ['var(--font-fira-code)', 'monospace'],
+        sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-geist-mono)', 'ui-monospace', 'monospace'],
       },
     },
   },
   plugins: [typography],
 }
+
 export default config

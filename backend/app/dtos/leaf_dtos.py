@@ -13,6 +13,7 @@ class LeafCreate(BaseModel):
     content: Optional[str] = None
     parent_id: Optional[str] = None
     children_ids: Optional[list[str]] = []
+    tags: Optional[list[str]] = []
 
     @computed_field
     @property
@@ -27,6 +28,12 @@ class LeafCreate(BaseModel):
             "type": self.type.value
         }
     
+class LeafContentUpdate(BaseModel):
+    """Minimal payload for autosave; optional updated_at for conflict detection."""
+    content: str
+    updated_at: Optional[datetime] = None
+
+
 class Leaf(BaseModel):
     id: str
     title: str
@@ -35,5 +42,22 @@ class Leaf(BaseModel):
     content: Optional[str] = None
     parent_id: Optional[str] = None
     children_ids: Optional[list[str]] = []
+    tags: list[str] = []
     created_at: datetime
     updated_at: datetime
+
+
+class LeafTreeItem(BaseModel):
+    """Lightweight DTO for tree/navigation; no content."""
+    id: str
+    title: str
+    type: LeafType
+    parent_id: Optional[str] = None
+    children_ids: Optional[list[str]] = []
+    tags: list[str] = []
+    order: int = 0
+
+
+class LeafReorderChildren(BaseModel):
+    """Payload for reordering children of a leaf."""
+    child_ids: list[str] = []

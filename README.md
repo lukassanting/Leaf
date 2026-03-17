@@ -1,63 +1,107 @@
 # Leaf
 
-An ongoing project for a simple Markdown text editor, with page storage and generative AI integration. A FastAPI-based service with MySQL database support.
+A fast, Notion-inspired markdown editor with page trees, local-first cache, and database (table) views. **FastAPI** backend, **Next.js 15** frontend, **MySQL**.
 
-## Development Setup
+## Quick start (Docker + Make)
 
-1. Install and set up Poetry (if not already installed)
+**Prerequisites:** Docker and Docker Compose. For the Makefile: `make` (on Windows: WSL, Git Bash, or [Chocolatey](https://chocolatey.org/) `choco install make`). The `make up` and `make build` targets also require **Python** (used to create `backend/.env` from `.env.example` if missing).
 
-2. Install project dependencies
+All commands below are from the **repo root** (`Leaf/`).
+
+1. **Start the full stack** (MySQL + API + frontend):
 
    ```bash
-   poetry install
+   make up
    ```
 
-In order to the docker you will have to have Docker running on your device.
+   This creates `backend/.env` from `backend/.env.example` when needed, then runs `docker compose up --build`.
+   **Windows:** If `make up` fails on the `env` step (e.g. "Python not found"), create the env file manually:
 
-3. Start the development environment:
-   ```bash
-   docker compose -f docker-compose.dev.yml up --build
-   ```
-
-   Down the docker with
-   ```
-   docker compose down -v
-   ```
-
-4. The API will be available at http://localhost:8000
-   - API documentation: http://localhost:8000/docs
-   - ReDoc documentation: http://localhost:8000/redoc
-
-## Production Setup (NOTE: Placeholder, Untested)
-
-1. Start the production environment:
-   ```bash
+   ```cmd
+   copy backend\.env.example backend\.env
    docker compose up --build
    ```
-   Make sure your `.env` file is configured with the correct production settings.
 
-## Database Migrations
+   **Without Make:**
 
-The project uses Alembic for database migrations. Migrations are automatically applied when the application starts.
+   ```bash
+   cp backend/.env.example backend/.env   # macOS/Linux
+   # or: copy backend\.env.example backend\.env   # Windows
+   docker compose up --build
+   ```
 
-### Async vs Sync Database URLs
-- **App runtime:** Uses the async driver (`mysql+aiomysql://...`).
-- **Alembic migrations:** Must use the sync driver (`mysql+pymysql://...`).
+2. **Open the app**
 
-> **Troubleshooting:**
-> If you see an error like `MissingGreenlet: greenlet_spawn has not been called; can't call await_only() here`, it means Alembic is trying to use the async driver. Make sure your Alembic config uses the sync driver (`pymysql`).
+   - **Frontend:** http://localhost:3000
+   - **API:** http://localhost:8000
+   - **API docs:** http://localhost:8000/docs
 
-### Running Alembic inside Docker (Recommended)
+3. **Run tests**
 
-**It is recommended to enter the API container and run Alembic commands from inside.** This ensures the correct environment and network settings (e.g., the `db` hostname) are used.
+   ```bash
+   make test
+   ```
 
-#### Enter the container:
+   Runs the frontend linter (and lightweight backend checks). To run tests inside Docker:
+
+   ```bash
+   make test-in-docker
+   ```
+
+4. **Stop**
+
+   ```bash
+   make down
+   ```
+
+   To also remove the database volume: `make down-volumes`.
+
+## Makefile targets
+
+| Target              | Description                          |
+|---------------------|--------------------------------------|
+| `make up`           | Start all services (builds if needed) |
+| `make up-d`         | Start in background                  |
+| `make down`         | Stop containers                      |
+| `make down-volumes` | Stop and remove DB volume            |
+| `make build`        | Build images only                    |
+| `make test`         | Frontend lint + backend checks       |
+| `make logs`         | Follow logs                          |
+| `make shell-api`    | Shell into API container              |
+| `make shell-frontend` | Shell into frontend container      |
+
+## Development without Docker
+
+1. **Backend:** In `backend/` run `poetry install`. Copy `backend/.env.example` to `backend/.env` and set `MYSQL_HOST=127.0.0.1`, `MYSQL_PORT=3306` (or `3307` if MySQL is only in Docker). Start the API:
+
+   ```bash
+   cd backend && poetry run uvicorn app.main:app --reload
+   ```
+
+2. **Frontend:** In `frontend/` run `npm install`. Set `NEXT_PUBLIC_API_URL=http://localhost:8000`, then:
+
+   ```bash
+   cd frontend && npm run dev
+   ```
+
+3. **MySQL only in Docker:** From repo root, `docker compose up mysqldb -d` to run just the database.
+
+## Database migrations
+
+The project uses **Alembic**. Migrations run automatically on API startup unless `RUN_MIGRATIONS_ON_STARTUP=false` is set in `backend/.env` (useful for production where you run migrations separately).
+
+- **App runtime:** Sync driver `mysql+pymysql`.
+- **Alembic:** Use the sync driver in `alembic.ini` / `env.py` (`pymysql`). If you see `MissingGreenlet` or async-related errors, ensure Alembic is not using an async URL.
+
+### Running Alembic inside Docker
+
+From repo root, enter the API container (name used by root `docker-compose.yml` is `leaf-api`):
 
 ```bash
-docker exec -it leafapi sh
+docker exec -it leaf-api sh
 ```
 
-#### Then, inside the container, cd into the right directory and  run Alembic commands:
+Inside the container:
 
 ```sh
 cd /app
@@ -65,76 +109,54 @@ alembic revision --autogenerate -m "Description of update"
 alembic upgrade head
 ```
 
-### Inspecting the persistent database
+### Inspecting or removing the DB volume
 
-Inspect the MySQL volume
-
-```sh
-docker volume inspect backend_mysql_data
-```
-
-This should reveal something like:
-```sh
-[
-    {
-        "CreatedAt": "2025-06-14T11:06:32Z",
-        "Driver": "local",
-        "Labels": {
-            "com.docker.compose.config-hash": "567e60c16fe07cb5369dbae37739c19ead97ec4cf900ed9031152476c2c08e69",
-            "com.docker.compose.project": "backend",
-            "com.docker.compose.version": "2.34.0",
-            "com.docker.compose.volume": "mysql_data"
-        },
-        "Mountpoint": "/var/lib/docker/volumes/backend_mysql_data/_data",
-        "Name": "backend_mysql_data",
-        "Options": null,
-        "Scope": "local"
-    }
-]
-```
-
-
-When the volume is not in use, the MySQL db can be intentionally deleted with:
-
-```sh
-docker volume rm backend_mysql_data
-```
-
-## Development Features
-
-- Hot-reloading enabled in development
-- Local MySQL database with persistent storage
-- Poetry for dependency management
-- Alembic for database migrations
-- Docker Compose for easy setup
-- Automatic environment file creation
-
-## Production Features (Placeholder, Untested)
-
-- Optimized Docker image
-- Environment variable configuration
-- Health checks for database
-- Production-ready MySQL setup
+With the root `docker-compose.yml`, the MySQL volume is named `leaf_mysql_data`:
 
 ```bash
-poetry run alembic init alembic 
+docker volume inspect leaf_mysql_data
+# remove when containers are stopped:
+docker volume rm leaf_mysql_data
 ```
 
-In `alembic.ini`, set `sqlalchemy.url = mysql+pymysql://user:pass@host:3306/db`
+## Features
 
-In `alembic/env.py`, update
+- **Pages & tree:** Notion-like hierarchy (projects/pages), shared sidebar with search, collapse-all, expand/collapse per node, inline rename, delete, drag-and-drop reorder, and inline child-page creation.
+- **Editor:** TipTap rich text with formatting toolbar (H1–H3, bold, italic, strikethrough, lists, code, blockquote); optional Markdown source mode with round-trip (turndown + markdown-it); Import/Export `.md`. Inline editable title with debounced sidebar refresh.
+- **Autosave:** Debounced PATCH to `/leaves/{id}/content` (~800 ms idle); Ctrl+S / Cmd+S to save immediately; optional conflict detection via `updated_at`.
+- **Local-first cache:** IndexedDB (with localStorage fallback) for instant page load and offline edits; pending saves sync when back online.
+- **Databases:** Notion-style collections of pages. Each entry is a real page (openable as a full editor page). Views: Table, List, Gallery. Schema-driven columns (text, number, tags). "Name" column always links to the page. Inline cell editing (double-click to edit).
+- **Tags:** Pages have editable tags (chip input below the title). Tags column type available in database schemas, rendered as colored chips in all views.
+- **Typography:** Explicit heading sizes (H1 > H2 > H3 > body) via `.ProseMirror` CSS; no reliance on `@tailwindcss/typography`.
+- **Stack:** Next.js 15 (App Router), FastAPI, MySQL, Tailwind CSS v4, TipTap, Docker Compose.
 
-```python
-from app.database.models.leaf_model import Leaf, Base
+## Production (placeholder)
 
-target_metadata = Base.metadata
+The root `docker-compose.yml` is aimed at development. For production you would typically:
+
+- Use a separate `docker-compose.prod.yml` or CI step that builds production images (e.g. multi-stage backend, `next build` + `next start` for frontend).
+- Set `RUN_MIGRATIONS_ON_STARTUP=false` and run `alembic upgrade head` in a dedicated step or init job.
+- Configure env (secrets, `ALLOWED_ORIGINS`, DB URL) for production.
+
+## Project layout
+
 ```
-
-This makes sure that alembic takes any changes to your models into account when running the migrations
-
-Then create and run the migrations:
-
-```bash
-poetry run alembic revision --autogenerate -m "create leaves table"
-poetry run alembic upgrade head
+Leaf/
+├── CLAUDE.md             # AI code editor instructions and project context
+├── README.md             # ← this file
+├── docs/
+│   └── PLANS_AND_ROADMAP.md
+├── docker-compose.yml    # Full stack: mysqldb, api, frontend (run from root)
+├── Makefile              # up, down, test, logs, etc.
+├── backend/              # FastAPI, Poetry, Alembic
+│   ├── app/
+│   ├── migrations/
+│   ├── Dockerfile.dev
+│   ├── docker-compose.dev.yml   # Backend + MySQL only
+│   └── .env.example
+└── frontend/             # Next.js 15 App Router, Tailwind v4, TipTap
+    └── src/
+        ├── app/(workspace)/     # Shared layout with sidebar
+        ├── components/          # Editor, Toolbar, Sidebar, SidebarTree
+        └── lib/                 # API clients, cache, types
 ```

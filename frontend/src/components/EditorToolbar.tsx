@@ -1,0 +1,114 @@
+'use client'
+
+import type { Editor } from '@tiptap/react'
+
+type Props = { editor: Editor }
+
+type ToolbarButton = {
+  label: string
+  title: string
+  active?: () => boolean
+  action: () => void
+}
+
+type Separator = { type: 'sep' }
+
+export function EditorToolbar({ editor }: Props) {
+  const items: (ToolbarButton | Separator)[] = [
+    {
+      label: 'H1',
+      title: 'Heading 1',
+      active: () => editor.isActive('heading', { level: 1 }),
+      action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
+    },
+    {
+      label: 'H2',
+      title: 'Heading 2',
+      active: () => editor.isActive('heading', { level: 2 }),
+      action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+    },
+    {
+      label: 'H3',
+      title: 'Heading 3',
+      active: () => editor.isActive('heading', { level: 3 }),
+      action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
+    },
+    { type: 'sep' },
+    {
+      label: 'B',
+      title: 'Bold',
+      active: () => editor.isActive('bold'),
+      action: () => editor.chain().focus().toggleBold().run(),
+    },
+    {
+      label: 'I',
+      title: 'Italic',
+      active: () => editor.isActive('italic'),
+      action: () => editor.chain().focus().toggleItalic().run(),
+    },
+    {
+      label: 'S',
+      title: 'Strikethrough',
+      active: () => editor.isActive('strike'),
+      action: () => editor.chain().focus().toggleStrike().run(),
+    },
+    {
+      label: '<>',
+      title: 'Inline code',
+      active: () => editor.isActive('code'),
+      action: () => editor.chain().focus().toggleCode().run(),
+    },
+    { type: 'sep' },
+    {
+      label: '—',
+      title: 'Bullet list',
+      active: () => editor.isActive('bulletList'),
+      action: () => editor.chain().focus().toggleBulletList().run(),
+    },
+    {
+      label: '1.',
+      title: 'Ordered list',
+      active: () => editor.isActive('orderedList'),
+      action: () => editor.chain().focus().toggleOrderedList().run(),
+    },
+    {
+      label: '```',
+      title: 'Code block',
+      active: () => editor.isActive('codeBlock'),
+      action: () => editor.chain().focus().toggleCodeBlock().run(),
+    },
+    {
+      label: '❝',
+      title: 'Blockquote',
+      active: () => editor.isActive('blockquote'),
+      action: () => editor.chain().focus().toggleBlockquote().run(),
+    },
+  ]
+
+  return (
+    <div className="flex items-center gap-0.5 flex-wrap">
+      {items.map((item, i) => {
+        if ('type' in item) {
+          return <div key={i} className="w-px h-4 bg-leaf-200 mx-1" />
+        }
+        const isActive = item.active?.() ?? false
+        return (
+          <button
+            key={item.label}
+            type="button"
+            title={item.title}
+            onClick={item.action}
+            className={[
+              'px-1.5 py-1 rounded text-xs font-mono transition',
+              isActive
+                ? 'bg-leaf-100 text-leaf-800 font-semibold'
+                : 'text-leaf-400 hover:text-leaf-700 hover:bg-leaf-50',
+            ].join(' ')}
+          >
+            {item.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}

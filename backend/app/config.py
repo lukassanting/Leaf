@@ -25,7 +25,7 @@ class ConfigSettings():
         self.DEBUG = self.config("DEBUG", cast=bool, default=False)
 
         self.ALLOWED_ORIGINS = TypeAdapter(list[str]).validate_python(
-            json.loads(self.config("ALLOWED_ORIGINS", default='["http://localhost:3000"]'))
+            json.loads(self.config("ALLOWED_ORIGINS", default='["http://localhost:3000", "http://127.0.0.1:3000"]'))
         )
 
         self.MYSQL_USER = self.config("MYSQL_USER", cast=str, default="root")
@@ -36,4 +36,5 @@ class ConfigSettings():
 
         self.ALEMBIC_SCRIPT_LOCATION = self.config("ALEMBIC_SCRIPT_LOCATION", cast=str, default="migrations")
 
-        # self.DATABASE_URL = f"mysql+pymysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
+        # When False, run migrations separately (e.g. `alembic upgrade head`) for faster cold start.
+        self.RUN_MIGRATIONS_ON_STARTUP = self.config("RUN_MIGRATIONS_ON_STARTUP", cast=bool, default=True)

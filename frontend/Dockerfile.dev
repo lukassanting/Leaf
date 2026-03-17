@@ -1,0 +1,13 @@
+# Dev image: install deps and run next dev (with turbopack)
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm install
+
+COPY . .
+
+# Next.js dev server (port 3000)
+EXPOSE 3000
+CMD ["npm", "run", "dev"]

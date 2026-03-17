@@ -1,0 +1,74 @@
+# Leaf: run backend + frontend + MySQL together.
+# From repo root: docker compose up --build
+
+services:
+  mysqldb:
+    container_name: leaf-mysqldb
+    image: mysql:8
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: leaf
+      MYSQL_ROOT_PASSWORD: securepass123
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    volumes:
+      - leaf_mysql_data:/var/lib/mysql
+
+  api:
+    container_name: leaf-api
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend/migrations:/app/migrations
+      - ./backend/app:/app/app
+    env_file:
+      - ./backend/.env
+    environment:
+      ENVIRONMENT: development
+      MYSQL_HOST: mysqldb
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: securepass123
+      MYSQL_DATABASE: leaf
+      ALLOWED_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      mysqldb:
+        condition: service_healthy
+    command: ["/bin/sh", "-c", "./wait-for-it.sh mysqldb:3306 -t 60 -- /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]
+
+  frontend:
+    container_name: leaf-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    environment:
+      # Browser-side URL (client fetches go through the exposed port on the host).
+      # If SSR fetches are added, use http://api:8000 for server-side calls instead.
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      api:
+        condition: service_healthy
+    command: ["npm", "run", "dev"]
+
+volumes:
+  leaf_mysql_data:

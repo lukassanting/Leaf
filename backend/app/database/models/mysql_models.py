@@ -22,6 +22,8 @@ class LeafModel(Base):
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     order = Column(Integer, nullable=False, default=0)  # For maintaining order of items
+    tags = Column(MySQLJSON, nullable=True, default=list)
+    database_id = Column(String(36), ForeignKey("databases.id", ondelete="SET NULL"), nullable=True)
 
     children = relationship("LeafModel", back_populates="parent")
     parent = relationship("LeafModel", back_populates="children", remote_side=[id])
@@ -31,3 +33,27 @@ class LeafModel(Base):
 
     def is_page(self):
         return self.type == LeafType.PAGE
+
+
+class DatabaseModel(Base):
+    """Notion-like database container (table view)."""
+    __tablename__ = "databases"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    title = Column(String(255), nullable=False, default="Untitled database")
+    schema = Column(MySQLJSON, nullable=True, default=None)  # {"properties": [...]}
+    view_type = Column(String(20), nullable=False, default="table")
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class DatabaseRowModel(Base):
+    """A row in a database; properties stored as JSON (e.g. title, leaf_id)."""
+    __tablename__ = "database_rows"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    database_id = Column(String(36), ForeignKey("databases.id", ondelete="CASCADE"), nullable=False)
+    properties = Column(MySQLJSON, nullable=False, default=dict)  # {"title": "...", "leaf_id": "..."}
+    leaf_id = Column(String(36), ForeignKey("leaves.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
