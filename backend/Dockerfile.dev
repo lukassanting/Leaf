@@ -13,14 +13,14 @@ WORKDIR /app
 COPY pyproject.toml poetry.lock* ./
 
 # Install dependencies
-RUN poetry install --no-root --no-dev
+RUN poetry install --no-root --only main
 
 # Copy application code
 COPY . .
 RUN sed -i 's/\r//' wait-for-it.sh && chmod +x wait-for-it.sh
 
 # Install the project
-RUN poetry install --no-dev
+RUN poetry install --only main
 
 # Final stage
 FROM python:3.11-slim

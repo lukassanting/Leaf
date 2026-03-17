@@ -21,6 +21,7 @@ class DatabaseCreate(BaseModel):
     title: str = "Untitled database"
     schema: Optional[DatabaseSchema] = None
     view_type: str = "table"
+    parent_leaf_id: Optional[str] = None
 
 
 class Database(BaseModel):
@@ -28,6 +29,7 @@ class Database(BaseModel):
     title: str
     schema: DatabaseSchema
     view_type: str = "table"
+    parent_leaf_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

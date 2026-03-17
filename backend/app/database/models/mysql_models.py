@@ -3,7 +3,9 @@ from uuid import uuid4
 from sqlalchemy import func, Column, String, ForeignKey, DateTime, Text, Enum, Integer, JSON
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.ext.mutable import MutableList
-from sqlalchemy.dialects.mysql import JSON as MySQLJSON
+
+# Standard JSON works with SQLite (JSON1 extension, included since SQLite 3.9)
+MySQLJSON = JSON
 
 from app.dtos.leaf_dtos import LeafType
 
@@ -43,6 +45,7 @@ class DatabaseModel(Base):
     title = Column(String(255), nullable=False, default="Untitled database")
     schema = Column(MySQLJSON, nullable=True, default=None)  # {"properties": [...]}
     view_type = Column(String(20), nullable=False, default="table")
+    parent_leaf_id = Column(String(36), ForeignKey("leaves.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

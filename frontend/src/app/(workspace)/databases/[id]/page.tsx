@@ -1,10 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { databasesApi, leavesApi } from '@/lib/api'
 import type { Database, DatabaseRow, PropertyDefinition, ViewType } from '@/lib/api'
+import { getCachedTree } from '@/lib/leafCache'
 
 // ─── Tag chips ─────────────────────────────────────────────────────────────
 
@@ -329,7 +330,6 @@ const VIEW_LABELS: { key: ViewType; label: string }[] = [
 
 export default function DatabaseViewPage() {
   const params = useParams()
-  const router = useRouter()
   const id = params?.id as string
 
   const [db, setDb] = useState<Database | null>(null)
@@ -338,6 +338,7 @@ export default function DatabaseViewPage() {
   const [showAddCol, setShowAddCol] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
   const savedTitleRef = useRef('')
+  const [breadcrumbs, setBreadcrumbs] = useState<{ id: string; title: string }[]>([])
 
   useEffect(() => {
     if (!id) return
@@ -347,6 +348,21 @@ export default function DatabaseViewPage() {
         setTitleDraft(dbData.title)
         savedTitleRef.current = dbData.title
         setRows(rowsData)
+
+        // Build breadcrumbs from parent_leaf_id chain
+        if (dbData.parent_leaf_id) {
+          getCachedTree().then((tree) => {
+            if (!tree) return
+            const byId = new Map(tree.map((n) => [n.id, n]))
+            const chain: { id: string; title: string }[] = []
+            let cur = byId.get(dbData.parent_leaf_id!)
+            while (cur) {
+              chain.unshift({ id: cur.id, title: cur.title })
+              cur = cur.parent_id ? byId.get(cur.parent_id) : undefined
+            }
+            setBreadcrumbs(chain)
+          })
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false))
@@ -360,6 +376,7 @@ export default function DatabaseViewPage() {
     try {
       const updated = await databasesApi.update(id, { title: trimmed, schema: db.schema, view_type: db.view_type })
       setDb(updated)
+      window.dispatchEvent(new CustomEvent('leaf-title-changed', { detail: { id, title: trimmed } }))
     } catch { console.error('Failed to save title') }
   }
 
@@ -432,16 +449,31 @@ export default function DatabaseViewPage() {
 
       <div className="min-h-screen">
         <div className="max-w-4xl mx-auto px-12 py-12">
-          <Link href="/databases" className="text-xs text-leaf-400 hover:text-leaf-600 mb-4 inline-block">← Databases</Link>
+          {breadcrumbs.length > 0 && (
+            <nav className="flex items-center gap-1 mb-4 text-sm text-leaf-400">
+              {breadcrumbs.map((crumb, i) => (
+                <span key={crumb.id} className="flex items-center gap-1">
+                  {i > 0 && <span className="text-leaf-200">/</span>}
+                  <Link href={`/editor/${crumb.id}`} className="hover:text-leaf-600 transition truncate max-w-[160px]">
+                    {crumb.title}
+                  </Link>
+                </span>
+              ))}
+              <span className="text-leaf-200">/</span>
+            </nav>
+          )}
 
-          <input
-            className="w-full text-4xl font-bold text-leaf-900 bg-transparent border-none outline-none placeholder:text-leaf-200 mb-6 leading-tight"
-            value={titleDraft}
-            onChange={(e) => setTitleDraft(e.target.value)}
-            onBlur={(e) => handleTitleSave(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur() } }}
-            placeholder="Untitled database"
-          />
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-4xl leading-tight select-none">🌳</span>
+            <input
+              className="flex-1 text-4xl font-bold text-leaf-900 bg-transparent border-none outline-none placeholder:text-leaf-200 leading-tight"
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={(e) => handleTitleSave(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur() } }}
+              placeholder="Untitled database"
+            />
+          </div>
 
           {/* View tabs + actions */}
           <div className="flex items-center justify-between mb-5">

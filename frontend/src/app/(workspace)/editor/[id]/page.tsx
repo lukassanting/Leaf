@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { leavesApi, databasesApi } from '@/lib/api'
 import {
   getCachedLeaf,
@@ -49,7 +49,6 @@ function TagsInput({ tags, onChange }: { tags: string[]; onChange: (tags: string
 
 export default function EditorPage() {
   const params = useParams()
-  const router = useRouter()
   const leafId = params?.id as string
 
   const [content, setContent] = useState('')
@@ -256,28 +255,27 @@ export default function EditorPage() {
     }
   }
 
-  // ─── Create sub-page ───────────────────────────────────────────────────────
+  // ─── Create sub-page (via block menu card) ────────────────────────────────
 
-  const createChild = useCallback(async () => {
-    try {
-      const leaf = await leavesApi.create({ title: 'Untitled', parent_id: leafId })
-      router.push(`/editor/${leaf.id}`)
-    } catch {
-      console.error('Failed to create sub-page')
-    }
-  }, [leafId, router])
+  const handleCreateSubPage = useCallback((insertCard: (id: string, title: string) => void) => {
+    leavesApi.create({ title: 'Untitled', parent_id: leafId })
+      .then((leaf) => {
+        insertCard(leaf.id, leaf.title)
+        window.dispatchEvent(new Event('leaf-tree-changed'))
+      })
+      .catch((e) => console.error('Failed to create sub-page', e))
+  }, [leafId])
 
-  // ─── Create database from within this page ─────────────────────────────────
+  // ─── Create database (via block menu card) ────────────────────────────────
 
-  const createDatabase = useCallback(async () => {
-    try {
-      const db = await databasesApi.create({ title: 'Untitled database' })
-      window.dispatchEvent(new Event('leaf-database-created'))
-      router.push(`/databases/${db.id}`)
-    } catch (e) {
-      console.error('Failed to create database', e)
-    }
-  }, [router])
+  const handleCreateDatabase = useCallback((insertCard: (id: string, title: string) => void) => {
+    databasesApi.create({ title: 'Untitled database', parent_leaf_id: leafId })
+      .then((db) => {
+        insertCard(db.id, db.title)
+        window.dispatchEvent(new Event('leaf-tree-changed'))
+      })
+      .catch((e) => console.error('Failed to create database', e))
+  }, [leafId])
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -299,39 +297,36 @@ export default function EditorPage() {
               <span className="text-leaf-200">/</span>
             </nav>
           )}
-          <input
-            className="w-full text-4xl font-bold text-leaf-900 bg-transparent border-none outline-none placeholder:text-leaf-200 mb-1 leading-tight"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={(e) => handleTitleSave(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur() }
-            }}
-            placeholder="Untitled"
-          />
+          <div className="flex items-center gap-3 mb-1">
+            <span className="text-4xl leading-tight select-none">🍃</span>
+            <input
+              className="flex-1 text-4xl font-bold text-leaf-900 bg-transparent border-none outline-none placeholder:text-leaf-200 leading-tight"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={(e) => handleTitleSave(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur() }
+              }}
+              placeholder="Untitled"
+            />
+          </div>
 
           <TagsInput tags={tags} onChange={handleTagsSave} />
 
-          <div className="flex items-center justify-between mb-8 h-5">
+          <div className="mb-8 h-5">
             <span className="text-xs text-leaf-300">
               {saveStatus === 'saving' && 'Saving…'}
               {saveStatus === 'saved' && 'Saved'}
               {saveStatus === 'error' && 'Error saving'}
               {saveStatus === 'offline' && 'Saved locally'}
             </span>
-            <div className="flex items-center gap-3">
-              <button onClick={createChild} className="text-xs text-leaf-300 hover:text-leaf-500 transition">
-                + Sub-page
-              </button>
-              <button onClick={createDatabase} className="text-xs text-leaf-300 hover:text-leaf-500 transition">
-                ⊞ New database
-              </button>
-            </div>
           </div>
 
           <Editor
             content={content}
             onUpdate={(html) => { setContent(html); scheduleSave(html) }}
+            onCreateSubPage={handleCreateSubPage}
+            onCreateDatabase={handleCreateDatabase}
           />
         </div>
     </div>

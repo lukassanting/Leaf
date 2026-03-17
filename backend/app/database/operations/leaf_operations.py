@@ -4,10 +4,11 @@ from fastapi import Depends
 from loguru import logger
 
 # Local imports
-from app.database.models.mysql_models import LeafModel
+from app.database.models.mysql_models import LeafModel, DatabaseModel, DatabaseRowModel
 from app.database.connectors.mysql import MySQLDatabaseConnector, get_db_connector
 from app.exceptions.exceptions import FailedToCreateLeaf, LeafException, LeafNotFound
 from app.dtos.leaf_dtos import Leaf, LeafCreate, LeafContentUpdate, LeafTreeItem, LeafType
+from app.storage import get_file_storage
 
 class LeafOperations:
     def __init__(self, db_connector: MySQLDatabaseConnector = Depends(get_db_connector)):
@@ -26,6 +27,14 @@ class LeafOperations:
 
                 if leaf.type == LeafType.PAGE:
                     await self._add_leaf_to_parent(db_leaf, db_session)
+
+                get_file_storage().write_page(
+                    leaf_id=db_leaf.id, title=db_leaf.title,
+                    content_html=db_leaf.content, parent_id=db_leaf.parent_id,
+                    children_ids=db_leaf.children_ids or [], tags=db_leaf.tags or [],
+                    order=db_leaf.order or 0, database_id=db_leaf.database_id,
+                    created_at=db_leaf.created_at, updated_at=db_leaf.updated_at,
+                )
 
                 return Leaf(
                     id=db_leaf.id,
@@ -153,6 +162,13 @@ class LeafOperations:
                 db_session.commit()
                 db_session.refresh(db_leaf)
                 logger.info("Leaf content patched: %s", db_leaf.id)
+                get_file_storage().write_page(
+                    leaf_id=db_leaf.id, title=db_leaf.title,
+                    content_html=db_leaf.content, parent_id=db_leaf.parent_id,
+                    children_ids=db_leaf.children_ids or [], tags=db_leaf.tags or [],
+                    order=db_leaf.order or 0, database_id=db_leaf.database_id,
+                    created_at=db_leaf.created_at, updated_at=db_leaf.updated_at,
+                )
                 return Leaf(
                     id=db_leaf.id,
                     title=db_leaf.title,
@@ -223,6 +239,13 @@ class LeafOperations:
                 db_session.refresh(db_leaf)
 
                 logger.info(f"Leaf updated: {db_leaf.id}")
+                get_file_storage().write_page(
+                    leaf_id=db_leaf.id, title=db_leaf.title,
+                    content_html=db_leaf.content, parent_id=db_leaf.parent_id,
+                    children_ids=db_leaf.children_ids or [], tags=db_leaf.tags or [],
+                    order=db_leaf.order or 0, database_id=db_leaf.database_id,
+                    created_at=db_leaf.created_at, updated_at=db_leaf.updated_at,
+                )
                 return Leaf(
                     id=db_leaf.id,
                     title=db_leaf.title,
@@ -241,30 +264,60 @@ class LeafOperations:
     async def delete_leaf(self, leaf_id: UUID):
         try:
             with self.db.get_db_session() as db_session:
-                db_leaf : LeafModel = db_session.query(LeafModel).filter(
+                db_leaf = db_session.query(LeafModel).filter(
                     LeafModel.id == str(leaf_id)
                 ).first()
-                
-                db_session.delete(db_leaf)
-                db_session.commit()
 
                 if not db_leaf:
                     raise LeafNotFound(leaf_id=leaf_id)
-                
-                if db_leaf.children_ids:
-                    for child_id in db_leaf.children_ids:
-                        child_leaf : LeafModel = db_session.query(LeafModel).filter(
-                            LeafModel.id == str(child_id)
-                        ).first()
-                        if child_leaf:
-                            await self.delete_leaf(child_leaf.id)
-                
-                if db_leaf.parent_id:
-                    await self._remove_leaf_from_parent(db_leaf, db_session)
 
+                # Capture before deletion
+                children_ids = list(db_leaf.children_ids or [])
+                parent_id = db_leaf.parent_id
+
+                # Delete child databases and their rows
+                child_dbs = db_session.query(DatabaseModel).filter(
+                    DatabaseModel.parent_leaf_id == str(leaf_id)
+                ).all()
+                for child_db in child_dbs:
+                    rows = db_session.query(DatabaseRowModel).filter(
+                        DatabaseRowModel.database_id == child_db.id
+                    ).all()
+                    for row in rows:
+                        if row.leaf_id:
+                            row_leaf = db_session.query(LeafModel).filter(
+                                LeafModel.id == row.leaf_id
+                            ).first()
+                            if row_leaf:
+                                db_session.delete(row_leaf)
+                    db_session.delete(child_db)
+
+                # Remove from parent's children_ids
+                if parent_id:
+                    parent = db_session.query(LeafModel).filter(
+                        LeafModel.id == parent_id
+                    ).first()
+                    if parent and parent.children_ids:
+                        parent.children_ids = [
+                            cid for cid in parent.children_ids if cid != str(leaf_id)
+                        ]
+
+                db_session.delete(db_leaf)
+                db_session.commit()
+                get_file_storage().delete_page(str(leaf_id), database_id=None)
                 logger.info(f"Leaf deleted: {leaf_id}")
+
+            # Recursively delete children (outside session to avoid conflicts)
+            for child_id in children_ids:
+                try:
+                    await self.delete_leaf(child_id)
+                except Exception:
+                    pass
+
+        except LeafNotFound:
+            raise
         except Exception as e:
-            raise LeafException(status_code=e.status_code, detail=str(e))
+            raise LeafException(status_code=500, detail=str(e))
         
 
     async def _add_leaf_to_parent(self, leaf: LeafModel, db_session=None):

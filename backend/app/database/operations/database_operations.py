@@ -5,6 +5,7 @@ from app.database.models.mysql_models import DatabaseModel, DatabaseRowModel, Le
 from app.database.connectors.mysql import MySQLDatabaseConnector, get_db_connector
 from app.dtos.database_dtos import Database, DatabaseCreate, DatabaseSchema, Row, RowCreate, RowUpdate
 from app.dtos.leaf_dtos import LeafType
+from app.storage import get_file_storage
 
 
 class DatabaseOperations:
@@ -22,6 +23,7 @@ class DatabaseOperations:
             title=m.title,
             schema=schema,
             view_type=m.view_type or "table",
+            parent_leaf_id=m.parent_leaf_id,
             created_at=m.created_at,
             updated_at=m.updated_at,
         )
@@ -44,11 +46,18 @@ class DatabaseOperations:
                 title=body.title,
                 schema=schema_dict,
                 view_type=body.view_type or "table",
+                parent_leaf_id=body.parent_leaf_id,
             )
             s.add(m)
             s.commit()
             s.refresh(m)
-            return self._db_to_dto(m)
+            dto = self._db_to_dto(m)
+            get_file_storage().write_database(
+                db_id=m.id, title=m.title, schema=m.schema or {},
+                view_type=m.view_type or "table", parent_leaf_id=m.parent_leaf_id,
+                created_at=m.created_at, updated_at=m.updated_at,
+            )
+            return dto
 
     def get_database(self, database_id: UUID) -> Database | None:
         with self.db.get_db_session() as s:
@@ -72,7 +81,13 @@ class DatabaseOperations:
                 m.view_type = body.view_type
             s.commit()
             s.refresh(m)
-            return self._db_to_dto(m)
+            dto = self._db_to_dto(m)
+            get_file_storage().write_database(
+                db_id=m.id, title=m.title, schema=m.schema or {},
+                view_type=m.view_type or "table", parent_leaf_id=m.parent_leaf_id,
+                created_at=m.created_at, updated_at=m.updated_at,
+            )
+            return dto
 
     def delete_database(self, database_id: UUID) -> bool:
         with self.db.get_db_session() as s:
@@ -81,6 +96,7 @@ class DatabaseOperations:
                 return False
             s.delete(m)
             s.commit()
+            get_file_storage().delete_database(str(database_id))
             return True
 
     def create_row(self, database_id: UUID, body: RowCreate) -> Row | None:
@@ -106,6 +122,13 @@ class DatabaseOperations:
             s.commit()
             s.refresh(m)
             s.refresh(leaf)
+            get_file_storage().write_page(
+                leaf_id=leaf.id, title=leaf.title, content_html=leaf.content,
+                parent_id=leaf.parent_id, children_ids=leaf.children_ids or [],
+                tags=leaf.tags or [], order=leaf.order or 0,
+                database_id=str(database_id),
+                created_at=leaf.created_at, updated_at=leaf.updated_at,
+            )
             return self._row_to_dto(m, leaf.title)
 
     def get_row(self, database_id: UUID, row_id: UUID) -> Row | None:
@@ -174,6 +197,9 @@ class DatabaseOperations:
                 leaf = s.query(LeafModel).filter(LeafModel.id == m.leaf_id).first()
                 if leaf:
                     s.delete(leaf)
+            leaf_id_to_delete = m.leaf_id
             s.delete(m)
             s.commit()
+            if leaf_id_to_delete:
+                get_file_storage().delete_page(leaf_id_to_delete, database_id=str(database_id))
             return True

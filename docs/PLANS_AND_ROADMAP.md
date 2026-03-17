@@ -141,7 +141,41 @@ User → Next.js frontend (editor + sidebar) ⇄ Local cache (IndexedDB)
 ### Local-first and sync
 
 - Conflict UI when `updated_at` conflict is detected (e.g. "Someone else edited this; merge or overwrite?").
-- Optional sync service for multi-device (last-write-wins or CRDTs).
+- **CRDT-based multi-device sync** — see architecture note below.
+
+### CRDT upgrade path (planned — no migration required)
+
+The storage architecture was designed so that adding CRDT-based sync later is a file addition, not a schema change. Current hybrid layout:
+
+```
+data/
+  pages/{uuid}.md          ← source of truth (YAML frontmatter + Markdown)
+  databases/{uuid}/
+    meta.json              ← database metadata
+    rows/{uuid}.md         ← row pages
+  .leaf.db                 ← SQLite index (rebuild-able from files at any time)
+```
+
+To add CRDT sync (Yjs / Automerge), only one new directory is needed:
+
+```
+data/
+  ops/{uuid}.jsonl         ← NEW: append-only op log per document
+                              each line: { clock, site_id, op_type, payload }
+```
+
+Migration steps (no data loss):
+1. Scan all `pages/*.md` files — each becomes a single synthetic "init" op in `ops/{uuid}.jsonl`.
+2. Switch write path from "write HTML → file" to "append op → derive current state".
+3. `.md` files become snapshots regenerated from CRDT state (same format, same AI readability).
+4. SQLite index is rebuilt from CRDT state instead of from `.md` directly.
+5. Sync = exchange op logs between devices. Last-write-wins per op, no full-file transfers.
+
+Reserved frontmatter fields already in every `.md` file:
+- `crdt_checkpoint_id: null` — ID of the op log entry this snapshot was generated from
+- `crdt_site_id: null` — device/site that wrote this snapshot
+
+These are `null` until CRDT is added. AIs reading the files today will see them and understand the intent.
 
 ### Testing and quality
 
@@ -153,7 +187,7 @@ User → Next.js frontend (editor + sidebar) ⇄ Local cache (IndexedDB)
 
 - Production Docker setup: multi-stage backend, `next build` + `next start` frontend.
 - Env and secrets: production `ALLOWED_ORIGINS`, DB URL, no secrets in repo.
-- Optional: rate limiting, auth (per-user or per-workspace), backup/restore for MySQL.
+- Optional: rate limiting, auth (per-user or per-workspace), backup = `cp -r data/ backup/`.
 
 ### Polish and accessibility
 
@@ -193,8 +227,10 @@ User → Next.js frontend (editor + sidebar) ⇄ Local cache (IndexedDB)
 
 | Path | Purpose |
 |------|---------|
-| `backend/app/main.py` | FastAPI app, CORS, lifespan, timing middleware, migrations on startup |
-| `backend/app/config.py` | Settings (DB, ALLOWED_ORIGINS, RUN_MIGRATIONS_ON_STARTUP) |
+| `backend/app/main.py` | FastAPI app, CORS, lifespan, timing middleware; `create_all` on startup |
+| `backend/app/config.py` | Settings (DATA_DIR, DATABASE_URL, ALLOWED_ORIGINS) |
+| `backend/app/storage/file_storage.py` | Writes .md files + database meta.json; HTML→Markdown via markdownify |
+| `backend/app/storage/__init__.py` | `get_file_storage()` singleton |
 | `backend/app/api/routes/api.py` | Router: includes leaf and database routers |
 | `backend/app/api/routes/leaf/leaf_crud_controller.py` | Leaves CRUD, GET /tree, PATCH content, reorder-children |
 | `backend/app/api/routes/database/database_controller.py` | Databases and rows CRUD |
@@ -219,9 +255,10 @@ User → Next.js frontend (editor + sidebar) ⇄ Local cache (IndexedDB)
 
 ## 6. Decisions and constraints
 
-- **Stack:** Next.js + FastAPI + MySQL is fixed for this roadmap; no planned swap.
+- **Stack:** Next.js + FastAPI + SQLite. MySQL removed in favour of the hybrid file+SQLite architecture.
+- **Storage architecture:** Hybrid — `.md` files with YAML frontmatter are the source of truth; SQLite (`.leaf.db`) is a rebuild-able index for fast queries. Goals: raw speed (SQLite sub-ms reads), AI readability (plain Markdown files), and a clear path to CRDT sync. See "CRDT upgrade path" in section 4.
 - **Auth:** Not implemented; optional for a later phase.
-- **Storage format:** Content stored as HTML in `leaves.content`; markdown derived for Markdown view and export.
+- **Storage format:** Content stored as HTML in `leaves.content` (SQLite) for fast editor rendering. Converted to Markdown via `markdownify` when writing `.md` files for AI readability and future sync.
 - **Cross-component updates:** Use custom `window` events (e.g. `leaf-title-changed`) rather than prop drilling or a global store.
 - **No `performance.mark` in `useEffect`:** React Strict Mode double-invokes effects, causing mark/measure errors. Remove all perf tracking from effects.
 - **Mobile:** In scope later; not in the immediate plan.

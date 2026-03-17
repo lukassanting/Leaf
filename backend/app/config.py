@@ -1,25 +1,20 @@
 from dotenv import load_dotenv
 from starlette.config import Config
+from pathlib import Path
 import json
 from pydantic import TypeAdapter
+
 
 class ConfigSettings():
     ENVIRONMENT: str
     DEBUG: bool
     ALLOWED_ORIGINS: list[str] = []
-
-    MYSQL_USER: str
-    MYSQL_PASSWORD: str
-    MYSQL_HOST: str
-    MYSQL_PORT: str
-    MYSQL_DATABASE: str
-
-    ALEMBIC_SCRIPT_LOCATION: str
+    DATA_DIR: str
+    DATABASE_URL: str
 
     def __init__(self):
         load_dotenv()
-        
-        self.config = Config( ".env")
+        self.config = Config(".env")
 
         self.ENVIRONMENT = self.config("ENVIRONMENT", default="development")
         self.DEBUG = self.config("DEBUG", cast=bool, default=False)
@@ -28,13 +23,8 @@ class ConfigSettings():
             json.loads(self.config("ALLOWED_ORIGINS", default='["http://localhost:3000", "http://127.0.0.1:3000"]'))
         )
 
-        self.MYSQL_USER = self.config("MYSQL_USER", cast=str, default="root")
-        self.MYSQL_PASSWORD = self.config("MYSQL_PASSWORD", cast=str, default="securepass123")
-        self.MYSQL_HOST = self.config("MYSQL_HOST", cast=str, default="mysqldb")
-        self.MYSQL_PORT = self.config("MYSQL_PORT", cast=int, default=3306)
-        self.MYSQL_DATABASE = self.config("MYSQL_DATABASE", cast=str, default="leaf")
+        self.DATA_DIR = self.config("DATA_DIR", cast=str, default="./data")
 
-        self.ALEMBIC_SCRIPT_LOCATION = self.config("ALEMBIC_SCRIPT_LOCATION", cast=str, default="migrations")
-
-        # When False, run migrations separately (e.g. `alembic upgrade head`) for faster cold start.
-        self.RUN_MIGRATIONS_ON_STARTUP = self.config("RUN_MIGRATIONS_ON_STARTUP", cast=bool, default=True)
+        # DATABASE_URL defaults to SQLite in DATA_DIR; override for custom paths.
+        default_db = f"sqlite:///{Path(self.DATA_DIR) / '.leaf.db'}"
+        self.DATABASE_URL = self.config("DATABASE_URL", cast=str, default=default_db)
