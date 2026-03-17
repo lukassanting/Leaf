@@ -152,7 +152,25 @@ When a sub-page or database is created from within a page, a card block is embed
 
 ---
 
-## 9. Decisions and constraints
+## 9. Design system
+
+This project uses a strict design system defined in `LEAF_DESIGN_GUIDE.md` at the repo root.
+
+**Before writing any code:**
+
+1. **CREATE** `LEAF_DESIGN_GUIDE.md` at the project root if it does not exist (copy the canonical content from the existing file).
+2. **READ** it fully before touching any styles.
+3. **All design decisions** — colours, spacing, type sizes, border radii, motion durations, icon shapes — must match the guide. Do not introduce new values without updating the guide first.
+
+Key rules:
+- Two SVG icons only: Leaf (pages) and Database (databases). No emoji.
+- Two font weights only: 400 and 500. Never 600 or 700.
+- The formatting toolbar is **removed**. All block creation is via `/` slash commands or the block `+` handle.
+- Status bar at the bottom of every editor page: synced status + word count left, mode toggle right.
+
+---
+
+## 10. Decisions and constraints
 
 - **Icons**: emoji for now (`🍃` page, `🌳` database); swap for SVG in a polish pass.
 - **Block menu hover**: use a 300 ms grace-period timer so moving left to the `+` doesn't hide it.
