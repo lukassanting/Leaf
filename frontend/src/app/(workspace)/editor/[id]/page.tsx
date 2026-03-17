@@ -1,12 +1,14 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { leavesApi, databasesApi } from '@/lib/api'
 import {
   getCachedLeaf,
   setCachedLeaf,
+  getCachedTree,
   enqueuePendingSave,
   clearPendingSave,
   getPendingSaves,
@@ -58,6 +60,7 @@ export default function EditorPage() {
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error' | 'offline'>('idle')
   const [tags, setTags] = useState<string[]>([])
+  const [breadcrumbs, setBreadcrumbs] = useState<{ id: string; title: string }[]>([])
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const latestContentRef = useRef('')
@@ -105,6 +108,26 @@ export default function EditorPage() {
       }
     }
     run()
+  }, [leafId])
+
+  // ─── Build breadcrumbs from tree ───────────────────────────────────────────
+
+  useEffect(() => {
+    const build = async () => {
+      const tree = await getCachedTree()
+      if (!tree) return
+      const byId = new Map(tree.map((n) => [n.id, n]))
+      const chain: { id: string; title: string }[] = []
+      let cur = byId.get(leafId)
+      while (cur?.parent_id) {
+        const parent = byId.get(cur.parent_id)
+        if (!parent) break
+        chain.unshift({ id: parent.id, title: parent.title })
+        cur = parent
+      }
+      setBreadcrumbs(chain)
+    }
+    build()
   }, [leafId])
 
   // ─── Flush pending saves on mount / reconnect ──────────────────────────────
@@ -251,8 +274,8 @@ export default function EditorPage() {
       const db = await databasesApi.create({ title: 'Untitled database' })
       window.dispatchEvent(new Event('leaf-database-created'))
       router.push(`/databases/${db.id}`)
-    } catch {
-      console.error('Failed to create database')
+    } catch (e) {
+      console.error('Failed to create database', e)
     }
   }, [router])
 
@@ -263,6 +286,19 @@ export default function EditorPage() {
   return (
     <div className="min-h-screen" onKeyDown={handleKeyDown}>
       <div className="max-w-3xl mx-auto px-12 py-12">
+          {breadcrumbs.length > 0 && (
+            <nav className="flex items-center gap-1 mb-4 text-sm text-leaf-400">
+              {breadcrumbs.map((crumb, i) => (
+                <span key={crumb.id} className="flex items-center gap-1">
+                  {i > 0 && <span className="text-leaf-200">/</span>}
+                  <Link href={`/editor/${crumb.id}`} className="hover:text-leaf-600 transition truncate max-w-[160px]">
+                    {crumb.title}
+                  </Link>
+                </span>
+              ))}
+              <span className="text-leaf-200">/</span>
+            </nav>
+          )}
           <input
             className="w-full text-4xl font-bold text-leaf-900 bg-transparent border-none outline-none placeholder:text-leaf-200 mb-1 leading-tight"
             value={title}

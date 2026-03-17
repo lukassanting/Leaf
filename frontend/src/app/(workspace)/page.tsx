@@ -1,32 +1,41 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { leavesApi } from '@/lib/api'
+import { getCachedTree } from '@/lib/leafCache'
 
 export default function HomePage() {
   const router = useRouter()
 
-  const handleCreate = useCallback(async () => {
-    try {
-      const leaf = await leavesApi.create({ title: 'Untitled' })
-      router.push(`/editor/${leaf.id}`)
-    } catch {
-      console.error('Failed to create page')
+  useEffect(() => {
+    const redirect = async () => {
+      // Try cached tree first for instant redirect
+      const cached = await getCachedTree()
+      if (cached && cached.length > 0) {
+        router.replace(`/editor/${cached[0].id}`)
+        return
+      }
+
+      // Fall back to API
+      try {
+        const tree = await leavesApi.getTree()
+        if (tree.length > 0) {
+          router.replace(`/editor/${tree[0].id}`)
+          return
+        }
+      } catch {}
+
+      // No pages exist — create one
+      try {
+        const leaf = await leavesApi.create({ title: 'Untitled' })
+        router.replace(`/editor/${leaf.id}`)
+      } catch {
+        console.error('Failed to create initial page')
+      }
     }
+    redirect()
   }, [router])
 
-  return (
-    <main className="flex-1 flex flex-col items-center justify-center px-8 text-center">
-      <p className="text-leaf-400 text-sm mb-4">
-        Select a page from the sidebar, or start a new one.
-      </p>
-      <button
-        onClick={handleCreate}
-        className="px-4 py-2 rounded-lg bg-leaf-600 text-white text-sm font-medium hover:bg-leaf-700 transition"
-      >
-        New page
-      </button>
-    </main>
-  )
+  return <div className="flex-1 flex items-center justify-center text-leaf-300 text-sm">Loading…</div>
 }
