@@ -1,4 +1,3 @@
-// frontend/src/components/SidebarTree.tsx
 'use client'
 
 import Link from 'next/link'
@@ -7,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getCachedTree, setCachedTree } from '@/lib/leafCache'
 import { leavesApi, databasesApi } from '@/lib/api'
 import type { LeafTreeItem, Database } from '@/lib/api'
+import { LeafIcon, DatabaseIcon } from './Icons'
 
 const EXPAND_KEY = 'leaf-sidebar-expanded'
 
@@ -20,7 +20,7 @@ function saveExpandState(state: Record<string, boolean>) {
   localStorage.setItem(EXPAND_KEY, JSON.stringify(state))
 }
 
-// ─── Unified node type ───────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type SidebarNode = {
   id: string
@@ -58,7 +58,6 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
 
   const fetchTree = useCallback(async () => {
     setNetworkError(null)
-    // Show cached leaves first for instant render
     const cached = await getCachedTree()
     let hadCached = false
     if (cached?.length) {
@@ -70,15 +69,12 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
     }
 
     try {
-      const [rawLeaves, rawDbs] = await Promise.all([
-        leavesApi.getTree(),
-        databasesApi.list(),
-      ])
+      const [rawLeaves, rawDbs] = await Promise.all([leavesApi.getTree(), databasesApi.list()])
       const leafNodes = mapLeafNodes(rawLeaves)
       const dbNodes = mapDbNodes(rawDbs)
       const merged = [...leafNodes, ...dbNodes]
       setNodes(merged)
-      await setCachedTree(leafNodes.map((n) => ({ ...n, type: 'page' as const }))) // cache leaves only
+      await setCachedTree(leafNodes.map((n) => ({ ...n, type: 'page' as const })))
       setExpanded((prev) => Object.keys(prev).length === 0 ? defaultExpanded(merged) : prev)
     } catch (error) {
       console.error('Failed to load tree:', error)
@@ -90,7 +86,6 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
 
   useEffect(() => { fetchTree() }, [fetchTree])
 
-  // Refresh tree on creation/deletion events
   useEffect(() => {
     const handler = () => fetchTree()
     window.addEventListener('leaf-tree-changed', handler)
@@ -101,7 +96,6 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
     }
   }, [fetchTree])
 
-  // Update title in-place when editor saves a page title
   useEffect(() => {
     const handler = (e: Event) => {
       const { id, title } = (e as CustomEvent<{ id: string; title: string }>).detail
@@ -156,11 +150,7 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
     if (!node) { setRenameId(null); return }
     try {
       if (node.kind === 'page') {
-        await leavesApi.update(id, {
-          title: newTitle.trim(),
-          parent_id: node.parent_id ?? undefined,
-          children_ids: node.children_ids ?? [],
-        })
+        await leavesApi.update(id, { title: newTitle.trim(), parent_id: node.parent_id ?? undefined, children_ids: node.children_ids ?? [] })
       } else {
         await databasesApi.update(id, { title: newTitle.trim() })
       }
@@ -197,7 +187,6 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
     finally { setCreatingChildOf(null) }
   }
 
-  // Only page nodes support drag-drop reorder (databases don't have children_ids)
   const handleReorder = async (parentId: string, childIds: string[]) => {
     try {
       await leavesApi.reorderChildren(parentId, { child_ids: childIds })
@@ -230,8 +219,7 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
     if (!parent) { setDraggedId(null); setDropTargetId(null); return }
     const childIds = [...(parent.children_ids || [])]
     const fromIdx = childIds.indexOf(draggedId)
-    const toIdx = childIds.indexOf(targetNode.id)
-    if (fromIdx === -1 || toIdx === -1) { setDraggedId(null); setDropTargetId(null); return }
+    if (fromIdx === -1) { setDraggedId(null); setDropTargetId(null); return }
     childIds.splice(fromIdx, 1)
     childIds.splice(childIds.indexOf(targetNode.id) + 1, 0, draggedId)
     handleReorder(parentId, childIds)
@@ -252,15 +240,26 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
       <div key={node.id}>
         <div
           className={[
-            'flex items-center gap-1 pr-1 rounded text-sm group',
-            isActive ? 'bg-leaf-100 text-leaf-900 font-semibold' : 'text-leaf-700 hover:bg-leaf-50',
-            draggedId === node.id ? 'opacity-50' : '',
-            isDropTarget ? 'ring-1 ring-leaf-400' : '',
+            'flex items-center gap-1 pr-1 rounded-md text-sm group transition-colors duration-150',
+            draggedId === node.id ? 'opacity-40' : '',
+            isDropTarget ? 'ring-1 ring-leaf-500' : '',
           ].join(' ')}
-          style={{ paddingLeft: 8 + depth * 12 }}
+          style={{
+            paddingLeft: 8 + depth * 14,
+            backgroundColor: isActive
+              ? 'var(--color-active)'
+              : undefined,
+            color: isActive ? 'var(--color-text-dark)' : 'var(--color-text-body)',
+          }}
+          onMouseEnter={(e) => {
+            setHoverNodeId(node.id)
+            if (!isActive) e.currentTarget.style.backgroundColor = 'var(--color-hover)'
+          }}
+          onMouseLeave={(e) => {
+            setHoverNodeId(null)
+            if (!isActive) e.currentTarget.style.backgroundColor = ''
+          }}
           draggable={!isDb}
-          onMouseEnter={() => setHoverNodeId(node.id)}
-          onMouseLeave={() => setHoverNodeId(null)}
           onDragStart={(e) => onDragStart(e, node)}
           onDragOver={(e) => onDragOver(e, node)}
           onDragLeave={() => setDropTargetId(null)}
@@ -270,25 +269,37 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
             setContextNode({ id: node.id, kind: node.kind, x: e.clientX, y: e.clientY })
           }}
         >
-          {/* Expand toggle */}
+          {/* Animated chevron */}
           <button
             type="button"
             onClick={() => hasChildren && toggle(node.id)}
-            className="w-4 h-4 flex items-center justify-center text-xs text-leaf-400 shrink-0"
+            className="w-4 h-4 flex items-center justify-center shrink-0 transition-transform duration-200"
+            style={{
+              color: 'var(--color-text-muted)',
+              transform: hasChildren && isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+            }}
           >
-            {hasChildren ? (isExpanded ? '▾' : '▸') : ''}
+            {hasChildren ? (
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
+                <path d="M2 1.5L5.5 4 2 6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              </svg>
+            ) : null}
           </button>
 
           {/* Icon */}
-          <span className="text-sm shrink-0 w-4 text-center leading-none">
-            {isDb ? '🌳' : '🍃'}
+          <span className="shrink-0" style={{ color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+            {isDb
+              ? <DatabaseIcon size={13} />
+              : <LeafIcon size={13} />
+            }
           </span>
 
           {/* Title / rename */}
           {isEditing ? (
             <input
               autoFocus
-              className="flex-1 min-w-0 bg-white border border-leaf-300 rounded px-1 py-0.5 text-sm"
+              className="flex-1 min-w-0 rounded px-1 py-0.5 text-sm focus:outline-none"
+              style={{ background: '#fff', border: '1px solid var(--color-border)' }}
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
               onBlur={() => handleRename(node.id, renameValue)}
@@ -300,21 +311,25 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
           ) : (
             <Link
               href={href}
-              className="flex-1 truncate py-1"
+              className="flex-1 truncate py-1 text-sm"
+              style={{ fontWeight: isActive ? 500 : 400 }}
               onClick={(e) => renameId && e.preventDefault()}
             >
               {node.title || 'Untitled'}
             </Link>
           )}
 
-          {/* Inline + button (only for page nodes) */}
+          {/* Inline + button (page nodes only) */}
           {isHovered && !isEditing && !isDb && (
             <button
               type="button"
               title="Add sub-page"
               disabled={creatingChildOf === node.id}
               onClick={(e) => { e.stopPropagation(); handleCreateChild(node.id) }}
-              className="w-5 h-5 flex items-center justify-center rounded text-leaf-400 hover:text-leaf-700 hover:bg-leaf-100 shrink-0 text-base leading-none"
+              className="w-5 h-5 flex items-center justify-center rounded text-sm leading-none shrink-0 transition-colors duration-150"
+              style={{ color: 'var(--color-text-muted)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-primary)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text-muted)')}
             >
               +
             </button>
@@ -330,15 +345,15 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
     )
   }
 
-  if (loading) return <div className="px-3 py-2 text-xs text-leaf-400">Loading…</div>
+  if (loading) return (
+    <div className="px-3 py-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading…</div>
+  )
 
-  if (networkError) {
-    return (
-      <div className="px-3 py-2 text-xs text-amber-700 bg-amber-50 rounded border border-amber-200">
-        {networkError}
-      </div>
-    )
-  }
+  if (networkError) return (
+    <div className="px-3 py-2 text-xs rounded" style={{ color: '#92400e', background: '#fffbeb' }}>
+      {networkError}
+    </div>
+  )
 
   return (
     <div className="flex flex-col h-full">
@@ -346,19 +361,31 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
         <input
           type="search"
           placeholder="Search…"
-          className="w-full rounded border border-leaf-100 px-2 py-1.5 text-xs placeholder:text-leaf-400 focus:outline-none focus:ring-1 focus:ring-leaf-300 bg-leaf-50"
+          className="w-full rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-1"
+          style={{
+            background: 'rgba(255,255,255,0.6)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-text-body)',
+            caretColor: 'var(--color-primary)',
+          }}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         {Object.keys(expanded).length > 0 && (
-          <button type="button" onClick={collapseAll} className="text-xs text-leaf-400 hover:text-leaf-600">
+          <button
+            type="button"
+            onClick={collapseAll}
+            className="text-xs transition-colors duration-150"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
             Collapse all
           </button>
         )}
       </div>
+
       <div className="flex-1 overflow-y-auto space-y-0.5 px-1">
         {filteredFlat.length === 0 ? (
-          <div className="px-3 py-2 text-xs text-leaf-400">
+          <div className="px-3 py-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
             {search ? 'No matches.' : 'No pages yet.'}
           </div>
         ) : (
@@ -366,16 +393,25 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
         )}
       </div>
 
+      {/* Context menu */}
       {contextNode && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setContextNode(null)} aria-hidden />
           <div
-            className="fixed z-50 min-w-[130px] rounded-lg border border-leaf-200 bg-white py-1 shadow-lg"
-            style={{ left: contextNode.x, top: contextNode.y }}
+            className="fixed z-50 min-w-[130px] rounded-lg py-1 shadow-lg"
+            style={{
+              left: contextNode.x,
+              top: contextNode.y,
+              background: '#fff',
+              border: '1px solid var(--color-border)',
+            }}
           >
             <button
               type="button"
-              className="w-full px-3 py-1.5 text-left text-sm text-leaf-700 hover:bg-leaf-50"
+              className="w-full px-3 py-1.5 text-left text-sm transition-colors duration-150"
+              style={{ color: 'var(--color-text-body)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-hover)')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}
               onClick={() => {
                 const node = nodes.find((n) => n.id === contextNode.id)
                 if (node) { setRenameId(node.id); setRenameValue(node.title) }
@@ -386,7 +422,10 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
             </button>
             <button
               type="button"
-              className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-leaf-50"
+              className="w-full px-3 py-1.5 text-left text-sm transition-colors duration-150"
+              style={{ color: '#dc2626' }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-hover)')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}
               onClick={() => handleDelete(contextNode.id, contextNode.kind)}
             >
               Delete
@@ -398,7 +437,7 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
   )
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function mapLeafNodes(raw: LeafTreeItem[]): SidebarNode[] {
   return raw.map((leaf) => ({
@@ -418,7 +457,7 @@ function mapDbNodes(raw: Database[]): SidebarNode[] {
     kind: 'database' as const,
     parent_id: db.parent_leaf_id ?? null,
     children_ids: [],
-    order: 10000 + i, // databases sort after leaf children
+    order: 10000 + i,
   }))
 }
 
@@ -443,7 +482,6 @@ function buildTree(nodes: SidebarNode[]): TreeNode[] {
 
   const sortChildren = (node: TreeNode) => {
     if (node.kind === 'page' && node.children_ids?.length) {
-      // Sort page children by children_ids order, databases at the end
       node.children.sort((a, b) => {
         if (a.kind === 'page' && b.kind === 'page') {
           return node.children_ids.indexOf(a.id) - node.children_ids.indexOf(b.id)

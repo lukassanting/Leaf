@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { leavesApi } from '@/lib/api'
 import { SidebarTree } from './SidebarTree'
+import { LeafIcon } from './Icons'
 
 export function Sidebar({ activeId }: { activeId?: string }) {
   const router = useRouter()
@@ -25,28 +26,42 @@ export function Sidebar({ activeId }: { activeId?: string }) {
   }, [router, creatingPage])
 
   return (
-    <aside className="w-60 shrink-0 border-r border-leaf-100 bg-white hidden md:flex md:flex-col">
+    <aside
+      className="w-60 shrink-0 hidden md:flex md:flex-col"
+      style={{ backgroundColor: 'var(--color-sidebar-bg)', borderRight: '1px solid var(--color-border)' }}
+    >
       {/* Branding */}
-      <div className="px-4 h-11 flex items-center border-b border-leaf-100 shrink-0">
-        <Link href="/" className="text-sm font-semibold text-leaf-800 hover:text-leaf-600">
-          Leaf
+      <div
+        className="px-4 h-11 flex items-center shrink-0"
+        style={{ borderBottom: '1px solid var(--color-border)' }}
+      >
+        <Link
+          href="/"
+          className="flex items-center gap-2 transition-colors duration-150"
+          style={{ color: 'var(--color-text-dark)' }}
+        >
+          <span style={{ color: 'var(--color-primary)' }}><LeafIcon size={15} /></span>
+          <span className="text-sm font-medium tracking-tight">Leaf</span>
         </Link>
       </div>
 
-      {/* Unified pages + databases tree */}
+      {/* Tree */}
       <div className="flex-1 overflow-hidden py-1">
         <SidebarTree activeId={activeId} />
       </div>
 
-      {/* Create actions */}
-      <div className="border-t border-leaf-100 p-2 shrink-0">
+      {/* New page */}
+      <div className="p-2 shrink-0" style={{ borderTop: '1px solid var(--color-border)' }}>
         <button
           type="button"
           onClick={handleNewPage}
           disabled={creatingPage}
-          className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-leaf-700 hover:bg-leaf-50 disabled:opacity-50 transition text-left"
+          className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors duration-150 text-left disabled:opacity-40"
+          style={{ color: 'var(--color-text-muted)' }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-hover)')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}
         >
-          <span className="text-base leading-none text-leaf-400">+</span>
+          <span className="text-base leading-none">+</span>
           {creatingPage ? 'Creating…' : 'New page'}
         </button>
       </div>

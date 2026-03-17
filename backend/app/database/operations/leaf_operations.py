@@ -230,9 +230,14 @@ class LeafOperations:
                 if not db_leaf:
                     raise LeafNotFound(leaf_id=leaf_id)
                 
+                # Never overwrite content/description with None — those have dedicated endpoints.
+                skip_if_none = {'content', 'description'}
                 for key, value in leaf.to_dict().items():
-                    if key != "_sa_instance_state":
-                        setattr(db_leaf, key, value)
+                    if key == "_sa_instance_state":
+                        continue
+                    if key in skip_if_none and value is None:
+                        continue
+                    setattr(db_leaf, key, value)
 
                 db_leaf.updated_at = datetime.now()
                 db_session.commit()

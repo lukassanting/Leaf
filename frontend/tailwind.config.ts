@@ -1,5 +1,4 @@
 import type { Config } from 'tailwindcss'
-import typography from '@tailwindcss/typography'
 
 const config: Config = {
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
@@ -7,37 +6,28 @@ const config: Config = {
     extend: {
       colors: {
         leaf: {
-          50: '#f0f7f4',
-          100: '#dcebe3',
-          200: '#b8d7c8',
-          300: '#8cbdab',
-          400: '#5d9d8a',
-          500: '#3d7d6b',
-          600: '#2d6455',
-          700: '#245045',
-          800: '#1f4037',
-          900: '#1b352e',
-        },
-        earth: {
-          50: '#faf6f1',
-          100: '#f4e9dc',
-          200: '#e8d3b9',
-          300: '#d5b38c',
-          400: '#bc8c5d',
-          500: '#a6733d',
-          600: '#8a5d32',
-          700: '#6f4a29',
-          800: '#5a3c22',
-          900: '#4b321d',
+          50:  '#f0f3ed', // sidebar bg
+          100: '#edf5e8', // tag bg / lightest tint
+          200: '#c5ddb8', // tag border / soft border
+          300: '#dce5d7', // standard border
+          400: '#8fa898', // muted text
+          500: '#3d8c52', // primary green
+          600: '#2d7042', // primary hover
+          700: '#374f42', // body text
+          800: '#1e3d2e', // dark text
+          900: '#1a3828', // darkest — titles
         },
       },
       fontFamily: {
-        sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
-        mono: ['var(--font-geist-mono)', 'ui-monospace', 'monospace'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+      },
+      fontSize: {
+        'title': ['29px', { lineHeight: '1.2', fontWeight: '500' }],
       },
     },
   },
-  plugins: [typography],
+  plugins: [],
 }
 
 export default config

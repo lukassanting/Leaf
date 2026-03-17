@@ -9,7 +9,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   const activeId = params?.id as string | undefined
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
       <Sidebar activeId={activeId} />
       <div className="flex-1 min-w-0">{children}</div>
     </div>
