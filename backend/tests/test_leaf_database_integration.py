@@ -8,7 +8,7 @@ from app.database.connectors.mysql import MySQLDatabaseConnector
 from app.database.models.mysql_models import DatabaseRowModel, LeafModel
 from app.database.operations.database_operations import DatabaseOperations
 from app.database.operations.leaf_operations import LeafOperations
-from app.dtos.database_dtos import DatabaseCreate, RowCreate
+from app.dtos.database_dtos import DatabaseCreate, DatabaseUpdate, RowCreate
 from app.dtos.leaf_dtos import LeafContentUpdate, LeafCreate, LeafUpdate
 from app.exceptions.exceptions import LeafException
 from app.storage import get_file_storage
@@ -122,6 +122,36 @@ def test_schema_document_content_round_trips_and_indexes_links(operations):
 
     backlinks = run(leaf_ops.get_backlinks(target.id))
     assert [item.id for item in backlinks] == [source.id]
+
+
+def test_database_metadata_round_trips_via_schema(operations):
+    database_ops: DatabaseOperations = operations["database_ops"]
+
+    database = database_ops.create_database(DatabaseCreate(
+        title="Project tracker",
+        description="Inline planning database",
+        tags=["planning", "roadmap"],
+        icon={"type": "emoji", "value": "🗂️"},
+    ))
+
+    assert database.description == "Inline planning database"
+    assert database.tags == ["planning", "roadmap"]
+    assert database.icon == {"type": "emoji", "value": "🗂️"}
+
+    updated = database_ops.update_database(database.id, DatabaseUpdate(
+        title=database.title,
+        description="Updated description",
+        tags=["planning"],
+        icon={"type": "svg", "value": "diamond-fill"},
+        schema=database.schema,
+        view_type=database.view_type,
+        parent_leaf_id=database.parent_leaf_id,
+    ))
+
+    assert updated is not None
+    assert updated.description == "Updated description"
+    assert updated.tags == ["planning"]
+    assert updated.icon == {"type": "svg", "value": "diamond-fill"}
 
 
 def test_updating_row_backed_page_preserves_structural_fields(operations):

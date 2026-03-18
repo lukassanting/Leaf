@@ -9,10 +9,11 @@ import TaskList from '@tiptap/extension-task-list'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MarkdownIt from 'markdown-it'
 import TurndownService from 'turndown'
-import type { Database, LeafDocument } from '@/lib/api'
+import type { Database, LeafColumn, LeafDocument } from '@/lib/api'
 import { DatabaseIcon, LeafIcon } from '@/components/Icons'
+import { EmbeddedDatabaseBlock } from '@/components/database/EmbeddedDatabaseBlock'
 import { useNavigationProgress } from '@/components/NavigationProgress'
-import { warmDatabaseRoute, warmEditorRoute } from '@/lib/warmEditorRoute'
+import { warmEditorRoute } from '@/lib/warmEditorRoute'
 import { createEmptyLeafDocument, getLeafContentText, normalizeLeafDocument } from '@/lib/leafDocument'
 import { rankSlashItems, SLASH_ITEMS, type SlashMenuState, SlashMenuPanel } from '@/components/SlashCommands'
 
@@ -62,6 +63,11 @@ type EmbedNodeAttrs = {
   view?: Database['view_type']
 }
 
+type ColumnLayoutAttrs = {
+  layout: 2 | 3
+  columns: LeafColumn[]
+}
+
 function htmlToMarkdown(html: string): string {
   if (!html || html === '<p></p>') return ''
   return turndown.turndown(html)
@@ -77,6 +83,21 @@ function createTempId() {
     return crypto.randomUUID()
   }
   return `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function createColumnData(layout: 2 | 3): LeafColumn[] {
+  return Array.from({ length: layout }, () => ({
+    id: createTempId(),
+    text: '',
+  }))
+}
+
+function normalizeColumns(attrs: ColumnLayoutAttrs): ColumnLayoutAttrs {
+  const columns = attrs.columns.slice(0, attrs.layout)
+  while (columns.length < attrs.layout) {
+    columns.push({ id: createTempId(), text: '' })
+  }
+  return { ...attrs, columns }
 }
 
 function computeSlashMatch(editor: NonNullable<ReturnType<typeof useEditor>>): SlashMatch | null {
@@ -108,19 +129,18 @@ function computeSlashMatch(editor: NonNullable<ReturnType<typeof useEditor>>): S
   }
 }
 
-function LeafEmbedView({
+function EmbeddedPageCard({
   node,
   deleteNode,
 }: {
-  node: { type: { name: 'pageEmbed' | 'databaseEmbed' }; attrs: EmbedNodeAttrs }
+  node: { attrs: EmbedNodeAttrs }
   deleteNode: () => void
 }) {
   const router = useRouter()
   const { startNavigation } = useNavigationProgress()
-  const { id, title, status, view } = node.attrs
-  const isDatabase = node.type.name === 'databaseEmbed'
-  const href = isDatabase ? `/databases/${id}` : `/editor/${id}`
-  const label = isDatabase ? 'Database' : 'Page'
+  const { id, title, status } = node.attrs
+  const href = `/editor/${id}`
+  const label = 'Page'
   const canNavigate = status === 'ready' && Boolean(id)
 
   return (
@@ -136,11 +156,7 @@ function LeafEmbedView({
         onClick={() => {
           if (!canNavigate) return
           startNavigation()
-          if (isDatabase) {
-            void warmDatabaseRoute()
-          } else {
-            void warmEditorRoute()
-          }
+          void warmEditorRoute()
           router.push(href)
         }}
       >
@@ -148,20 +164,18 @@ function LeafEmbedView({
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
           style={{ background: 'var(--leaf-bg-tag)', color: 'var(--leaf-text-title)' }}
         >
-          {isDatabase ? <DatabaseIcon size={16} /> : <LeafIcon size={16} />}
+          <LeafIcon size={16} />
         </span>
         <div className="min-w-0 flex-1 text-left">
           <div className="truncate text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>
-            {title || (isDatabase ? 'Untitled database' : 'Untitled')}
+            {title || 'Untitled'}
           </div>
           <div className="mt-0.5 text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
             {status === 'pending'
               ? `Creating ${label.toLowerCase()}…`
               : status === 'error'
                 ? `Could not create ${label.toLowerCase()}`
-                : isDatabase && view
-                  ? `${label} · ${view} view`
-                  : label}
+                : label}
           </div>
         </div>
         {canNavigate ? (
@@ -178,6 +192,176 @@ function LeafEmbedView({
         >
           ✕
         </button>
+      </div>
+    </NodeViewWrapper>
+  )
+}
+
+function EmbeddedDatabaseView({
+  node,
+  deleteNode,
+}: {
+  node: { attrs: EmbedNodeAttrs }
+  deleteNode: () => void
+}) {
+  const { id, title, status, view } = node.attrs
+
+  if (status !== 'ready' || !id) {
+    return (
+      <NodeViewWrapper className="my-2">
+        <div
+          contentEditable={false}
+          className="group flex items-center gap-3 rounded-xl border px-4 py-3"
+          style={{
+            borderColor: status === 'error' ? '#f2c4bc' : 'var(--leaf-border-strong)',
+            background: status === 'pending' ? 'var(--leaf-bg-tag)' : 'var(--leaf-bg-editor)',
+          }}
+        >
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+            style={{ background: 'var(--leaf-bg-tag)', color: 'var(--leaf-text-title)' }}
+          >
+            <DatabaseIcon size={16} />
+          </span>
+          <div className="min-w-0 flex-1 text-left">
+            <div className="truncate text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>
+              {title || 'Untitled database'}
+            </div>
+            <div className="mt-0.5 text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
+              {status === 'pending' ? 'Creating database…' : status === 'error' ? 'Could not create database' : `Database · ${view} view`}
+            </div>
+          </div>
+          <button
+            type="button"
+            onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }}
+            onClick={(event) => { event.stopPropagation(); deleteNode() }}
+            className="text-xs opacity-0 transition-opacity group-hover:opacity-100"
+            style={{ color: 'var(--leaf-text-muted)' }}
+          >
+            ✕
+          </button>
+        </div>
+      </NodeViewWrapper>
+    )
+  }
+
+  return (
+    <NodeViewWrapper className="group my-2">
+      <div contentEditable={false} className="relative">
+        <div className="absolute right-3 top-3 z-10">
+          <button
+            type="button"
+            onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }}
+            onClick={(event) => { event.stopPropagation(); deleteNode() }}
+            className="rounded-md px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100"
+            style={{ color: 'var(--leaf-text-muted)', background: 'rgba(255,255,255,0.9)', border: '0.5px solid var(--leaf-border-strong)' }}
+          >
+            Remove
+          </button>
+        </div>
+        <EmbeddedDatabaseBlock id={id} />
+      </div>
+    </NodeViewWrapper>
+  )
+}
+
+function ColumnLayoutView({
+  node,
+  updateAttributes,
+  deleteNode,
+}: {
+  node: { attrs: ColumnLayoutAttrs }
+  updateAttributes: (attrs: Partial<ColumnLayoutAttrs>) => void
+  deleteNode: () => void
+}) {
+  const attrs = normalizeColumns(node.attrs)
+  const dragIndexRef = useRef<number | null>(null)
+
+  const setColumnText = (index: number, text: string) => {
+    const nextColumns = attrs.columns.map((column, currentIndex) => (
+      currentIndex === index ? { ...column, text } : column
+    ))
+    updateAttributes({ columns: nextColumns })
+  }
+
+  const moveColumn = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return
+    const nextColumns = [...attrs.columns]
+    const [moved] = nextColumns.splice(fromIndex, 1)
+    nextColumns.splice(toIndex, 0, moved)
+    updateAttributes({ columns: nextColumns })
+  }
+
+  return (
+    <NodeViewWrapper className="group my-2">
+      <div
+        contentEditable={false}
+        className="rounded-xl border p-4"
+        style={{ borderColor: 'var(--leaf-border-strong)', background: 'var(--leaf-bg-editor)' }}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>
+              {attrs.layout === 2 ? 'Two-column layout' : 'Three-column layout'}
+            </div>
+            <div className="text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
+              Drag the handles to reorder columns.
+            </div>
+          </div>
+          <button
+            type="button"
+            onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }}
+            onClick={deleteNode}
+            className="rounded-md px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100"
+            style={{ color: 'var(--leaf-text-muted)', border: '0.5px solid var(--leaf-border-strong)' }}
+          >
+            Remove
+          </button>
+        </div>
+
+        <div
+          className="grid gap-5"
+          style={{ gridTemplateColumns: `repeat(${attrs.layout}, minmax(0, 1fr))` }}
+        >
+          {attrs.columns.map((column, index) => (
+            <div
+              key={column.id}
+              className="rounded-lg border px-3 py-3"
+              style={{ border: '0.5px dashed #d0e0ca', background: '#f8fbf6' }}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault()
+                const fromIndex = dragIndexRef.current
+                if (fromIndex === null) return
+                moveColumn(fromIndex, index)
+                dragIndexRef.current = null
+              }}
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[10px] uppercase tracking-[0.07em]" style={{ color: '#b8d0be' }}>
+                  Column {index + 1}
+                </span>
+                <button
+                  type="button"
+                  draggable
+                  onDragStart={() => { dragIndexRef.current = index }}
+                  className="cursor-grab rounded px-1 text-xs"
+                  style={{ color: '#a8c4b0' }}
+                  title="Drag to reorder column"
+                >
+                  ⋮⋮
+                </button>
+              </div>
+              <textarea
+                value={column.text}
+                onChange={(event) => setColumnText(index, event.target.value)}
+                placeholder={`Column ${index + 1}…`}
+                className="min-h-[120px] w-full resize-none bg-transparent text-sm leading-relaxed outline-none"
+                style={{ color: 'var(--leaf-text-body)' }}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </NodeViewWrapper>
   )
@@ -210,13 +394,38 @@ function createEmbedNode(name: 'pageEmbed' | 'databaseEmbed', kind: 'page' | 'da
       return ['div', mergeAttributes({ 'data-type': name }, HTMLAttributes)]
     },
     addNodeView() {
-      return ReactNodeViewRenderer(LeafEmbedView as never)
+      return ReactNodeViewRenderer((kind === 'database' ? EmbeddedDatabaseView : EmbeddedPageCard) as never)
     },
   })
 }
 
 const PageEmbed = createEmbedNode('pageEmbed', 'page')
 const DatabaseEmbed = createEmbedNode('databaseEmbed', 'database')
+const ColumnLayout = Node.create({
+  name: 'columnLayout',
+  group: 'block',
+  atom: true,
+  draggable: true,
+  selectable: true,
+  defining: true,
+  isolating: true,
+  allowGapCursor: false,
+  addAttributes() {
+    return {
+      layout: { default: 2 },
+      columns: { default: createColumnData(2) },
+    }
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-type="column-layout"]' }]
+  },
+  renderHTML({ node }) {
+    return ['div', { 'data-type': 'column-layout', 'data-layout': String(node.attrs.layout) }]
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(ColumnLayoutView as never)
+  },
+})
 
 function BlockDropdown({ onSelect, onClose }: { onSelect: (action: string) => void; onClose: () => void }) {
   const groups = ['Text', 'Structure', 'Insert'] as const
@@ -294,6 +503,7 @@ export default function LeafEditor({
   const slashMatchRef = useRef<SlashMatch | null>(null)
   const slashMenuRef = useRef<SlashMenuState | null>(null)
   const slashSelectActionRef = useRef<(action: string) => void>(() => {})
+  const pendingEmbedPositionsRef = useRef<Record<string, number>>({})
 
   modeRef.current = mode
   onUpdateRef.current = onUpdate
@@ -331,6 +541,7 @@ export default function LeafEditor({
       gapcursor: false,
       dropcursor: false,
     }),
+    ColumnLayout,
     PageEmbed,
     DatabaseEmbed,
     TaskList,
@@ -390,7 +601,7 @@ export default function LeafEditor({
     onUpdate: handleEditorUpdate,
   }, [extensions, editorProps, handleEditorUpdate])
 
-  const updateEmbedNode = useCallback((tempId: string, attrs: Partial<EmbedNodeAttrs>) => {
+  const updateEmbedNode = useCallback((tempId: string, kind: 'page' | 'database', attrs: Partial<EmbedNodeAttrs>) => {
     if (!editor) return
 
     let targetPos: number | null = null
@@ -402,6 +613,18 @@ export default function LeafEditor({
       return true
     })
 
+    if (targetPos === null) {
+      const fallbackPos = pendingEmbedPositionsRef.current[tempId]
+      const candidatePositions = [fallbackPos, fallbackPos - 1, fallbackPos + 1].filter((value): value is number => typeof value === 'number' && value >= 0)
+      for (const candidate of candidatePositions) {
+        const node = editor.state.doc.nodeAt(candidate)
+        if (node && node.type.name === (kind === 'database' ? 'databaseEmbed' : 'pageEmbed')) {
+          targetPos = candidate
+          break
+        }
+      }
+    }
+
     if (targetPos === null) return
 
     const node = editor.state.doc.nodeAt(targetPos)
@@ -411,6 +634,7 @@ export default function LeafEditor({
       ...node.attrs,
       ...attrs,
     }))
+    delete pendingEmbedPositionsRef.current[tempId]
   }, [editor])
 
   const insertEmbedPlaceholder = useCallback(async (
@@ -421,6 +645,7 @@ export default function LeafEditor({
 
     const tempId = createTempId()
     const type = kind === 'database' ? 'databaseEmbed' : 'pageEmbed'
+    pendingEmbedPositionsRef.current[tempId] = insertPos
     editor.chain().focus().insertContentAt(insertPos, [
       {
         type,
@@ -443,7 +668,7 @@ export default function LeafEditor({
 
       if (!created) return
 
-      updateEmbedNode(tempId, {
+      updateEmbedNode(tempId, kind, {
         id: created.id,
         title: created.title,
         tempId: null,
@@ -451,7 +676,7 @@ export default function LeafEditor({
         ...(kind === 'database' ? { view: created.view ?? 'table' } : {}),
       })
     } catch {
-      updateEmbedNode(tempId, {
+      updateEmbedNode(tempId, kind, {
         title: `Failed to create ${kind}`,
         status: 'error',
       })
@@ -503,6 +728,18 @@ export default function LeafEditor({
         return
       case 'quote':
         editor.chain().focus().setTextSelection(selectionPos).toggleBlockquote().run()
+        return
+      case 'columns2':
+        editor.chain().focus().insertContentAt(selectionPos, [
+          { type: 'columnLayout', attrs: { layout: 2, columns: createColumnData(2) } },
+          { type: 'paragraph' },
+        ]).run()
+        return
+      case 'columns3':
+        editor.chain().focus().insertContentAt(selectionPos, [
+          { type: 'columnLayout', attrs: { layout: 3, columns: createColumnData(3) } },
+          { type: 'paragraph' },
+        ]).run()
         return
       case 'subpage':
         await insertEmbedPlaceholder('page', selectionPos)

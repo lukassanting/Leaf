@@ -99,6 +99,57 @@ test.describe('Leaf workspace', () => {
     expect(pageErrors.filter((message) => /localsInner|reading 'eq'|prosemirror-view/i.test(message))).toEqual([])
   })
 
+  test('inline database embeds render the shared database surface', async ({ page, request }) => {
+    const leaf = await createLeaf(request, 'Inline database page')
+    const pageErrors: string[] = []
+    const consoleErrors: string[] = []
+
+    page.on('pageerror', (error) => pageErrors.push(error.message))
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text())
+      }
+    })
+
+    await page.goto(`/editor/${leaf.id}`, { waitUntil: 'domcontentloaded' })
+    await page.waitForLoadState('networkidle')
+    await page.locator('.ProseMirror').click()
+    await page.keyboard.type('/data')
+    await expect(page.getByRole('button', { name: /Database New table database/ })).toBeVisible()
+    await page.keyboard.press('Enter')
+
+    await expect(page.getByText(/0 entries .* Inline database/)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Table' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'New entry' }).first()).toBeVisible()
+
+    await page.getByRole('button', { name: 'New entry' }).first().click()
+    await expect(page.locator('.ProseMirror')).toContainText('Untitled')
+
+    expect(pageErrors.filter((message) => /localsInner|reading 'eq'|prosemirror-view/i.test(message))).toEqual([])
+    expect(consoleErrors.filter((message) => /localsInner|reading 'eq'|prosemirror-view/i.test(message))).toEqual([])
+  })
+
+  test('column layouts insert and persist through reload', async ({ page, request }) => {
+    const leaf = await createLeaf(request, 'Column layout page')
+
+    await page.goto(`/editor/${leaf.id}`, { waitUntil: 'domcontentloaded' })
+    await page.waitForLoadState('networkidle')
+    await page.locator('.ProseMirror').click()
+    await page.keyboard.type('/2')
+    await expect(page.getByText('2 columns')).toBeVisible()
+    await page.keyboard.press('Enter')
+
+    await expect(page.getByText('Two-column layout')).toBeVisible()
+    await page.getByPlaceholder('Column 1…').fill('Left column content')
+    await page.getByPlaceholder('Column 2…').fill('Right column content')
+    await expect(page.getByText('Synced')).toBeVisible()
+
+    await page.reload()
+    await expect(page.getByText('Two-column layout')).toBeVisible()
+    await expect(page.getByPlaceholder('Column 1…')).toHaveValue('Left column content')
+    await expect(page.getByPlaceholder('Column 2…')).toHaveValue('Right column content')
+  })
+
   test('row page shows full breadcrumb chain', async ({ page, request }) => {
     const parentPage = await createLeaf(request, 'Parent page')
     const database = await createDatabase(request, 'Nested database', parentPage.id)

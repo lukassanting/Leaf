@@ -132,6 +132,8 @@ export const BLOCK_ICONS: Record<string, React.ReactNode> = {
   ordered: <BlockIcon label="1." />,
   todo:    <BlockIcon label="☐" />,
   quote:   <BlockIcon label='"' />,
+  columns2: <BlockIcon label="2C" />,
+  columns3: <BlockIcon label="3C" />,
   subpage: (
     <span className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-leaf-100 shrink-0">
       <LeafIcon size={14} className="text-leaf-500" />

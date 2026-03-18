@@ -1,0 +1,93 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [active]:
+    - generic [ref=e6] [cursor=pointer]:
+      - button "Open Next.js Dev Tools" [ref=e7]:
+        - img [ref=e8]
+      - generic [ref=e11]:
+        - button "Open issues overlay" [ref=e12]:
+          - generic [ref=e13]:
+            - generic [ref=e14]: "0"
+            - generic [ref=e15]: "1"
+          - generic [ref=e16]: Issue
+        - button "Collapse issues badge" [ref=e17]:
+          - img [ref=e18]
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - navigation [ref=e25]:
+            - button "previous" [disabled] [ref=e26]:
+              - img "previous" [ref=e27]
+            - generic [ref=e29]:
+              - generic [ref=e30]: 1/
+              - text: "1"
+            - button "next" [disabled] [ref=e31]:
+              - img "next" [ref=e32]
+          - img
+        - generic [ref=e34]:
+          - link "Next.js 15.3.3 (outdated) Turbopack" [ref=e35] [cursor=pointer]:
+            - /url: https://nextjs.org/docs/messages/version-staleness
+            - img [ref=e36]
+            - generic "An outdated version detected (latest is 16.2.0), upgrade is highly recommended!" [ref=e38]: Next.js 15.3.3 (outdated)
+            - generic [ref=e39]: Turbopack
+          - img
+      - generic [ref=e40]:
+        - dialog "Runtime Error" [ref=e41]:
+          - generic [ref=e43]:
+            - generic [ref=e44]:
+              - generic [ref=e45]:
+                - generic [ref=e46]:
+                  - generic [ref=e48]: Runtime Error
+                  - generic [ref=e49]:
+                    - button "Copy Stack Trace" [ref=e50] [cursor=pointer]:
+                      - img [ref=e51]
+                    - button "No related documentation found" [disabled] [ref=e53]:
+                      - img [ref=e54]
+                    - link "Learn more about enabling Node.js inspector for server code with Chrome DevTools" [ref=e56] [cursor=pointer]:
+                      - /url: https://nextjs.org/docs/app/building-your-application/configuring/debugging#server-side-code
+                      - img [ref=e57]
+                - paragraph [ref=e66]: "Error: Failed to load chunk /_next/static/chunks/node_modules_prosemirror-view_dist_index_212d9a9b.js from module [project]/src/components/Editor.tsx [app-client] (ecmascript, next/dynamic entry, async loader)"
+              - generic [ref=e68]:
+                - paragraph [ref=e70]:
+                  - text: Call Stack
+                  - generic [ref=e71]: "4"
+                - generic [ref=e72]:
+                  - generic [ref=e73]:
+                    - text: loadChunkByUrl
+                    - button "Sourcemapping failed. Click to log cause of error." [ref=e74] [cursor=pointer]:
+                      - img [ref=e75]
+                  - text: file:///app/.next/static/chunks/_93808211._.js (473:15)
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - text: LoadableComponent
+                    - button "Sourcemapping failed. Click to log cause of error." [ref=e79] [cursor=pointer]:
+                      - img [ref=e80]
+                  - text: file:///app/.next/static/chunks/node_modules_next_dist_shared_lib_0f9809d8._.js (189:57)
+                - generic [ref=e82]:
+                  - generic [ref=e83]:
+                    - text: EditorPage
+                    - button "Sourcemapping failed. Click to log cause of error." [ref=e84] [cursor=pointer]:
+                      - img [ref=e85]
+                  - text: file:///app/.next/static/chunks/src_4ad3c495._.js (2411:233)
+                - generic [ref=e87]:
+                  - generic [ref=e88]:
+                    - text: ClientPageRoot
+                    - button "Sourcemapping failed. Click to log cause of error." [ref=e89] [cursor=pointer]:
+                      - img [ref=e90]
+                  - text: file:///app/.next/static/chunks/node_modules_next_dist_1a6ee436._.js (2061:50)
+            - generic [ref=e92]:
+              - generic [ref=e93]: "1"
+              - generic [ref=e94]: "2"
+        - contentinfo [ref=e95]:
+          - region "Error feedback" [ref=e96]:
+            - paragraph [ref=e97]:
+              - link "Was this helpful?" [ref=e98] [cursor=pointer]:
+                - /url: https://nextjs.org/telemetry#error-feedback
+            - button "Mark as helpful" [ref=e99] [cursor=pointer]:
+              - img [ref=e100]
+            - button "Mark as not helpful" [ref=e103] [cursor=pointer]:
+              - img [ref=e104]
+  - 'heading "Application error: a client-side exception has occurred while loading 127.0.0.1 (see the browser console for more information)." [level=2] [ref=e108]'
+```

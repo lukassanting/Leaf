@@ -7,16 +7,10 @@ import { StatusBar } from '@/components/StatusBar'
 import { LoadingShell } from '@/components/LoadingShell'
 import { IconPicker } from '@/components/page/IconPicker'
 import { PageIdentityHeader } from '@/components/page/PageIdentityHeader'
-import { AddColumnModal, BoardView, GalleryView, TableView } from '@/components/database/DatabaseViews'
+import { DatabaseSurface } from '@/components/database/DatabaseSurface'
 import { useDatabasePage } from '@/hooks/useDatabasePage'
 import { useContentWidth } from '@/app/(workspace)/layout'
 import type { LeafIcon, ViewType } from '@/lib/api'
-
-const VIEW_LABELS: { key: ViewType; label: string }[] = [
-  { key: 'table', label: 'Table' },
-  { key: 'board', label: 'Board' },
-  { key: 'gallery', label: 'Gallery' },
-]
 
 export default function DatabaseViewPage() {
   const params = useParams()
@@ -64,38 +58,11 @@ export default function DatabaseViewPage() {
     setIconDraft(updated.icon ?? null)
   }
 
-  const viewIcons: Record<string, React.ReactNode> = {
-    table: (
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.25">
-        <rect x="1" y="1" width="12" height="12" rx="1.5" />
-        <line x1="1" y1="5" x2="13" y2="5" />
-        <line x1="5" y1="5" x2="5" y2="13" />
-      </svg>
-    ),
-    board: (
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.25">
-        <rect x="1" y="2" width="3" height="10" rx="1" />
-        <rect x="5.5" y="4" width="3" height="8" rx="1" />
-        <rect x="10" y="1" width="3" height="11" rx="1" />
-      </svg>
-    ),
-    gallery: (
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.25">
-        <rect x="1" y="1" width="5" height="5" rx="1" />
-        <rect x="8" y="1" width="5" height="5" rx="1" />
-        <rect x="1" y="8" width="5" height="5" rx="1" />
-        <rect x="8" y="8" width="5" height="5" rx="1" />
-      </svg>
-    ),
-  }
-
   const contentMaxWidth = contentWidth === 'normal' ? 680 : contentWidth === 'wide' ? 960 : undefined
   const contentPadding = contentWidth === 'full' ? '0 24px' : undefined
 
   return (
     <>
-      {showAddCol && <AddColumnModal onAdd={addColumn} onClose={() => setShowAddCol(false)} />}
-
       <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--leaf-bg-editor)' }}>
         {/* Top strip */}
         <TopStrip
@@ -153,107 +120,19 @@ export default function DatabaseViewPage() {
               padding: contentPadding || '0 24px',
             }}
           >
-            {/* Toolbar */}
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-0.5 rounded-full" style={{ background: '#eef3eb', borderRadius: 20, padding: 3 }}>
-                {VIEW_LABELS.map(({ key, label }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    title={label}
-                    onClick={() => void setViewType(key)}
-                    className="flex items-center gap-1.5 transition-colors duration-150"
-                    style={{
-                      padding: '5px 13px',
-                      borderRadius: 16,
-                      fontSize: 12,
-                      cursor: 'pointer',
-                      background: activeView === key ? 'var(--leaf-bg-editor)' : 'transparent',
-                      color: activeView === key ? 'var(--leaf-text-title)' : '#5a8a6a',
-                      fontWeight: activeView === key ? 500 : 400,
-                    }}
-                  >
-                    {viewIcons[key]}
-                    <span>{label}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  className="flex items-center gap-1.5 transition-colors duration-150"
-                  style={{
-                    fontSize: 12,
-                    color: '#5a8a6a',
-                    padding: '5px 11px',
-                    borderRadius: 7,
-                    border: '0.5px solid #cdd9c6',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(61,140,82,0.07)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                    <path d="M1 3H10M2.5 5.5H8.5M4 8H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                  </svg>
-                  Filter
-                </button>
-                <button
-                  type="button"
-                  className="flex items-center gap-1.5 transition-colors duration-150"
-                  style={{
-                    fontSize: 12,
-                    color: '#5a8a6a',
-                    padding: '5px 11px',
-                    borderRadius: 7,
-                    border: '0.5px solid #cdd9c6',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(61,140,82,0.07)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                    <path d="M1 3L3.5 5.5L6 3M5 8H10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  Sort
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void addRow()}
-                  className="flex items-center gap-1.5 transition-colors duration-150"
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 500,
-                    color: '#fff',
-                    padding: '5px 11px',
-                    borderRadius: 7,
-                    border: '0.5px solid var(--leaf-green)',
-                    background: 'var(--leaf-green)',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#2f7340')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--leaf-green)')}
-                >
-                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                    <path d="M5.5 1V10M1 5.5H10" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
-                  </svg>
-                  New entry
-                </button>
-              </div>
-            </div>
-
-            {activeView === 'table' && (
-              <TableView rows={rows} columns={columns} onUpdateName={updateName} onUpdateCell={updateCell} onDeleteRow={deleteRow} onAddRow={addRow} onAddColumn={() => setShowAddCol(true)} />
-            )}
-            {activeView === 'board' && (
-              <BoardView rows={rows} columns={columns} onUpdateName={updateName} onDeleteRow={deleteRow} onAddRow={addRow} />
-            )}
-            {activeView === 'gallery' && (
-              <GalleryView rows={rows} columns={columns} onUpdateName={updateName} onDeleteRow={deleteRow} />
-            )}
+            <DatabaseSurface
+              activeView={activeView as ViewType}
+              rows={rows}
+              columns={columns}
+              addRow={addRow}
+              updateName={updateName}
+              updateCell={updateCell}
+              deleteRow={deleteRow}
+              setViewType={setViewType}
+              showAddCol={showAddCol}
+              setShowAddCol={setShowAddCol}
+              addColumn={addColumn}
+            />
           </div>
         </div>
 
