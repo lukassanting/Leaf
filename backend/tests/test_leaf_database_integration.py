@@ -98,6 +98,32 @@ def test_creating_database_row_creates_linked_page(operations):
         assert linked_leaf.database_id == database.id
 
 
+def test_schema_document_content_round_trips_and_indexes_links(operations):
+    leaf_ops: LeafOperations = operations["leaf_ops"]
+
+    target = run(leaf_ops.create_leaf(LeafCreate(title="Linked page")))
+    source = run(leaf_ops.create_leaf(LeafCreate(title="Structured source")))
+
+    document = {
+        "type": "doc",
+        "version": 1,
+        "content": [
+            {
+                "type": "paragraph",
+                "content": [{"type": "text", "text": f"See [[{target.title}]]"}],
+            }
+        ],
+    }
+
+    updated = run(leaf_ops.patch_leaf_content(source.id, LeafContentUpdate(content=document)))
+
+    assert isinstance(updated.content, dict)
+    assert updated.content["type"] == "doc"
+
+    backlinks = run(leaf_ops.get_backlinks(target.id))
+    assert [item.id for item in backlinks] == [source.id]
+
+
 def test_updating_row_backed_page_preserves_structural_fields(operations):
     database_ops: DatabaseOperations = operations["database_ops"]
     leaf_ops: LeafOperations = operations["leaf_ops"]

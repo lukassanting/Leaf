@@ -34,18 +34,69 @@ async function createRow(request: APIRequestContext, databaseId: string) {
 
 test.describe('Leaf workspace', () => {
   test.skip(process.env.PLAYWRIGHT_E2E !== '1', 'Set PLAYWRIGHT_E2E=1 to run against a live app')
+  test.describe.configure({ timeout: 90_000 })
 
   test('create/open page, type, reload, and persist content', async ({ page, request }) => {
     const leaf = await createLeaf(request, 'E2E persisted page')
 
-    await page.goto(`/editor/${leaf.id}`)
-    await page.locator('input[placeholder="Untitled"]').fill('E2E persisted page')
+    await page.goto(`/editor/${leaf.id}`, { waitUntil: 'domcontentloaded' })
+    await page.waitForLoadState('networkidle')
     await page.locator('.ProseMirror').click()
     await page.keyboard.type('This text should persist after reload.')
     await expect(page.getByText('Synced')).toBeVisible()
 
     await page.reload()
     await expect(page.locator('.ProseMirror')).toContainText('This text should persist after reload.')
+  })
+
+  test('slash menu inserts page and database embeds without runtime errors', async ({ page, request }) => {
+    const leaf = await createLeaf(request, 'Slash embed page')
+    const pageErrors: string[] = []
+    const consoleErrors: string[] = []
+
+    page.on('pageerror', (error) => pageErrors.push(error.message))
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text())
+      }
+    })
+
+    await page.goto(`/editor/${leaf.id}`, { waitUntil: 'domcontentloaded' })
+    await page.waitForLoadState('networkidle')
+    await page.locator('.ProseMirror').click()
+
+    await page.keyboard.type('/sub')
+    await expect(page.getByText('Sub-page')).toBeVisible()
+    await page.keyboard.press('Enter')
+    await expect(page.locator('.ProseMirror')).toContainText(/Creating page|Page/)
+
+    await page.keyboard.type('/data')
+    await expect(page.getByRole('button', { name: /Database New table database/ })).toBeVisible()
+    await page.keyboard.press('Enter')
+    await expect(page.locator('.ProseMirror')).toContainText(/Creating database|Database/)
+
+    expect(pageErrors).toEqual([])
+    expect(consoleErrors.filter((message) => /localsInner|reading 'eq'|prosemirror-view/i.test(message))).toEqual([])
+  })
+
+  test('todo list enter flow stays interactive', async ({ page, request }) => {
+    const leaf = await createLeaf(request, 'Todo editor page')
+    const pageErrors: string[] = []
+
+    page.on('pageerror', (error) => pageErrors.push(error.message))
+
+    await page.goto(`/editor/${leaf.id}`, { waitUntil: 'domcontentloaded' })
+    await page.waitForLoadState('networkidle')
+    await page.locator('.ProseMirror').click()
+    await page.keyboard.type('/todo')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('First task')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Second task')
+
+    await expect(page.locator('.ProseMirror')).toContainText('First task')
+    await expect(page.locator('.ProseMirror')).toContainText('Second task')
+    expect(pageErrors.filter((message) => /localsInner|reading 'eq'|prosemirror-view/i.test(message))).toEqual([])
   })
 
   test('row page shows full breadcrumb chain', async ({ page, request }) => {

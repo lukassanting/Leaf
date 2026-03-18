@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 from fastapi import Depends
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import sessionmaker, Session
 
 from app.config import ConfigSettings
@@ -53,6 +53,24 @@ class MySQLDatabaseConnector:
     def _ensure_tables(self):
         from app.database.models.mysql_models import Base
         Base.metadata.create_all(bind=self.engine)
+        self._migrate_missing_columns()
+
+    def _migrate_missing_columns(self):
+        """Add columns that create_all won't add to existing tables."""
+        insp = inspect(self.engine)
+        migrations: list[tuple[str, str, str]] = [
+            # (table, column, SQL type + default)
+            ("leaves", "icon", "TEXT DEFAULT NULL"),
+            ("leaves", "properties", "TEXT DEFAULT NULL"),
+        ]
+        with self.engine.connect() as conn:
+            for table, column, col_type in migrations:
+                if table not in insp.get_table_names():
+                    continue
+                existing = [c["name"] for c in insp.get_columns(table)]
+                if column not in existing:
+                    conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {col_type}'))
+                    conn.commit()
 
 
 @lru_cache()

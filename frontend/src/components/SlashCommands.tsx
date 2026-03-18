@@ -1,14 +1,10 @@
 'use client'
 
 /**
- * Slash-command suggestion for TipTap.
- * No tippy.js — feeds menu state back to the Editor as React state.
+ * Shared slash-command metadata and UI panel.
  */
 
 import { createPortal } from 'react-dom'
-import type { Dispatch, SetStateAction } from 'react'
-import { Extension } from '@tiptap/core'
-import Suggestion, { SuggestionOptions } from '@tiptap/suggestion'
 import { BLOCK_ICONS } from './Icons'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -23,14 +19,17 @@ export type SlashItem = {
   keywords: string[]
 }
 
+type SlashMenuPosition = {
+  top: number
+  left: number
+  bottom: number
+}
+
 export type SlashMenuState = {
   items: SlashItem[]
   selectedIndex: number
-  /** Call this at render time to get fresh coordinates; avoids stale rect from onStart */
-  getRect: () => DOMRect | null
-  select: (item: SlashItem) => void
-  onKeyDown: (e: KeyboardEvent) => boolean
-} | null
+  rect: SlashMenuPosition
+}
 
 // ─── Items ───────────────────────────────────────────────────────────────────
 
@@ -53,82 +52,32 @@ export const SLASH_ITEMS: SlashItem[] = [
   { label: 'Database',      description: 'New table database',      action: 'database',group: 'Insert',    keywords: ['database', 'db', 'table'] },
 ]
 
-// ─── Extension factory ────────────────────────────────────────────────────────
+function getSlashItemScore(item: SlashItem, query: string): number | null {
+  const label = item.label.toLowerCase()
+  const keywords = item.keywords.map((keyword) => keyword.toLowerCase())
 
-export function buildSlashExtension(
-  setMenu: Dispatch<SetStateAction<SlashMenuState>>,
-): Extension {
-  const suggestion: Partial<SuggestionOptions<SlashItem>> = {
-    char: '/',
-    startOfLine: false,
+  if (label === query) return 0
+  if (label.startsWith(query)) return 1
+  if (keywords.includes(query)) return 2
+  if (keywords.some((keyword) => keyword.startsWith(query))) return 3
+  if (label.includes(query)) return 4
+  if (keywords.some((keyword) => keyword.includes(query))) return 5
 
-    command({ editor, range, props: item }) {
-      const pos = range.from
-      editor.chain().focus().deleteRange(range).run()
-      window.dispatchEvent(new CustomEvent('slash-action', { detail: { action: item.action, pos } }))
-    },
+  return null
+}
 
-    items({ query }) {
-      const q = query.toLowerCase()
-      if (!q) return SLASH_ITEMS
-      return SLASH_ITEMS.filter(
-        (i) => i.label.toLowerCase().includes(q) || i.keywords.some((k) => k.includes(q)),
-      )
-    },
+export function rankSlashItems(query: string): SlashItem[] {
+  const normalizedQuery = query.trim().toLowerCase()
 
-    render() {
-      let idx = 0
-      let getRect: () => DOMRect | null = () => null
-
-      const publish = (items: SlashItem[], selectFn: (item: SlashItem) => void) => {
-        setMenu({
-          items,
-          selectedIndex: idx,
-          getRect,
-          select: selectFn,
-          onKeyDown(e) {
-            if (e.key === 'ArrowUp')   { idx = (idx - 1 + items.length) % items.length; setMenu((m) => m ? { ...m, selectedIndex: idx } : null); return true }
-            if (e.key === 'ArrowDown') { idx = (idx + 1) % items.length;                setMenu((m) => m ? { ...m, selectedIndex: idx } : null); return true }
-            if (e.key === 'Enter')     { const item = items[idx]; if (item) selectFn(item); return true }
-            return false
-          },
-        })
-      }
-
-      return {
-        onStart(props) {
-          idx = 0
-          getRect = () => props.clientRect?.() ?? null
-          publish(props.items, (item) => props.command(item))
-        },
-        onUpdate(props) {
-          getRect = () => props.clientRect?.() ?? null
-          idx = Math.min(idx, Math.max(0, props.items.length - 1))
-          publish(props.items, (item) => props.command(item))
-        },
-        onKeyDown({ event }) {
-          if (event.key === 'Escape') { setMenu(null); return true }
-          let consumed = false
-          setMenu((m) => {
-            if (!m) return m
-            consumed = m.onKeyDown(event)
-            return m
-          })
-          return consumed
-        },
-        onExit() {
-          setMenu(null)
-        },
-      }
-    },
+  if (!normalizedQuery) {
+    return SLASH_ITEMS
   }
 
-  return Extension.create({
-    name: 'slashCommands',
-    addProseMirrorPlugins() {
-      return [Suggestion({ editor: this.editor, ...suggestion })]
-    },
-  })
+  return SLASH_ITEMS
+    .map((item) => ({ item, score: getSlashItemScore(item, normalizedQuery) }))
+    .filter((entry): entry is { item: SlashItem; score: number } => entry.score !== null)
+    .sort((a, b) => a.score - b.score || a.item.label.localeCompare(b.item.label))
+    .map(({ item }) => item)
 }
 
 // ─── Menu renderer (used in Editor.tsx) ──────────────────────────────────────
@@ -137,16 +86,12 @@ const GROUPS: SlashGroup[] = ['Text', 'Structure', 'Insert']
 
 export function SlashMenuPanel({
   menu,
-  globalIdx,
+  onSelect,
 }: {
   menu: SlashMenuState
-  globalIdx: number
+  onSelect: (item: SlashItem) => void
 }) {
-  if (!menu || !menu.items.length) return null
-
-  // Get fresh position at render time
-  const rect = menu.getRect()
-  if (!rect) return null
+  if (!menu) return null
 
   const grouped: { group: SlashGroup; items: { item: SlashItem; idx: number }[] }[] = []
   for (const group of GROUPS) {
@@ -158,9 +103,9 @@ export function SlashMenuPanel({
   }
 
   // Flip above cursor if too close to bottom
-  const spaceBelow = window.innerHeight - rect.bottom
-  const top = spaceBelow < 240 ? rect.top - 6 - Math.min(240, window.innerHeight * 0.4) : rect.bottom + 6
-  const left = Math.min(rect.left, window.innerWidth - 272)
+  const spaceBelow = window.innerHeight - menu.rect.bottom
+  const top = spaceBelow < 240 ? menu.rect.top - 6 - Math.min(240, window.innerHeight * 0.4) : menu.rect.bottom + 6
+  const left = Math.min(menu.rect.left, window.innerWidth - 272)
 
   const panel = (
     <div
@@ -184,12 +129,15 @@ export function SlashMenuPanel({
             {group}
           </div>
           {items.map(({ item, idx }) => {
-            const isSelected = idx === globalIdx
+            const isSelected = idx === menu.selectedIndex
             return (
               <button
                 key={item.action}
                 type="button"
-                onMouseDown={() => menu.select(item)}
+                onMouseDown={(event) => {
+                  event.preventDefault()
+                  onSelect(item)
+                }}
                 className="w-full flex items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors duration-100"
                 style={{ backgroundColor: isSelected ? 'var(--color-hover)' : undefined }}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-hover)')}

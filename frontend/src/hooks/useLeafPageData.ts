@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import { leavesApi } from '@/lib/api'
 import { toCachedLeaf } from '@/lib/cacheMappers'
 import { getCachedLeaf, setCachedLeaf } from '@/lib/leafCache'
-import type { LeafIcon } from '@/lib/api'
+import type { LeafDocument, LeafIcon } from '@/lib/api'
+import { createEmptyLeafDocument, parseLeafContent } from '@/lib/leafDocument'
 
 export function useLeafPageData(leafId: string) {
-  const [content, setContent] = useState('')
+  const [content, setContent] = useState<LeafDocument>(createEmptyLeafDocument)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [parentId, setParentId] = useState<string | null>(null)
@@ -20,7 +21,7 @@ export function useLeafPageData(leafId: string) {
   const [createdAt, setCreatedAt] = useState<string | null>(null)
   const [loadingLeaf, setLoadingLeaf] = useState(true)
 
-  const latestContentRef = useRef('')
+  const latestContentRef = useRef<LeafDocument>(createEmptyLeafDocument())
   const savedTitleRef = useRef('')
   const hasLoadedRef = useRef(false)
 
@@ -36,9 +37,10 @@ export function useLeafPageData(leafId: string) {
         setDatabaseId(cached.database_id ?? null)
         setChildrenIds(cached.children_ids ?? [])
         setUpdatedAt(cached.updated_at ?? null)
-        setContent(cached.content || '')
+        const cachedContent = parseLeafContent(cached.content)
+        setContent(cachedContent)
         setTags(cached.tags ?? [])
-        latestContentRef.current = cached.content || ''
+        latestContentRef.current = cachedContent
         hasLoadedRef.current = true
       }
 
@@ -53,11 +55,12 @@ export function useLeafPageData(leafId: string) {
         setChildrenIds(leaf.children_ids ?? [])
         setUpdatedAt(leaf.updated_at)
         setCreatedAt(leaf.created_at ?? null)
-        setContent(leaf.content || '')
+        const parsedContent = parseLeafContent(leaf.content)
+        setContent(parsedContent)
         setTags(leaf.tags ?? [])
         setIcon(leaf.icon ?? null)
         setProperties(leaf.properties ?? null)
-        latestContentRef.current = leaf.content || ''
+        latestContentRef.current = parsedContent
         hasLoadedRef.current = true
         await setCachedLeaf(toCachedLeaf(leaf))
       } catch (error) {

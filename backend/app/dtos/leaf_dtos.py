@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -18,7 +18,7 @@ def infer_leaf_type(parent_id: Optional[str], database_id: Optional[str]) -> Lea
 class LeafCreate(BaseModel):
     title: str
     description: Optional[str] = None
-    content: Optional[str] = None
+    content: Optional[dict[str, Any] | str] = None
     parent_id: Optional[str] = None
     database_id: Optional[str] = None
     children_ids: list[str] = Field(default_factory=list)
@@ -30,7 +30,7 @@ class LeafCreate(BaseModel):
 class LeafUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    content: Optional[str] = None
+    content: Optional[dict[str, Any] | str] = None
     parent_id: Optional[str] = None
     database_id: Optional[str] = None
     children_ids: Optional[list[str]] = None
@@ -41,7 +41,7 @@ class LeafUpdate(BaseModel):
 
 class LeafContentUpdate(BaseModel):
     """Minimal payload for autosave; optional updated_at for conflict detection."""
-    content: str
+    content: dict[str, Any] | str
     updated_at: Optional[datetime] = None
 
 
@@ -50,7 +50,7 @@ class Leaf(BaseModel):
     title: str
     type: LeafType
     description: Optional[str] = None
-    content: Optional[str] = None
+    content: Optional[dict[str, Any] | str] = None
     parent_id: Optional[str] = None
     database_id: Optional[str] = None
     children_ids: list[str] = Field(default_factory=list)

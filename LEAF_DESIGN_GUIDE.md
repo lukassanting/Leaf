@@ -160,4 +160,84 @@ Structure:
 
 ---
 
-*Last updated: 2026-03-17*
+## 11. v3 additions
+
+### Updated shell
+
+The v3 shell replaces the older left-sidebar layout described above.
+
+```
+App (flex row, 100vw × 100vh)
+├── Editor area (flex: 1, flex column)
+│   ├── Top strip (38px)
+│   ├── Centered identity header
+│   ├── Editor / database canvas (flex: 1, overflow-y: auto)
+│   └── Status bar (28px)
+└── Right sidebar (232px)
+```
+
+Use these CSS variables for shell surfaces:
+
+- `--leaf-bg-app`: app frame / status bar surface
+- `--leaf-bg-editor`: editor canvas and top strip
+- `--leaf-bg-sidebar`: right sidebar surface
+- `--leaf-bg-hover`: subtle hover state
+- `--leaf-bg-active`: active row state
+- `--leaf-bg-tag`: pale tag and icon-chip background
+- `--leaf-border-soft`: soft separators
+- `--leaf-border-strong`: stronger separators and control borders
+- `--leaf-text-title`: primary title text
+- `--leaf-text-body`: body text
+- `--leaf-text-sidebar`: emphasized sidebar / breadcrumb current page text
+- `--leaf-text-muted`: secondary labels and metadata
+- `--leaf-text-hint`: placeholder text
+- `--leaf-green`: primary action green
+- `--leaf-green-light`: lighter accent green for drop zones and soft emphasis
+
+### Centered identity header
+
+- Icon frame: `52x52`, `border-radius: 12px`, `background: --leaf-bg-tag`, `border: 0.5px solid --leaf-border-strong`
+- Title: `28px`, `500`, `--leaf-text-title`, centered, `max-width: 680px`
+- Description: `13.5px`, `--leaf-text-hint` when empty, centered, `max-width: 480px`
+- Tags: `11px`, `border-radius: 4px`, `padding: 3px 8px`
+- Header spacing: `padding: 36px 0 24px`, bottom border `0.5px solid --leaf-border-soft`
+
+### Icon picker exception
+
+The earlier “no emoji anywhere in the app” rule is superseded for the icon picker content only.
+
+- Emoji may appear only as user-selected page/database icons and inside the icon picker grid.
+- UI chrome, navigation, and controls should still use SVG icons from `src/components/Icons.tsx`.
+
+### Right sidebar
+
+- Width: `232px`
+- Border-left: `0.5px solid --leaf-border-strong`
+- Sections: identity, properties, page tree, backlinks, footer action
+- Tree rows: `font-size: 12px`, `border-radius: 5px`, `padding: 4px 5px`
+- Indent progression: `5px`, `14px`, `24px`, `34px`
+
+### Database component styling
+
+- View switcher container: `background: #eef3eb`, `border-radius: 20px`, `padding: 3px`
+- Secondary action buttons: `font-size: 12px`, `padding: 5px 11px`, `border-radius: 7px`, `border: 0.5px solid #cdd9c6`
+- Primary action button: `background: --leaf-green`, `color: white`, `border-color: --leaf-green`
+- Shared tag pills:
+  - positive: `#edf5e8 / #3b6b4a / #c5ddb8`
+  - warning: `#fef5e0 / #7a5c10 / #e8d48a`
+  - negative: `#fef0ee / #8a3a2a / #e8c0b8`
+  - neutral: `#f0f3ed / #5a8a6a / #ccddc4`
+
+### Interaction patterns
+
+- Width modes:
+  - `normal`: `max-width: 680px`
+  - `wide`: `max-width: 960px`
+  - `full`: `max-width: 100%` with `padding: 0 24px`
+- Focus mode hides the top strip and right sidebar, leaving the canvas and status bar.
+- Slash menu width: `248px` to `260px`, instant open/close, grouped by `Text`, `Structure`, `Insert`
+- Block handles and drag affordances must stay subtle and only appear on hover.
+
+---
+
+*Last updated: 2026-03-18*

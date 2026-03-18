@@ -5,6 +5,13 @@
  */
 
 type IconProps = { className?: string; size?: number }
+export type LeafShapeIcon =
+  | 'diamond-fill'
+  | 'circle-fill'
+  | 'triangle-fill'
+  | 'diamond-outline'
+  | 'circle-outline'
+  | 'triangle-outline'
 
 // ─── Primary icons ────────────────────────────────────────────────────────────
 
@@ -48,6 +55,51 @@ export function DatabaseIcon({ className, size = 16 }: IconProps) {
       <ellipse cx="8" cy="4.5" rx="5.5" ry="2" />
       <path d="M2.5 4.5V8c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2V4.5" />
       <path d="M2.5 8v3.5c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2V8" />
+    </svg>
+  )
+}
+
+export function ShapeIcon({ shape, className, size = 16 }: IconProps & { shape: LeafShapeIcon }) {
+  const color = shape.includes('outline') ? 'var(--leaf-green-light)' : 'var(--leaf-green)'
+
+  if (shape.startsWith('diamond')) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
+        <path
+          d="M8 2.25L13.75 8L8 13.75L2.25 8L8 2.25Z"
+          fill={shape.endsWith('fill') ? color : 'none'}
+          stroke={color}
+          strokeWidth="1.3"
+          strokeLinejoin="round"
+        />
+      </svg>
+    )
+  }
+
+  if (shape.startsWith('circle')) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
+        <circle
+          cx="8"
+          cy="8"
+          r="5.25"
+          fill={shape.endsWith('fill') ? color : 'none'}
+          stroke={color}
+          strokeWidth="1.3"
+        />
+      </svg>
+    )
+  }
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
+      <path
+        d="M8 3L13 12H3L8 3Z"
+        fill={shape.endsWith('fill') ? color : 'none'}
+        stroke={color}
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }

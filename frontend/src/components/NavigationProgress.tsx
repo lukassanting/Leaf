@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 
 type NavigationProgressValue = {
   startNavigation: () => void
@@ -21,7 +21,6 @@ function Spinner() {
 
 export function NavigationProgressProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const [visible, setVisible] = useState(false)
   const showTimerRef = useRef<number | null>(null)
 
@@ -46,7 +45,7 @@ export function NavigationProgressProvider({ children }: { children: React.React
 
   useEffect(() => {
     stopNavigation()
-  }, [pathname, searchParams, stopNavigation])
+  }, [pathname, stopNavigation])
 
   useEffect(() => () => {
     if (showTimerRef.current) {

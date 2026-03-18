@@ -23,6 +23,9 @@ class DatabaseCreate(BaseModel):
     schema: Optional[DatabaseSchema] = None
     view_type: str = "table"
     parent_leaf_id: Optional[str] = None
+    description: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+    icon: Optional[dict[str, Any]] = None
 
 
 class DatabaseUpdate(BaseModel):
@@ -30,6 +33,9 @@ class DatabaseUpdate(BaseModel):
     schema: Optional[DatabaseSchema] = None
     view_type: Optional[str] = None
     parent_leaf_id: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[list[str]] = None
+    icon: Optional[dict[str, Any]] = None
 
 
 class Database(BaseModel):
@@ -38,6 +44,9 @@ class Database(BaseModel):
     schema: DatabaseSchema
     view_type: str = "table"
     parent_leaf_id: Optional[str] = None
+    description: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+    icon: Optional[dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
 

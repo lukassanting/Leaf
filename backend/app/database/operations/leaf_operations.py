@@ -1,4 +1,5 @@
 import asyncio
+import json
 import re
 from datetime import datetime
 from uuid import UUID
@@ -25,13 +26,57 @@ class LeafOperations:
     def __init__(self, db_connector: MySQLDatabaseConnector = Depends(get_db_connector)):
         self.db: MySQLDatabaseConnector = db_connector
 
+    def _serialize_content(self, content: dict | str | None) -> str | None:
+        if content is None:
+            return None
+        if isinstance(content, str):
+            return content
+        return json.dumps(content)
+
+    def _deserialize_content(self, content: str | None):
+        if not content:
+            return content
+        try:
+            parsed = json.loads(content)
+            if isinstance(parsed, dict) and parsed.get("type") == "doc":
+                return parsed
+        except json.JSONDecodeError:
+            return content
+        return content
+
+    def _content_to_search_text(self, content: dict | str | None) -> str:
+        if content is None:
+            return ""
+        if isinstance(content, str):
+            return content
+
+        chunks: list[str] = []
+
+        def walk(node):
+            if isinstance(node, dict):
+                if isinstance(node.get("text"), str):
+                    chunks.append(node["text"])
+                attrs = node.get("attrs")
+                if isinstance(attrs, dict) and isinstance(attrs.get("title"), str):
+                    chunks.append(attrs["title"])
+                content_list = node.get("content")
+                if isinstance(content_list, list):
+                    for child in content_list:
+                        walk(child)
+            elif isinstance(node, list):
+                for child in node:
+                    walk(child)
+
+        walk(content)
+        return "\n".join(chunks)
+
     def _leaf_to_dto(self, leaf: LeafModel) -> Leaf:
         return Leaf(
             id=leaf.id,
             title=leaf.title,
             type=leaf.type,
             description=leaf.description,
-            content=leaf.content,
+            content=self._deserialize_content(leaf.content),
             parent_id=leaf.parent_id if leaf.parent_id else None,
             database_id=leaf.database_id if leaf.database_id else None,
             children_ids=list(leaf.children_ids or []),
@@ -57,7 +102,7 @@ class LeafOperations:
         return {
             "leaf_id": leaf.id,
             "title": leaf.title,
-            "content_html": leaf.content,
+            "content_html": self._serialize_content(self._deserialize_content(leaf.content)),
             "parent_id": leaf.parent_id,
             "children_ids": list(leaf.children_ids or []),
             "tags": list(leaf.tags or []),
@@ -102,6 +147,9 @@ class LeafOperations:
             value = getattr(body, field)
             if field == "title" and value is None:
                 continue
+            if field == "content":
+                setattr(db_leaf, field, self._serialize_content(value))
+                continue
             if field in {"children_ids", "tags"} and value is not None:
                 setattr(db_leaf, field, list(value))
                 continue
@@ -128,7 +176,7 @@ class LeafOperations:
                 db_leaf = LeafModel(
                     title=leaf.title,
                     description=leaf.description,
-                    content=leaf.content,
+                    content=self._serialize_content(leaf.content),
                     parent_id=leaf.parent_id,
                     database_id=leaf.database_id,
                     children_ids=list(leaf.children_ids),
@@ -217,7 +265,7 @@ class LeafOperations:
                 db_leaf = self._get_leaf_or_404(db_session, leaf_id)
                 if body.updated_at is not None and db_leaf.updated_at and db_leaf.updated_at > body.updated_at:
                     raise LeafException(status_code=409, detail="Conflict: leaf was updated elsewhere")
-                db_leaf.content = body.content
+                db_leaf.content = self._serialize_content(body.content)
                 db_leaf.updated_at = datetime.now()
                 self.sync_page_links(db_session, str(leaf_id), body.content)
                 db_session.commit()
@@ -298,7 +346,7 @@ class LeafOperations:
             logger.exception(f"get_backlinks failed for {leaf_id}")
             raise LeafException(status_code=500, detail=str(e))
 
-    def sync_page_links(self, db_session, source_leaf_id: str, content: str | None) -> None:
+    def sync_page_links(self, db_session, source_leaf_id: str, content: dict | str | None) -> None:
         """Parse [[Page name]] from content and upsert page_links rows."""
         # Delete existing outgoing links for this source
         db_session.query(PageLinkModel).filter(
@@ -308,10 +356,12 @@ class LeafOperations:
         if not content:
             return
 
-        # Extract wikilink targets from HTML content
-        # Matches [[Page name]] in text content (may appear inside HTML tags)
+        searchable_content = self._content_to_search_text(content)
+        if not searchable_content:
+            return
+
         pattern = r'\[\[([^\]]+)\]\]'
-        link_names = set(re.findall(pattern, content))
+        link_names = set(re.findall(pattern, searchable_content))
         if not link_names:
             return
 

@@ -21,8 +21,22 @@ class DatabaseOperations:
     def __init__(self, db_connector: MySQLDatabaseConnector = Depends(get_db_connector)):
         self.db = db_connector
 
+    def _split_database_schema(self, raw_schema: dict | None) -> tuple[dict, dict]:
+        schema_dict = dict(raw_schema or {})
+        meta = schema_dict.pop("__leaf_meta__", {}) if isinstance(schema_dict.get("__leaf_meta__"), dict) else {}
+        return schema_dict, meta
+
+    def _compose_database_schema(self, schema: dict | None, description, tags, icon) -> dict:
+        payload = dict(schema or {})
+        payload["__leaf_meta__"] = {
+            "description": description,
+            "tags": list(tags or []),
+            "icon": icon,
+        }
+        return payload
+
     def _database_to_dto(self, database: DatabaseModel) -> Database:
-        raw_schema = database.schema if database.schema else {}
+        raw_schema, meta = self._split_database_schema(database.schema if database.schema else {})
         try:
             schema = DatabaseSchema.model_validate(raw_schema)
         except Exception:
@@ -33,6 +47,9 @@ class DatabaseOperations:
             schema=schema,
             view_type=database.view_type or "table",
             parent_leaf_id=database.parent_leaf_id,
+            description=meta.get("description"),
+            tags=list(meta.get("tags") or []),
+            icon=meta.get("icon"),
             created_at=database.created_at,
             updated_at=database.updated_at,
         )
@@ -86,7 +103,12 @@ class DatabaseOperations:
         with self.db.get_db_session() as session:
             database = DatabaseModel(
                 title=body.title,
-                schema=body.schema.model_dump() if body.schema else None,
+                schema=self._compose_database_schema(
+                    body.schema.model_dump() if body.schema else None,
+                    body.description,
+                    body.tags,
+                    body.icon,
+                ),
                 view_type=body.view_type or "table",
                 parent_leaf_id=body.parent_leaf_id,
             )
@@ -114,15 +136,31 @@ class DatabaseOperations:
             if not database:
                 return None
 
+            schema_payload, meta = self._split_database_schema(database.schema)
             for field in body.model_fields_set:
                 value = getattr(body, field)
                 if field == "title" and value is None:
                     continue
                 if field == "schema" and value is not None:
-                    database.schema = value.model_dump()
+                    schema_payload = value.model_dump()
+                    continue
+                if field == "description":
+                    meta["description"] = value
+                    continue
+                if field == "tags":
+                    meta["tags"] = list(value or [])
+                    continue
+                if field == "icon":
+                    meta["icon"] = value
                     continue
                 setattr(database, field, value)
 
+            database.schema = self._compose_database_schema(
+                schema_payload,
+                meta.get("description"),
+                meta.get("tags"),
+                meta.get("icon"),
+            )
             session.commit()
             session.refresh(database)
             payload = self._database_storage_payload(database)

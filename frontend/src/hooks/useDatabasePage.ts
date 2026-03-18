@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { databasesApi } from '@/lib/api'
-import type { Database, DatabaseRow, PropertyDefinition, ViewType } from '@/lib/api'
+import type { Database, DatabaseRow, LeafIcon, PropertyDefinition, ViewType } from '@/lib/api'
 import {
   createDatabaseRow,
   updateDatabaseAndEmitTitle,
@@ -17,6 +17,9 @@ export function useDatabasePage(id: string) {
   const [loading, setLoading] = useState(true)
   const [showAddCol, setShowAddCol] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
+  const [descriptionDraft, setDescriptionDraft] = useState('')
+  const [tagsDraft, setTagsDraft] = useState<string[]>([])
+  const [iconDraft, setIconDraft] = useState<LeafIcon | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const savedTitleRef = useRef('')
   const hasLoadedTitleRef = useRef(false)
@@ -29,6 +32,9 @@ export function useDatabasePage(id: string) {
       .then(([database, rowItems]) => {
         setDb(database)
         setTitleDraft(database.title)
+        setDescriptionDraft(database.description ?? '')
+        setTagsDraft(database.tags ?? [])
+        setIconDraft(database.icon ?? null)
         savedTitleRef.current = database.title
         hasLoadedTitleRef.current = false
         setRows(rowItems)
@@ -37,6 +43,21 @@ export function useDatabasePage(id: string) {
       .finally(() => setLoading(false))
   }, [id])
 
+  const saveDatabase = useCallback(async (patch: Partial<Database>) => {
+    if (!db) return null
+    const updated = await updateDatabaseAndEmitTitle(id, {
+      title: patch.title ?? db.title,
+      description: patch.description ?? db.description ?? null,
+      tags: patch.tags ?? db.tags ?? [],
+      icon: patch.icon ?? db.icon ?? null,
+      schema: patch.schema ?? db.schema,
+      view_type: patch.view_type ?? db.view_type,
+      parent_leaf_id: patch.parent_leaf_id ?? db.parent_leaf_id ?? undefined,
+    })
+    setDb(updated)
+    return updated
+  }, [db, id])
+
   const saveTitle = useCallback(async (value: string) => {
     const trimmed = value.trim() || 'Untitled database'
     if (trimmed === savedTitleRef.current || !db) {
@@ -44,12 +65,8 @@ export function useDatabasePage(id: string) {
       return
     }
     try {
-      const updated = await updateDatabaseAndEmitTitle(id, {
-        title: trimmed,
-        schema: db.schema,
-        view_type: db.view_type,
-        parent_leaf_id: db.parent_leaf_id ?? undefined,
-      })
+      const updated = await saveDatabase({ title: trimmed })
+      if (!updated) return
       setDb(updated)
       setTitleDraft(updated.title)
       savedTitleRef.current = updated.title
@@ -59,7 +76,7 @@ export function useDatabasePage(id: string) {
       setSaveStatus('error')
       console.error('Failed to save title')
     }
-  }, [db, id])
+  }, [db, saveDatabase])
 
   useEffect(() => {
     if (!db) return
@@ -93,6 +110,9 @@ export function useDatabasePage(id: string) {
     try {
       const updated = await updateDatabaseViewType(id, {
         title: db.title,
+        description: db.description ?? null,
+        tags: db.tags ?? [],
+        icon: db.icon ?? null,
         schema: db.schema,
         parent_leaf_id: db.parent_leaf_id ?? undefined,
       }, viewType)
@@ -153,6 +173,9 @@ export function useDatabasePage(id: string) {
     try {
       const updated = await databasesApi.update(id, {
         title: db.title,
+        description: db.description ?? null,
+        tags: db.tags ?? [],
+        icon: db.icon ?? null,
         schema: newSchema,
         view_type: db.view_type,
         parent_leaf_id: db.parent_leaf_id ?? undefined,
@@ -175,8 +198,15 @@ export function useDatabasePage(id: string) {
     setShowAddCol,
     titleDraft,
     setTitleDraft,
+    descriptionDraft,
+    setDescriptionDraft,
+    tagsDraft,
+    setTagsDraft,
+    iconDraft,
+    setIconDraft,
     saveStatus,
     flushTitleSave,
+    saveDatabase,
     breadcrumbs,
     columns,
     activeView,

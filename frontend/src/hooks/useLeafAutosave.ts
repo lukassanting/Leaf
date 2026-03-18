@@ -1,13 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { LeafDocument } from '@/lib/api'
 import { leavesApi } from '@/lib/api'
 import { clearPendingSave, enqueuePendingSave, getPendingSaves, isOnline } from '@/lib/leafCache'
+import { createEmptyLeafDocument } from '@/lib/leafDocument'
 import { saveLeafContentAndPrimeCache, saveLeafContentOffline } from '@/lib/leafMutations'
 
 type UseLeafAutosaveArgs = {
   leafId: string
-  currentContent: string
+  currentContent: LeafDocument
   title: string
   parentId: string | null
   databaseId: string | null
@@ -19,7 +21,7 @@ type UseLeafAutosaveArgs = {
 
 export function useLeafAutosave(args: UseLeafAutosaveArgs) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error' | 'offline'>('idle')
-  const latestContentRef = useRef('')
+  const latestContentRef = useRef<LeafDocument>(createEmptyLeafDocument())
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export function useLeafAutosave(args: UseLeafAutosaveArgs) {
     return () => window.removeEventListener('online', flushPending)
   }, [flushPending])
 
-  const doSave = useCallback(async (content: string) => {
+  const doSave = useCallback(async (content: LeafDocument) => {
     const snapshot = {
       title: args.title,
       parent_id: args.parentId,
@@ -108,7 +110,7 @@ export function useLeafAutosave(args: UseLeafAutosaveArgs) {
     }
   }, [args])
 
-  const scheduleSave = useCallback((newContent: string) => {
+  const scheduleSave = useCallback((newContent: LeafDocument) => {
     latestContentRef.current = newContent
     setSaveStatus('saving')
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)

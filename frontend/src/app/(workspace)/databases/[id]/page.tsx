@@ -1,14 +1,16 @@
 'use client'
 
+import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { TopStrip } from '@/components/TopStrip'
 import { StatusBar } from '@/components/StatusBar'
-import { DatabaseIcon } from '@/components/Icons'
 import { LoadingShell } from '@/components/LoadingShell'
+import { IconPicker } from '@/components/page/IconPicker'
+import { PageIdentityHeader } from '@/components/page/PageIdentityHeader'
 import { AddColumnModal, BoardView, GalleryView, TableView } from '@/components/database/DatabaseViews'
 import { useDatabasePage } from '@/hooks/useDatabasePage'
 import { useContentWidth } from '@/app/(workspace)/layout'
-import type { ViewType } from '@/lib/api'
+import type { LeafIcon, ViewType } from '@/lib/api'
 
 const VIEW_LABELS: { key: ViewType; label: string }[] = [
   { key: 'table', label: 'Table' },
@@ -20,6 +22,7 @@ export default function DatabaseViewPage() {
   const params = useParams()
   const id = params?.id as string
   const { contentWidth } = useContentWidth()
+  const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
   const {
     db,
@@ -29,8 +32,15 @@ export default function DatabaseViewPage() {
     setShowAddCol,
     titleDraft,
     setTitleDraft,
+    descriptionDraft,
+    setDescriptionDraft,
+    tagsDraft,
+    setTagsDraft,
+    iconDraft,
+    setIconDraft,
     saveStatus,
     flushTitleSave,
+    saveDatabase,
     breadcrumbs,
     columns,
     activeView,
@@ -44,6 +54,14 @@ export default function DatabaseViewPage() {
 
   if (loading || !db) {
     return <LoadingShell label={loading ? 'Loading database…' : 'Database not found.'} />
+  }
+
+  const saveMeta = async (patch: { description?: string | null; tags?: string[]; icon?: LeafIcon | null }) => {
+    const updated = await saveDatabase(patch)
+    if (!updated) return
+    setDescriptionDraft(updated.description ?? '')
+    setTagsDraft(updated.tags ?? [])
+    setIconDraft(updated.icon ?? null)
   }
 
   const viewIcons: Record<string, React.ReactNode> = {
@@ -85,77 +103,46 @@ export default function DatabaseViewPage() {
           currentTitle={titleDraft}
         />
 
-        {/* Page header — centered */}
-        <div
-          style={{
-            padding: '36px 0 24px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            borderBottom: '0.5px solid var(--leaf-border-soft)',
-          }}
-        >
-          {/* Icon */}
-          <div style={{ position: 'relative', display: 'inline-block', marginBottom: 12 }}>
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 12,
-                background: 'var(--leaf-bg-tag)',
-                border: '0.5px solid var(--leaf-border-strong)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <DatabaseIcon size={26} />
-            </div>
-          </div>
-
-          {/* Title */}
-          <input
-            className="bg-transparent border-none outline-none font-medium leading-tight"
-            style={{
-              fontSize: 28,
-              fontWeight: 500,
-              color: 'var(--leaf-text-title)',
-              letterSpacing: '-0.02em',
-              lineHeight: 1.2,
-              textAlign: 'center',
-              width: '100%',
-              maxWidth: 680,
-              caretColor: 'var(--leaf-green)',
-            }}
-            value={titleDraft}
-            onChange={(event) => setTitleDraft(event.target.value)}
-            onBlur={flushTitleSave}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault()
-                flushTitleSave()
-                ;(event.target as HTMLInputElement).blur()
-              }
-            }}
-            placeholder="Untitled database"
-          />
-
-          {/* Meta row */}
-          <div className="flex items-center gap-2 mt-2" style={{ fontSize: 11.5, color: 'var(--leaf-text-muted)' }}>
-            <span
-              className="rounded-full"
-              style={{
-                width: 6,
-                height: 6,
-                backgroundColor: saveStatus === 'error' ? '#dc2626' : saveStatus === 'saving' ? 'var(--leaf-text-muted)' : '#6abf7a',
-              }}
+        <PageIdentityHeader
+          kind="database"
+          icon={iconDraft}
+          onIconClick={() => setIconPickerOpen((current) => !current)}
+          iconPicker={iconPickerOpen ? (
+            <IconPicker
+              currentIcon={iconDraft}
+              onApply={(nextIcon) => { void saveMeta({ icon: nextIcon }) }}
+              onClose={() => setIconPickerOpen(false)}
             />
-            <span>{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Error' : 'Synced'}</span>
-            <span style={{ color: '#ccd9c4' }}>·</span>
-            <span>{rows.length} {rows.length === 1 ? 'entry' : 'entries'}</span>
-          </div>
-        </div>
+          ) : null}
+          title={titleDraft}
+          onTitleChange={setTitleDraft}
+          onTitleBlur={() => flushTitleSave()}
+          onTitleEnter={() => flushTitleSave()}
+          titlePlaceholder="Untitled database"
+          description={descriptionDraft}
+          onDescriptionChange={setDescriptionDraft}
+          onDescriptionBlur={(value) => { void saveMeta({ description: value || null }) }}
+          tags={tagsDraft}
+          onTagsChange={(nextTags) => {
+            setTagsDraft(nextTags)
+            void saveMeta({ tags: nextTags })
+          }}
+          extraContent={(
+            <div className="flex items-center gap-2" style={{ fontSize: 11.5, color: 'var(--leaf-text-muted)' }}>
+              <span
+                className="rounded-full"
+                style={{
+                  width: 6,
+                  height: 6,
+                  backgroundColor: saveStatus === 'error' ? '#dc2626' : saveStatus === 'saving' ? 'var(--leaf-text-muted)' : '#6abf7a',
+                }}
+              />
+              <span>{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Error' : 'Synced'}</span>
+              <span style={{ color: '#ccd9c4' }}>·</span>
+              <span>{rows.length} {rows.length === 1 ? 'entry' : 'entries'}</span>
+            </div>
+          )}
+        />
 
         {/* Database content */}
         <div className="flex-1 overflow-y-auto" style={{ padding: '20px 0' }}>
