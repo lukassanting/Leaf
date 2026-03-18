@@ -1,6 +1,6 @@
 # Leaf
 
-A fast, Notion-inspired markdown editor with page trees, local-first cache, and database (table) views. **FastAPI** backend, **Next.js 15** frontend, **MySQL**.
+A fast, Notion-inspired workspace with rich pages, inline databases, a local-first cache, and a schema-first editor model. **FastAPI** backend, **Next.js 15** frontend, **MySQL**.
 
 ## Quick start (Docker + Make)
 
@@ -42,7 +42,7 @@ All commands below are from the **repo root** (`Leaf/`).
    make test
    ```
 
-   Runs the frontend linter (and lightweight backend checks). To run tests inside Docker:
+   Runs the frontend linter and backend checks. To run tests inside Docker:
 
    ```bash
    make test-in-docker
@@ -119,16 +119,37 @@ docker volume inspect leaf_mysql_data
 docker volume rm leaf_mysql_data
 ```
 
+## Current status
+
+Leaf is now on the v3 shell and editor architecture:
+
+- **Schema-first content:** page bodies use structured `LeafDocument` JSON, with a migration path for legacy HTML content.
+- **Stable editor core:** custom TipTap-based editor with slash commands, block insertion, page embeds, inline database embeds, Markdown import/export, and rich/Markdown mode switching.
+- **Workspace shell:** centered identity header, icon picker, content width modes, focus mode, bottom status bar, and a live right sidebar for metadata, tree navigation, and backlinks.
+- **Database parity:** standalone and inline databases share the same table, board, and gallery surfaces plus shared metadata handling.
+- **Column layouts:** persisted 2-column and 3-column layout blocks with inline editing and in-block drag reordering.
+- **Local-first sync:** IndexedDB cache, offline queueing, debounced autosave, and conflict-aware content patching.
+
 ## Features
 
 - **Pages & tree:** Notion-like hierarchy (projects/pages), shared sidebar with search, collapse-all, expand/collapse per node, inline rename, delete, drag-and-drop reorder, and inline child-page creation.
-- **Editor:** TipTap rich text with formatting toolbar (H1–H3, bold, italic, strikethrough, lists, code, blockquote); optional Markdown source mode with round-trip (turndown + markdown-it); Import/Export `.md`. Inline editable title with debounced sidebar refresh.
+- **Editor:** TipTap rich text with slash insertion, block menu, page/database embeds, 2-column and 3-column layout blocks, optional Markdown source mode, and Markdown import/export.
 - **Autosave:** Debounced PATCH to `/leaves/{id}/content` (~800 ms idle); Ctrl+S / Cmd+S to save immediately; optional conflict detection via `updated_at`.
 - **Local-first cache:** IndexedDB (with localStorage fallback) for instant page load and offline edits; pending saves sync when back online.
-- **Databases:** Notion-style collections of pages. Each entry is a real page (openable as a full editor page). Views: Table, List, Gallery. Schema-driven columns (text, number, tags). "Name" column always links to the page. Inline cell editing (double-click to edit).
-- **Tags:** Pages have editable tags (chip input below the title). Tags column type available in database schemas, rendered as colored chips in all views.
-- **Typography:** Explicit heading sizes (H1 > H2 > H3 > body) via `.ProseMirror` CSS; no reliance on `@tailwindcss/typography`.
+- **Databases:** Notion-style collections of pages. Each entry is a real page. Views: Table, Board, Gallery. Schema-driven columns (text, number, tags, select). "Name" always links to the entry page. Inline cell editing and add-column flows are shared between standalone and embedded databases.
+- **Metadata parity:** Pages and databases both support title, description, tags, and icons.
+- **Testing:** Backend integration coverage for leaves/databases and Playwright coverage for editor persistence, slash embeds, todo interaction, inline databases, and column layouts.
 - **Stack:** Next.js 15 (App Router), FastAPI, MySQL, Tailwind CSS v4, TipTap, Docker Compose.
+
+## Next steps
+
+The next recommended phase is:
+
+1. Upgrade column layouts from lightweight text columns to true nested block columns.
+2. Add a real block drag handle for document-level reordering, not just column-internal drag.
+3. Build search and a quick switcher (`Cmd+K`) on top of the structured content model.
+4. Expand database capabilities with sort/filter/group configuration and richer property types.
+5. Add conflict-resolution UI and broader CI/production hardening.
 
 ## Production (placeholder)
 
@@ -144,7 +165,9 @@ The root `docker-compose.yml` is aimed at development. For production you would 
 Leaf/
 ├── CLAUDE.md             # AI code editor instructions and project context
 ├── README.md             # ← this file
+├── LEAF_DESIGN_GUIDE.md  # visual design source of truth
 ├── docs/
+│   ├── EDITOR_DESIGN.md
 │   └── PLANS_AND_ROADMAP.md
 ├── docker-compose.yml    # Full stack: mysqldb, api, frontend (run from root)
 ├── Makefile              # up, down, test, logs, etc.
@@ -156,7 +179,7 @@ Leaf/
 │   └── .env.example
 └── frontend/             # Next.js 15 App Router, Tailwind v4, TipTap
     └── src/
-        ├── app/(workspace)/     # Shared layout with sidebar
-        ├── components/          # Editor, Toolbar, Sidebar, SidebarTree
-        └── lib/                 # API clients, cache, types
+        ├── app/(workspace)/     # Shared layout with sidebar and editor/database routes
+        ├── components/          # Editor, database surfaces, headers, sidebar
+        └── lib/                 # API clients, cache, document model, types
 ```

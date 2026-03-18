@@ -1,185 +1,173 @@
 # Leaf — Editor Design Reference
 
-Single source of truth for how the editor should look, feel, and behave.
-Update this file whenever a design decision is made or changed.
+Single source of truth for how the current v3 editor experience should look, feel, and behave.
 
 ---
 
-## 1. Page layout (top to bottom)
+## 1. Shell layout
 
-```
-┌─────────────────────────────────────────────────────┐
-│  🍃 Programming / Detailed Notes / SQL Notes        │  ← breadcrumbs (clickable)
-│                                                     │
-│  🍃  My Page Title                                  │  ← large editable title, leaf icon left
-│                                                     │
-│  [work]  [q1]  [notes]  + Add tag…                 │  ← tags chip input
-│                                                     │
-│  Saved                          ← save status       │
-│  ─────────────────────────────────────────────────  │
-│                                                     │
-│ +  Block content here…                              │  ← rich editor, + on left of each block
-│ +  ## Heading                                       │
-│ +  - Bullet item                                    │
-│                                                     │
-└─────────────────────────────────────────────────────┘
+The editor and database routes now share the same shell:
+
+```text
+App
+├── Top strip
+├── Centered identity header
+├── Main canvas
+└── Bottom status bar
+
+Right sidebar
+├── identity/meta
+├── tree
+└── backlinks
 ```
 
-For a **database** page the layout is identical, replacing the leaf icon with a tree icon (🌳).
+Key expectations:
+
+- The identity header is centered and shared between pages and databases.
+- The right sidebar is always the supporting surface for metadata and navigation.
+- The status bar remains visible at the bottom and carries sync state plus current mode.
 
 ---
 
-## 2. Icons
+## 2. Icons and identity
 
-| Item     | Icon          | Usage                                          | Status |
-|----------|---------------|------------------------------------------------|--------|
-| Page     | 🍃 (leaf)     | Left of title in editor; left of item in sidebar | ✅ |
-| Database | 🌳 (tree)     | Left of title in editor; left of item in sidebar | ✅ |
-
-Icons are rendered as emoji. Long-term: swap for custom SVG matching the leaf/earth palette.
+- Use the shared SVG icons from `src/components/Icons.tsx` for page and database chrome.
+- User-selected icons may be emoji, uploaded images, or supported SVG shapes through the icon picker.
+- Page and database identity surfaces should stay visually parallel: icon, title, description, tags, and lightweight meta.
 
 ---
 
-## 3. Breadcrumbs
+## 3. Editor behavior
 
-- Shown at the very top of the editor, above the title.
-- Format: `Parent / Grandparent / Current page` (clickable links).
-- For database pages: the parent is the leaf page that created it.
-- For database row pages (opened from a database): chain is `…/ Database Name / Row Title`.
-- Implementation: built from the cached tree on load; refreshes on `leaf-tree-changed`.
+### Structured content
 
----
+- Page content persists as `LeafDocument` JSON.
+- Legacy HTML content should be migrated on load, not edited as raw legacy HTML.
+- New block types must fit into the structured model before they are considered complete.
 
-## 4. Block menu (per-block "+")
+### Editing modes
 
-A `+` button appears **to the left** of every block in the editor when hovered.
+- Rich mode is the default.
+- Markdown mode is still supported for import/export and source-style editing.
+- The mode switch lives in the status bar, not in a top formatting toolbar.
 
-### Hover behaviour
-- Appears when the mouse is over a block row.
-- Does **not** disappear when the mouse moves left toward the `+` (300 ms grace period).
-- Stays visible while the dropdown is open, regardless of mouse position.
-- Disappears when mouse leaves the editor area entirely (after the grace period).
+### Autosave
 
-### Dropdown options
-
-| Option          | TipTap command                          | Status |
-|-----------------|-----------------------------------------|--------|
-| Header 1        | `setHeading({ level: 1 })`             | ✅ |
-| Header 2        | `setHeading({ level: 2 })`             | ✅ |
-| Header 3        | `setHeading({ level: 3 })`             | ✅ |
-| Bold            | `toggleBold()`                          | ✅ |
-| Italic          | `toggleItalic()`                        | ✅ |
-| Strikethrough   | `toggleStrike()`                        | ✅ |
-| Code            | `toggleCode()`                          | ✅ |
-| Bullet list     | `toggleBulletList()`                    | ✅ |
-| Numbered list   | `toggleOrderedList()`                   | ✅ |
-| To-Do list      | `toggleTaskList()` — `@tiptap/extension-task-list` + `task-item` | ✅ |
-| Quote           | `toggleBlockquote()`                    | ✅ |
-| ─────────────── | ─────────────────────────────────────── | |
-| 🍃 New page     | Creates leaf with `parent_id`, inserts card | ✅ |
-| 🌳 New database | Creates database with `parent_leaf_id`, inserts card | ✅ |
-
-### Insertion behaviour
-- Type-change options (headings, lists, etc.): **convert** the current block.
-- New page / database: **insert a card block** after the current block; stay on current page.
+- Typing should stay local-first.
+- Save states should be visible but low-noise.
+- Reloading after a successful save should preserve the exact structured content shape.
 
 ---
 
-## 5. Slash commands (`/`) ✅
+## 4. Block creation surfaces
 
-Typing `/` anywhere in the editor opens the same menu as the `+` button, inline at the cursor.
+Block insertion currently happens through:
 
-- Filtered as you type: `/h1` → shows only "Header 1", `/page` → shows "New page", etc.
-- `Escape` dismisses without inserting.
-- Implementation: `@tiptap/suggestion` + `tippy.js` popup in `SlashCommands.tsx`.
-- The slash character itself is removed on selection.
+1. Slash commands (`/`)
+2. The block insertion handle/menu
 
----
+Both surfaces should expose the same mental model and roughly the same option set.
 
-## 6. Page card blocks
+Current supported insertions:
 
-When a sub-page or database is created from within a page, a card block is embedded:
+| Group | Items |
+|---|---|
+| Text | Heading 1, Heading 2, Heading 3, Bold, Italic, Strikethrough, Code |
+| Structure | Bullet list, Numbered list, To-do list, Quote |
+| Insert | 2 columns, 3 columns, Sub-page, Database |
 
-```
-┌─────────────────────────────────────────────┐
-│  🍃  My Sub-page title                  ↗  │
-└─────────────────────────────────────────────┘
-```
+Important behavior:
 
-- Clicking the card or `↗` navigates to that page.
-- `✕` button on hover deletes the card from the content (does NOT delete the page).
-- Card stores: `id`, `title` (snapshot at creation), `kind` (`page` | `database`).
-- Title in the card goes stale on rename — future: live-fetch on render.
+- Text/structure commands transform or insert into the current document flow.
+- Sub-page creates a page embed block.
+- Database creates an inline database embed backed by the shared database surface.
+- Column layouts create persisted `columnLayout` blocks.
 
 ---
 
-## 7. Search and filtering
+## 5. Embed behavior
 
-### Immediate scope
-- Sidebar search: filter by title (already implemented).
+### Page embeds
 
-### Planned scope
-- **Full-text search** across page content (body text, not just titles).
-- **Filter by tags**: select one or more tags, show only matching pages.
-- **Filter by type**: pages only / databases only / all.
-- **Sort**: last modified, created date, alphabetical.
-- **Quick open** (Cmd+K): fuzzy search by title across all pages and databases.
+Page embeds are lightweight card-style blocks:
 
-### Architecture decisions for search
+- show icon, title snapshot, status, and navigate affordance
+- navigate to the page on click
+- can be removed from the document without deleting the underlying page
 
-| Decision | Choice | Reason |
-|---|---|---|
-| Index source | SQLite FTS5 (full-text search extension) | Built into SQLite 3.9+; zero extra infra |
-| What to index | `title`, `content` (Markdown, stripped), `tags` | Covers all user-searchable fields |
-| When to index | On every `write_page` / `patch_leaf_content` in `leaf_operations.py` | Keeps FTS index always current |
-| FTS table | `leaves_fts` virtual table (FTS5), columns: `id`, `title`, `body`, `tags` | Separate from `leaves` to avoid schema coupling |
-| Tag filter | `WHERE tags LIKE '%"work"%'` on JSON column, or FTS5 `tags:work` | JSON LIKE for exact tag match; FTS5 for fuzzy |
-| Endpoint | `GET /search?q=…&tags=…&type=…&sort=…` | Single search endpoint, all filters optional |
-| Frontend | Cmd+K modal + sidebar search both call the same endpoint | DRY |
-| CRDT compat | FTS index is rebuilt from files on `rebuild-index`; ops log includes title/tag ops for live updates | No migration needed when CRDT is added |
+### Database embeds
+
+Database embeds are no longer lightweight cards after creation.
+
+- pending/error states may render as a simple placeholder card
+- once ready, the block expands into the shared inline database surface
+- the inline surface should feel like a real block in the page, not a detached preview
+- removing the block removes only the embed from the document, not the database itself
 
 ---
 
-## 8. Sidebar
+## 6. Column layouts
 
-- Pages and databases shown in the same tree with different icons (🍃 / 🌳).
-- Databases appear as children of the page they were created in.
-- Context menu: Rename, Delete.
-- Inline `+` on page nodes creates a child page.
-- Drag-and-drop reorder of sibling pages (not databases, for now).
-- Search bar at top filters the tree by title.
-- `Collapse all` button when any node is expanded.
+Current column support is intentionally lightweight:
 
----
+- 2-column and 3-column layouts are first-class document nodes
+- each column currently stores lightweight text content
+- columns support drag reordering within the block
 
-## 9. Design system
+Design intent:
 
-This project uses a strict design system defined in `LEAF_DESIGN_GUIDE.md` at the repo root.
-
-**Before writing any code:**
-
-1. **CREATE** `LEAF_DESIGN_GUIDE.md` at the project root if it does not exist (copy the canonical content from the existing file).
-2. **READ** it fully before touching any styles.
-3. **All design decisions** — colours, spacing, type sizes, border radii, motion durations, icon shapes — must match the guide. Do not introduce new values without updating the guide first.
-
-Key rules:
-- Two SVG icons only: Leaf (pages) and Database (databases). No emoji.
-- Two font weights only: 400 and 500. Never 600 or 700.
-- The formatting toolbar is **removed**. All block creation is via `/` slash commands or the block `+` handle.
-- Status bar at the bottom of every editor page: synced status + word count left, mode toggle right.
+- columns should read as part of the page flow, not as a modal or detached widget
+- the drag affordance should stay subtle
+- future work can upgrade columns into true nested block containers without changing the page-level shell
 
 ---
 
-## 10. Decisions and constraints
+## 7. Sidebar expectations
 
-- **Icons**: emoji for now (`🍃` page, `🌳` database); swap for SVG in a polish pass.
-- **Block menu hover**: use a 300 ms grace-period timer so moving left to the `+` doesn't hide it.
-- **Slash commands**: same option set as `+` menu; reuse the same component.
-- **Card title staleness**: acceptable for now; refresh on open (not on render) to avoid API calls per card.
-- **Search infra**: SQLite FTS5 — no Elasticsearch, no extra service, consistent with "zero infra" principle.
-- **Multi-device sync**: not in scope now; CRDT path is documented in `PLANS_AND_ROADMAP.md`.
-- **Mobile**: not in scope; desktop and web first.
+- Pages and databases appear in the same navigational tree with distinct icons.
+- The sidebar should surface live metadata for the active route.
+- Clicking identity fields in the sidebar should focus the corresponding field in the centered header when possible.
+- Backlinks belong in the sidebar, not inline below the editor body.
 
 ---
 
-*Last updated: 2026-03-17 — block menu completed, slash commands implemented, icons added.*
+## 8. Search and navigation direction
+
+Already implemented:
+
+- sidebar search by title
+- breadcrumb navigation
+- backlinks visibility in the sidebar
+
+Planned next:
+
+- quick switcher (`Cmd+K`)
+- full-text search over structured content
+- stronger wikilink/backlink workflows
+
+---
+
+## 9. Design system contract
+
+`LEAF_DESIGN_GUIDE.md` remains the visual source of truth.
+
+Non-negotiables:
+
+- use the shared token set and shell surfaces from the design guide
+- prefer SVG chrome icons from `Icons.tsx`
+- keep font weights at 400/500
+- keep block handles and drag affordances subtle
+- avoid reintroducing a heavy formatting toolbar
+
+---
+
+## 10. Constraints and follow-up
+
+- Stability is more important than clever editor behavior.
+- Avoid changes that risk reintroducing the prior ProseMirror runtime issues.
+- New block types should be shared and reusable where possible.
+- The next editor milestone is true nested block columns plus full document block drag/reorder.
+
+---
+
+*Last updated: 2026-03-18 — reflects the shipped v3 shell, inline database embeds, and column layout blocks.*

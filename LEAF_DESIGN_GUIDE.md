@@ -228,6 +228,20 @@ The earlier “no emoji anywhere in the app” rule is superseded for the icon p
   - negative: `#fef0ee / #8a3a2a / #e8c0b8`
   - neutral: `#f0f3ed / #5a8a6a / #ccddc4`
 
+### Inline database blocks
+
+- Embedded databases should reuse the same visual language as standalone database pages.
+- Inline database blocks sit inside the page flow as rounded bordered panels, not detached cards.
+- Pending/error creation states may use a simple embed card, but the ready state should expand into the shared database surface.
+
+### Column layouts
+
+- Column blocks use a simple grid inside the page flow with `20px` gaps.
+- Two-column layouts use `grid-template-columns: 1fr 1fr`.
+- Three-column layouts use `grid-template-columns: 1fr 1fr 1fr`.
+- Each column surface should read as a soft drop zone: pale background, dashed border, subtle handle, no heavy chrome.
+- Current column blocks are lightweight text columns; future nested-block columns should preserve the same outer shell and spacing.
+
 ### Interaction patterns
 
 - Width modes:
