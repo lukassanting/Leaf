@@ -25,6 +25,8 @@ class LeafModel(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     order = Column(Integer, nullable=False, default=0)  # For maintaining order of items
     tags = Column(MySQLJSON, nullable=True, default=list)
+    icon = Column(MySQLJSON, nullable=True, default=None)  # {"type": "emoji"|"svg"|"image", "value": "..."}
+    properties = Column(MySQLJSON, nullable=True, default=None)  # {"key": "value", ...}
     database_id = Column(String(36), ForeignKey("databases.id", ondelete="SET NULL"), nullable=True)
 
     children = relationship("LeafModel", back_populates="parent")
@@ -60,3 +62,13 @@ class DatabaseRowModel(Base):
     leaf_id = Column(String(36), ForeignKey("leaves.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class PageLinkModel(Base):
+    """Tracks [[wikilink]] references between pages for backlinks."""
+    __tablename__ = "page_links"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    source_leaf_id = Column(String(36), ForeignKey("leaves.id", ondelete="CASCADE"), nullable=False, index=True)
+    target_leaf_id = Column(String(36), ForeignKey("leaves.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.now)

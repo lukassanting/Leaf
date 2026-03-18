@@ -1,4 +1,5 @@
 import asyncio
+import re
 from datetime import datetime
 from uuid import UUID
 
@@ -6,7 +7,7 @@ from fastapi import Depends
 from loguru import logger
 
 from app.database.connectors.mysql import MySQLDatabaseConnector, get_db_connector
-from app.database.models.mysql_models import DatabaseModel, DatabaseRowModel, LeafModel
+from app.database.models.mysql_models import DatabaseModel, DatabaseRowModel, LeafModel, PageLinkModel
 from app.dtos.leaf_dtos import (
     Leaf,
     LeafContentUpdate,
@@ -35,6 +36,8 @@ class LeafOperations:
             database_id=leaf.database_id if leaf.database_id else None,
             children_ids=list(leaf.children_ids or []),
             tags=list(leaf.tags or []),
+            icon=leaf.icon,
+            properties=leaf.properties,
             created_at=leaf.created_at,
             updated_at=leaf.updated_at,
         )
@@ -102,6 +105,9 @@ class LeafOperations:
             if field in {"children_ids", "tags"} and value is not None:
                 setattr(db_leaf, field, list(value))
                 continue
+            if field in {"icon", "properties"}:
+                setattr(db_leaf, field, dict(value) if value is not None else None)
+                continue
             setattr(db_leaf, field, value)
 
         if "parent_id" in fields_set and previous_parent_id != db_leaf.parent_id:
@@ -127,6 +133,8 @@ class LeafOperations:
                     database_id=leaf.database_id,
                     children_ids=list(leaf.children_ids),
                     tags=list(leaf.tags),
+                    icon=leaf.icon,
+                    properties=leaf.properties,
                     type=infer_leaf_type(leaf.parent_id, leaf.database_id),
                 )
                 db_session.add(db_leaf)
@@ -211,6 +219,7 @@ class LeafOperations:
                     raise LeafException(status_code=409, detail="Conflict: leaf was updated elsewhere")
                 db_leaf.content = body.content
                 db_leaf.updated_at = datetime.now()
+                self.sync_page_links(db_session, str(leaf_id), body.content)
                 db_session.commit()
                 db_session.refresh(db_leaf)
                 payload = self._leaf_storage_payload(db_leaf)
@@ -260,6 +269,65 @@ class LeafOperations:
         except Exception as e:
             logger.exception(f"update_leaf failed for {leaf_id}")
             raise LeafException(status_code=getattr(e, "status_code", 500), detail=str(e))
+
+    async def get_backlinks(self, leaf_id: UUID) -> list[LeafTreeItem]:
+        """Return pages that link to this leaf via [[wikilinks]]."""
+        try:
+            lookup_id = str(leaf_id)
+            with self.db.get_db_session() as db_session:
+                source_ids = (
+                    db_session.query(PageLinkModel.source_leaf_id)
+                    .filter(PageLinkModel.target_leaf_id == lookup_id)
+                    .all()
+                )
+                ids = [row[0] for row in source_ids]
+                if not ids:
+                    return []
+                rows = (
+                    db_session.query(LeafModel)
+                    .with_entities(
+                        LeafModel.id, LeafModel.title, LeafModel.type,
+                        LeafModel.parent_id, LeafModel.children_ids,
+                        LeafModel.order, LeafModel.tags,
+                    )
+                    .filter(LeafModel.id.in_(ids))
+                    .all()
+                )
+                return [self._leaf_tree_item(row) for row in rows]
+        except Exception as e:
+            logger.exception(f"get_backlinks failed for {leaf_id}")
+            raise LeafException(status_code=500, detail=str(e))
+
+    def sync_page_links(self, db_session, source_leaf_id: str, content: str | None) -> None:
+        """Parse [[Page name]] from content and upsert page_links rows."""
+        # Delete existing outgoing links for this source
+        db_session.query(PageLinkModel).filter(
+            PageLinkModel.source_leaf_id == source_leaf_id
+        ).delete(synchronize_session=False)
+
+        if not content:
+            return
+
+        # Extract wikilink targets from HTML content
+        # Matches [[Page name]] in text content (may appear inside HTML tags)
+        pattern = r'\[\[([^\]]+)\]\]'
+        link_names = set(re.findall(pattern, content))
+        if not link_names:
+            return
+
+        # Resolve page names to leaf IDs
+        for name in link_names:
+            target = (
+                db_session.query(LeafModel)
+                .filter(LeafModel.title == name.strip())
+                .first()
+            )
+            if target and target.id != source_leaf_id:
+                link = PageLinkModel(
+                    source_leaf_id=source_leaf_id,
+                    target_leaf_id=target.id,
+                )
+                db_session.add(link)
 
     async def delete_leaf(self, leaf_id: UUID):
         try:

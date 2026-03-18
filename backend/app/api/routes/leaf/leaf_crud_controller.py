@@ -36,6 +36,14 @@ async def read_leaf_tree(
         offset=offset,
     )
 
+@router.get("/leaves/{leaf_id}/backlinks", response_model=list[LeafTreeItem])
+async def get_backlinks(
+    leaf_id: UUID,
+    leaf_ops: LeafOperations = Depends(LeafOperations),
+):
+    """Return pages that link to this leaf via [[wikilinks]]."""
+    return await leaf_ops.get_backlinks(leaf_id)
+
 @router.get("/leaves/{leaf_id}", response_model=Leaf)
 async def read_leaf(leaf_id: UUID, leaf_ops: LeafOperations = Depends(LeafOperations)):
     return await leaf_ops.get_leaf(leaf_id)

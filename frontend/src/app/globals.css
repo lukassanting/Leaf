@@ -25,6 +25,24 @@
   /* Sidebar states */
   --color-active:      rgba(61, 140, 82, 0.14);
   --color-hover:       rgba(61, 140, 82, 0.08);
+
+  /* v3 tokens */
+  --leaf-bg-sidebar:   #f0f3ed;
+  --leaf-bg-editor:    #fefffe;
+  --leaf-bg-app:       #f5f7f3;
+  --leaf-bg-hover:     rgba(61, 140, 82, 0.08);
+  --leaf-bg-active:    rgba(61, 140, 82, 0.14);
+  --leaf-bg-tag:       #edf5e8;
+  --leaf-border-soft:  #e6ede2;
+  --leaf-border-strong:#d8e2d2;
+  --leaf-border-tag:   #c5ddb8;
+  --leaf-text-title:   #1a3828;
+  --leaf-text-sidebar: #2d5040;
+  --leaf-text-hint:    #b8d0be;
+  --leaf-text-muted:   #8fa898;
+  --leaf-green:        #3d8c52;
+  --leaf-green-light:  #8cbf94;
+  --leaf-tag-text:     #3b6b4a;
 }
 
 body {

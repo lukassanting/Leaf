@@ -1,13 +1,13 @@
 'use client'
 
-import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { useNavigationProgress } from '@/components/NavigationProgress'
+import { TopStrip } from '@/components/TopStrip'
+import { StatusBar } from '@/components/StatusBar'
 import { DatabaseIcon } from '@/components/Icons'
 import { LoadingShell } from '@/components/LoadingShell'
 import { AddColumnModal, BoardView, GalleryView, TableView } from '@/components/database/DatabaseViews'
 import { useDatabasePage } from '@/hooks/useDatabasePage'
-import { warmEditorRoute } from '@/lib/warmEditorRoute'
+import { useContentWidth } from '@/app/(workspace)/layout'
 import type { ViewType } from '@/lib/api'
 
 const VIEW_LABELS: { key: ViewType; label: string }[] = [
@@ -18,8 +18,8 @@ const VIEW_LABELS: { key: ViewType; label: string }[] = [
 
 export default function DatabaseViewPage() {
   const params = useParams()
-  const { startNavigation } = useNavigationProgress()
   const id = params?.id as string
+  const { contentWidth } = useContentWidth()
 
   const {
     db,
@@ -71,100 +71,120 @@ export default function DatabaseViewPage() {
     ),
   }
 
+  const contentMaxWidth = contentWidth === 'normal' ? 680 : contentWidth === 'wide' ? 960 : undefined
+  const contentPadding = contentWidth === 'full' ? '0 24px' : undefined
+
   return (
     <>
       {showAddCol && <AddColumnModal onAdd={addColumn} onClose={() => setShowAddCol(false)} />}
 
-      <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
+      <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--leaf-bg-editor)' }}>
+        {/* Top strip */}
+        <TopStrip
+          breadcrumbs={breadcrumbs.map((c) => ({ id: c.id, title: c.title, kind: 'page' as const }))}
+          currentTitle={titleDraft}
+        />
+
+        {/* Page header — centered */}
         <div
-          className="flex items-center justify-between px-10 h-10 shrink-0"
-          style={{ borderBottom: '1px solid var(--color-border)' }}
+          style={{
+            padding: '36px 0 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            borderBottom: '0.5px solid var(--leaf-border-soft)',
+          }}
         >
-          <nav className="flex items-center gap-1 text-xs overflow-hidden" style={{ color: 'var(--color-text-muted)' }}>
-            {breadcrumbs.map((crumb, index) => (
-              <span key={crumb.id} className="flex items-center gap-1 min-w-0">
-                {index > 0 && <span className="opacity-40 mx-0.5">/</span>}
-                <Link
-                  href={`/editor/${crumb.id}`}
-                  className="truncate max-w-[120px] transition-colors duration-150 hover:text-leaf-700"
-                  onClick={() => startNavigation()}
-                  onMouseEnter={() => { void warmEditorRoute() }}
-                >
-                  {crumb.title}
-                </Link>
-              </span>
-            ))}
-            {breadcrumbs.length > 0 && <span className="opacity-40 mx-0.5">/</span>}
-            <span className="truncate max-w-[180px] text-xs font-medium" style={{ color: 'var(--color-text-dark)' }}>
-              {titleDraft || 'Untitled database'}
-            </span>
-          </nav>
+          {/* Icon */}
+          <div style={{ position: 'relative', display: 'inline-block', marginBottom: 12 }}>
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 12,
+                background: 'var(--leaf-bg-tag)',
+                border: '0.5px solid var(--leaf-border-strong)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <DatabaseIcon size={26} />
+            </div>
+          </div>
+
+          {/* Title */}
+          <input
+            className="bg-transparent border-none outline-none font-medium leading-tight"
+            style={{
+              fontSize: 28,
+              fontWeight: 500,
+              color: 'var(--leaf-text-title)',
+              letterSpacing: '-0.02em',
+              lineHeight: 1.2,
+              textAlign: 'center',
+              width: '100%',
+              maxWidth: 680,
+              caretColor: 'var(--leaf-green)',
+            }}
+            value={titleDraft}
+            onChange={(event) => setTitleDraft(event.target.value)}
+            onBlur={flushTitleSave}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                flushTitleSave()
+                ;(event.target as HTMLInputElement).blur()
+              }
+            }}
+            placeholder="Untitled database"
+          />
+
+          {/* Meta row */}
+          <div className="flex items-center gap-2 mt-2" style={{ fontSize: 11.5, color: 'var(--leaf-text-muted)' }}>
+            <span
+              className="rounded-full"
+              style={{
+                width: 6,
+                height: 6,
+                backgroundColor: saveStatus === 'error' ? '#dc2626' : saveStatus === 'saving' ? 'var(--leaf-text-muted)' : '#6abf7a',
+              }}
+            />
+            <span>{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Error' : 'Synced'}</span>
+            <span style={{ color: '#ccd9c4' }}>·</span>
+            <span>{rows.length} {rows.length === 1 ? 'entry' : 'entries'}</span>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto px-10 pt-10 pb-6">
-            <div className="flex items-start gap-3 mb-3">
-              <span className="mt-1.5 shrink-0" style={{ color: 'var(--color-primary)' }}>
-                <DatabaseIcon size={22} />
-              </span>
-              <input
-                className="flex-1 bg-transparent border-none outline-none font-medium leading-tight"
-                style={{ fontSize: 29, color: 'var(--color-text-dark)', caretColor: 'var(--color-primary)' }}
-                value={titleDraft}
-                onChange={(event) => setTitleDraft(event.target.value)}
-                onBlur={flushTitleSave}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault()
-                    flushTitleSave()
-                    ;(event.target as HTMLInputElement).blur()
-                  }
-                }}
-                placeholder="Untitled database"
-              />
-            </div>
-
-            <div className="mb-6 flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{
-                  backgroundColor:
-                    saveStatus === 'error'
-                      ? '#dc2626'
-                      : saveStatus === 'saving'
-                        ? 'var(--color-text-muted)'
-                        : 'var(--color-primary)',
-                }}
-              />
-              <span>
-                {saveStatus === 'saving'
-                  ? 'Saving…'
-                  : saveStatus === 'saved'
-                    ? 'Synced'
-                    : saveStatus === 'error'
-                      ? 'Error'
-                      : 'Synced'}
-              </span>
-              <span className="opacity-30">·</span>
-              <span>{rows.length} {rows.length === 1 ? 'entry' : 'entries'}</span>
-            </div>
-
+        {/* Database content */}
+        <div className="flex-1 overflow-y-auto" style={{ padding: '20px 0' }}>
+          <div
+            style={{
+              maxWidth: contentMaxWidth || 960,
+              margin: '0 auto',
+              padding: contentPadding || '0 24px',
+            }}
+          >
+            {/* Toolbar */}
             <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-1 rounded-full p-1" style={{ border: '1px solid var(--color-border)', background: 'var(--color-sidebar-bg)' }}>
+              <div className="flex items-center gap-0.5 rounded-full" style={{ background: '#eef3eb', borderRadius: 20, padding: 3 }}>
                 {VIEW_LABELS.map(({ key, label }) => (
                   <button
                     key={key}
                     type="button"
                     title={label}
                     onClick={() => void setViewType(key)}
-                    className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors duration-150"
+                    className="flex items-center gap-1.5 transition-colors duration-150"
                     style={{
-                      background: activeView === key ? '#fff' : 'transparent',
-                      color: activeView === key ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                      boxShadow: activeView === key ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                      padding: '5px 13px',
+                      borderRadius: 16,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      background: activeView === key ? 'var(--leaf-bg-editor)' : 'transparent',
+                      color: activeView === key ? 'var(--leaf-text-title)' : '#5a8a6a',
+                      fontWeight: activeView === key ? 500 : 400,
                     }}
-                    onMouseEnter={(event) => { if (activeView !== key) event.currentTarget.style.color = 'var(--color-text-dark)' }}
-                    onMouseLeave={(event) => { if (activeView !== key) event.currentTarget.style.color = 'var(--color-text-muted)' }}
                   >
                     {viewIcons[key]}
                     <span>{label}</span>
@@ -172,16 +192,68 @@ export default function DatabaseViewPage() {
                 ))}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 transition-colors duration-150"
+                  style={{
+                    fontSize: 12,
+                    color: '#5a8a6a',
+                    padding: '5px 11px',
+                    borderRadius: 7,
+                    border: '0.5px solid #cdd9c6',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(61,140,82,0.07)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                    <path d="M1 3H10M2.5 5.5H8.5M4 8H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                  Filter
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 transition-colors duration-150"
+                  style={{
+                    fontSize: 12,
+                    color: '#5a8a6a',
+                    padding: '5px 11px',
+                    borderRadius: 7,
+                    border: '0.5px solid #cdd9c6',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(61,140,82,0.07)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                    <path d="M1 3L3.5 5.5L6 3M5 8H10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Sort
+                </button>
                 <button
                   type="button"
                   onClick={() => void addRow()}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-md text-sm transition-colors duration-150"
-                  style={{ background: 'var(--color-primary)', color: '#fff' }}
-                  onMouseEnter={(event) => (event.currentTarget.style.background = 'var(--color-primary-dk)')}
-                  onMouseLeave={(event) => (event.currentTarget.style.background = 'var(--color-primary)')}
+                  className="flex items-center gap-1.5 transition-colors duration-150"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    color: '#fff',
+                    padding: '5px 11px',
+                    borderRadius: 7,
+                    border: '0.5px solid var(--leaf-green)',
+                    background: 'var(--leaf-green)',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#2f7340')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--leaf-green)')}
                 >
-                  <span>+</span> New page
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                    <path d="M5.5 1V10M1 5.5H10" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                  New entry
                 </button>
               </div>
             </div>
@@ -198,20 +270,12 @@ export default function DatabaseViewPage() {
           </div>
         </div>
 
-        <div
-          className="flex items-center justify-between px-10 shrink-0 text-xs"
-          style={{
-            height: 32,
-            borderTop: '1px solid var(--color-border)',
-            backgroundColor: 'var(--color-sidebar-bg)',
-            color: 'var(--color-text-muted)',
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--color-primary)' }} />
-            <span>{activeView.charAt(0).toUpperCase() + activeView.slice(1)} view</span>
-          </div>
-        </div>
+        {/* Status bar */}
+        <StatusBar
+          saveStatus={saveStatus}
+          wordCount={0}
+          modeLabel={`${activeView.charAt(0).toUpperCase() + activeView.slice(1)} view`}
+        />
       </div>
     </>
   )

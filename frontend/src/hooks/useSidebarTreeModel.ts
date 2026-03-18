@@ -50,7 +50,7 @@ export function useSidebarTreeModel(activeId?: string) {
     let hadCached = false
     if (cached?.length) {
       hadCached = true
-      const mapped = mapLeafNodes(cached)
+      const mapped = mapLeafNodes(cached.map((c) => ({ ...c, tags: c.tags ?? [] })))
       setNodes(mapped)
       setExpanded((prev) => Object.keys(prev).length > 0 ? prev : defaultExpanded(mapped))
       setLoading(false)

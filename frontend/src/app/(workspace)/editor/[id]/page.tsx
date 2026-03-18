@@ -1,18 +1,19 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
 import { useCallback, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { useNavigationProgress } from '@/components/NavigationProgress'
 import { LoadingShell } from '@/components/LoadingShell'
+import { TopStrip } from '@/components/TopStrip'
+import { StatusBar } from '@/components/StatusBar'
 import { TagsInput } from '@/components/editor/TagsInput'
 import { createDatabaseAndEmit } from '@/lib/databaseMutations'
 import { createLeafAndPrimeCache, renameLeafAndPrimeCache, updateLeafAndPrimeCache } from '@/lib/leafMutations'
 import { useLeafAutosave } from '@/hooks/useLeafAutosave'
 import { useLeafBreadcrumbs } from '@/hooks/useLeafBreadcrumbs'
 import { useLeafPageData } from '@/hooks/useLeafPageData'
-import { warmDatabaseRoute, warmEditorRoute } from '@/lib/warmEditorRoute'
+import { warmDatabaseRoute } from '@/lib/warmEditorRoute'
+import { useContentWidth } from '@/app/(workspace)/layout'
 import { LeafIcon } from '@/components/Icons'
 import type { EditorActions } from '@/components/Editor'
 
@@ -20,18 +21,19 @@ const Editor = dynamic(() => import(/* webpackPrefetch: true */ '@/components/Ed
 
 export default function EditorPage() {
   const params = useParams()
-  const { startNavigation } = useNavigationProgress()
   const leafId = params?.id as string
 
   const [editorMode, setEditorMode] = useState<'rich' | 'markdown'>('rich')
   const [wordCount, setWordCount] = useState(0)
   const editorActionsRef = useRef<EditorActions | null>(null)
+  const { contentWidth } = useContentWidth()
 
   const {
     content,
     setContent,
     title,
     setTitle,
+    description,
     parentId,
     databaseId,
     childrenIds,
@@ -39,7 +41,7 @@ export default function EditorPage() {
     setUpdatedAt,
     tags,
     setTags,
-    createdAt,
+    icon,
     loadingLeaf,
     savedTitleRef,
     hasLoadedRef,
@@ -120,21 +122,9 @@ export default function EditorPage() {
       .catch((error) => console.error('[leaf:create] database failed', error))
   }, [leafId])
 
-  const saveLabel =
-    saveStatus === 'saving' ? 'Saving…' :
-    saveStatus === 'saved' ? 'Synced' :
-    saveStatus === 'error' ? 'Error' :
-    saveStatus === 'offline' ? 'Saved locally' : 'Synced'
-
-  const saveDotColor =
-    saveStatus === 'error' ? '#dc2626' :
-    saveStatus === 'saving' ? 'var(--color-text-muted)' :
-    saveStatus === 'offline' ? '#d97706' : 'var(--color-primary)'
-
-  const fmtDate = (iso: string | null) => {
-    if (!iso) return '—'
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-  }
+  // Content width styles
+  const contentMaxWidth = contentWidth === 'normal' ? 680 : contentWidth === 'wide' ? 960 : undefined
+  const contentPadding = contentWidth === 'full' ? '0 24px' : undefined
 
   if (loadingLeaf && !hasLoadedRef.current) {
     return <LoadingShell label="Loading page…" />
@@ -143,83 +133,124 @@ export default function EditorPage() {
   return (
     <div
       className="flex flex-col min-h-screen"
-      style={{ backgroundColor: 'var(--background)' }}
+      style={{ backgroundColor: 'var(--leaf-bg-editor)' }}
       onKeyDown={handleKeyDown}
     >
-      <div
-        className="flex items-center justify-between px-10 h-10 shrink-0"
-        style={{ borderBottom: '1px solid var(--color-border)' }}
-      >
-        <nav className="flex items-center gap-1 text-xs overflow-hidden" style={{ color: 'var(--color-text-muted)' }}>
-          {breadcrumbs.map((crumb, index) => (
-            <span key={crumb.id} className="flex items-center gap-1 min-w-0">
-              {index > 0 && <span className="mx-0.5 opacity-40">/</span>}
-              <Link
-                href={crumb.kind === 'database' ? `/databases/${crumb.id}` : `/editor/${crumb.id}`}
-                className="truncate max-w-[120px] transition-colors duration-150 hover:text-leaf-700"
-                onClick={() => startNavigation()}
-                onMouseEnter={() => {
-                  if (crumb.kind === 'database') {
-                    void warmDatabaseRoute()
-                    return
-                  }
-                  void warmEditorRoute()
-                }}
-              >
-                {crumb.title}
-              </Link>
-            </span>
-          ))}
-          {breadcrumbs.length > 0 && <span className="opacity-40 mx-0.5">/</span>}
-          <span className="truncate max-w-[180px] text-xs font-medium" style={{ color: 'var(--color-text-dark)' }}>
-            {title || 'Untitled'}
-          </span>
-        </nav>
+      {/* Top strip */}
+      <TopStrip
+        breadcrumbs={breadcrumbs.map((c) => ({ id: c.id, title: c.title, kind: c.kind }))}
+        currentTitle={title}
+      />
 
-        <div className="flex items-center gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={() => editorActionsRef.current?.exportMd()}
-            className="text-xs transition-colors duration-150"
-            style={{ color: 'var(--color-text-muted)' }}
-            onMouseEnter={(event) => (event.currentTarget.style.color = 'var(--color-primary)')}
-            onMouseLeave={(event) => (event.currentTarget.style.color = 'var(--color-text-muted)')}
+      {/* Page header — centered */}
+      <div
+        style={{
+          padding: '36px 0 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          borderBottom: '0.5px solid var(--leaf-border-soft)',
+        }}
+      >
+        {/* Icon */}
+        <div style={{ position: 'relative', display: 'inline-block', marginBottom: 12, cursor: 'pointer' }}>
+          <div
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 12,
+              background: 'var(--leaf-bg-tag)',
+              border: '0.5px solid var(--leaf-border-strong)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            Export
-          </button>
+            {icon?.type === 'emoji' ? (
+              <span style={{ fontSize: 28 }}>{icon.value}</span>
+            ) : (
+              <LeafIcon size={26} />
+            )}
+          </div>
+          <div
+            style={{
+              position: 'absolute',
+              bottom: -4,
+              right: -4,
+              width: 16,
+              height: 16,
+              background: 'var(--leaf-green)',
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '2px solid var(--leaf-bg-editor)',
+            }}
+          >
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+              <path d="M4 1V7M1 4H7" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
+            </svg>
+          </div>
+        </div>
+
+        {/* Title */}
+        <input
+          className="bg-transparent border-none outline-none font-medium leading-tight"
+          style={{
+            fontSize: 28,
+            fontWeight: 500,
+            color: 'var(--leaf-text-title)',
+            letterSpacing: '-0.02em',
+            lineHeight: 1.2,
+            textAlign: 'center',
+            width: '100%',
+            maxWidth: 680,
+            caretColor: 'var(--leaf-green)',
+          }}
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          onBlur={(event) => { void handleTitleSave(event.target.value) }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              ;(event.target as HTMLInputElement).blur()
+            }
+          }}
+          placeholder=""
+        />
+
+        {/* Description */}
+        <div
+          style={{
+            fontSize: 13.5,
+            color: 'var(--leaf-text-muted)',
+            marginTop: 6,
+            maxWidth: 480,
+            lineHeight: 1.6,
+            minHeight: '1.6em',
+          }}
+        >
+          {description || (
+            <span style={{ color: 'var(--leaf-text-hint)' }}>Add a description…</span>
+          )}
+        </div>
+
+        {/* Tags */}
+        <div style={{ marginTop: 10 }}>
+          <TagsInput tags={tags} onChange={handleTagsSave} />
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-10 pt-10 pb-4">
-          <div className="flex items-start gap-3 mb-3">
-            <span className="mt-1.5 shrink-0" style={{ color: 'var(--color-primary)' }}>
-              <LeafIcon size={22} />
-            </span>
-            <input
-              className="flex-1 bg-transparent border-none outline-none font-medium leading-tight"
-              style={{ fontSize: 29, color: 'var(--color-text-dark)', caretColor: 'var(--color-primary)' }}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              onBlur={(event) => { void handleTitleSave(event.target.value) }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  ;(event.target as HTMLInputElement).blur()
-                }
-              }}
-              placeholder="Untitled"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-6 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            <span>Created {fmtDate(createdAt)}</span>
-            <span className="opacity-30">·</span>
-            <TagsInput tags={tags} onChange={handleTagsSave} />
-          </div>
-
-          <div className="mb-6" style={{ height: 1, backgroundColor: 'var(--color-border)' }} />
-
+      {/* Editor canvas */}
+      <div className="flex-1 overflow-y-auto" style={{ padding: '28px 0' }}>
+        <div
+          style={{
+            maxWidth: contentMaxWidth,
+            margin: contentMaxWidth ? '0 auto' : undefined,
+            padding: contentPadding || '0 24px',
+          }}
+        >
           <Editor
             content={content}
             onUpdate={(html) => {
@@ -237,42 +268,12 @@ export default function EditorPage() {
         </div>
       </div>
 
-      <div
-        className="flex items-center justify-between px-10 shrink-0"
-        style={{
-          height: 32,
-          borderTop: '1px solid var(--color-border)',
-          backgroundColor: 'var(--color-sidebar-bg)',
-        }}
-      >
-        <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: saveDotColor }} />
-          <span>{saveLabel}</span>
-          {wordCount > 0 && (
-            <>
-              <span className="opacity-30">·</span>
-              <span>{wordCount} {wordCount === 1 ? 'word' : 'words'}</span>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center rounded text-xs overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
-          {(['rich', 'markdown'] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => editorActionsRef.current ? editorActionsRef.current.setMode(mode) : setEditorMode(mode)}
-              className="px-2.5 py-0.5 capitalize transition-colors duration-150"
-              style={{
-                background: editorMode === mode ? 'var(--color-primary)' : 'transparent',
-                color: editorMode === mode ? '#fff' : 'var(--color-text-muted)',
-              }}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Status bar */}
+      <StatusBar
+        saveStatus={saveStatus}
+        wordCount={wordCount}
+        modeLabel={editorMode === 'rich' ? 'Rich' : 'Markdown'}
+      />
     </div>
   )
 }

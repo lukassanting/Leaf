@@ -23,6 +23,8 @@ class LeafCreate(BaseModel):
     database_id: Optional[str] = None
     children_ids: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
+    icon: Optional[dict] = None
+    properties: Optional[dict] = None
 
 
 class LeafUpdate(BaseModel):
@@ -33,6 +35,8 @@ class LeafUpdate(BaseModel):
     database_id: Optional[str] = None
     children_ids: Optional[list[str]] = None
     tags: Optional[list[str]] = None
+    icon: Optional[dict] = None
+    properties: Optional[dict] = None
 
 
 class LeafContentUpdate(BaseModel):
@@ -51,6 +55,8 @@ class Leaf(BaseModel):
     database_id: Optional[str] = None
     children_ids: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
+    icon: Optional[dict] = None
+    properties: Optional[dict] = None
     created_at: datetime
     updated_at: datetime
 

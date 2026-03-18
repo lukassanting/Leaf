@@ -4,15 +4,19 @@ import { useEffect, useRef, useState } from 'react'
 import { leavesApi } from '@/lib/api'
 import { toCachedLeaf } from '@/lib/cacheMappers'
 import { getCachedLeaf, setCachedLeaf } from '@/lib/leafCache'
+import type { LeafIcon } from '@/lib/api'
 
 export function useLeafPageData(leafId: string) {
   const [content, setContent] = useState('')
   const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   const [parentId, setParentId] = useState<string | null>(null)
   const [databaseId, setDatabaseId] = useState<string | null>(null)
   const [childrenIds, setChildrenIds] = useState<string[]>([])
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
   const [tags, setTags] = useState<string[]>([])
+  const [icon, setIcon] = useState<LeafIcon | null>(null)
+  const [properties, setProperties] = useState<Record<string, string> | null>(null)
   const [createdAt, setCreatedAt] = useState<string | null>(null)
   const [loadingLeaf, setLoadingLeaf] = useState(true)
 
@@ -43,6 +47,7 @@ export function useLeafPageData(leafId: string) {
         if (cancelled) return
         setTitle(leaf.title)
         savedTitleRef.current = leaf.title
+        setDescription(leaf.description || '')
         setParentId(leaf.parent_id ?? null)
         setDatabaseId(leaf.database_id ?? null)
         setChildrenIds(leaf.children_ids ?? [])
@@ -50,6 +55,8 @@ export function useLeafPageData(leafId: string) {
         setCreatedAt(leaf.created_at ?? null)
         setContent(leaf.content || '')
         setTags(leaf.tags ?? [])
+        setIcon(leaf.icon ?? null)
+        setProperties(leaf.properties ?? null)
         latestContentRef.current = leaf.content || ''
         hasLoadedRef.current = true
         await setCachedLeaf(toCachedLeaf(leaf))
@@ -70,6 +77,8 @@ export function useLeafPageData(leafId: string) {
     setContent,
     title,
     setTitle,
+    description,
+    setDescription,
     parentId,
     setParentId,
     databaseId,
@@ -80,6 +89,10 @@ export function useLeafPageData(leafId: string) {
     setUpdatedAt,
     tags,
     setTags,
+    icon,
+    setIcon,
+    properties,
+    setProperties,
     createdAt,
     loadingLeaf,
     latestContentRef,
