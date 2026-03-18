@@ -1,0 +1,190 @@
+'use client'
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { databasesApi } from '@/lib/api'
+import type { Database, DatabaseRow, PropertyDefinition, ViewType } from '@/lib/api'
+import {
+  createDatabaseRow,
+  updateDatabaseAndEmitTitle,
+  updateDatabaseRowTitle,
+  updateDatabaseViewType,
+} from '@/lib/databaseMutations'
+import { useDatabaseBreadcrumbs } from './useDatabaseBreadcrumbs'
+
+export function useDatabasePage(id: string) {
+  const [db, setDb] = useState<Database | null>(null)
+  const [rows, setRows] = useState<DatabaseRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showAddCol, setShowAddCol] = useState(false)
+  const [titleDraft, setTitleDraft] = useState('')
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const savedTitleRef = useRef('')
+  const hasLoadedTitleRef = useRef(false)
+  const titleSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!id) return
+
+    Promise.all([databasesApi.get(id), databasesApi.listRows(id)])
+      .then(([database, rowItems]) => {
+        setDb(database)
+        setTitleDraft(database.title)
+        savedTitleRef.current = database.title
+        hasLoadedTitleRef.current = false
+        setRows(rowItems)
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [id])
+
+  const saveTitle = useCallback(async (value: string) => {
+    const trimmed = value.trim() || 'Untitled database'
+    if (trimmed === savedTitleRef.current || !db) {
+      setSaveStatus('idle')
+      return
+    }
+    try {
+      const updated = await updateDatabaseAndEmitTitle(id, {
+        title: trimmed,
+        schema: db.schema,
+        view_type: db.view_type,
+        parent_leaf_id: db.parent_leaf_id ?? undefined,
+      })
+      setDb(updated)
+      setTitleDraft(updated.title)
+      savedTitleRef.current = updated.title
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus((current) => current === 'saved' ? 'idle' : current), 1200)
+    } catch {
+      setSaveStatus('error')
+      console.error('Failed to save title')
+    }
+  }, [db, id])
+
+  useEffect(() => {
+    if (!db) return
+    if (!hasLoadedTitleRef.current) {
+      hasLoadedTitleRef.current = true
+      return
+    }
+    if (titleDraft.trim() === savedTitleRef.current) return
+
+    setSaveStatus('saving')
+    if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+    titleSaveTimeoutRef.current = setTimeout(() => {
+      void saveTitle(titleDraft)
+    }, 500)
+
+    return () => {
+      if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+    }
+  }, [titleDraft, db, saveTitle])
+
+  const flushTitleSave = useCallback(() => {
+    if (titleSaveTimeoutRef.current) {
+      clearTimeout(titleSaveTimeoutRef.current)
+      titleSaveTimeoutRef.current = null
+    }
+    void saveTitle(titleDraft)
+  }, [saveTitle, titleDraft])
+
+  const setViewType = useCallback(async (viewType: ViewType) => {
+    if (!db) return
+    try {
+      const updated = await updateDatabaseViewType(id, {
+        title: db.title,
+        schema: db.schema,
+        parent_leaf_id: db.parent_leaf_id ?? undefined,
+      }, viewType)
+      setDb(updated)
+    } catch {
+      console.error('Failed to save view type')
+    }
+  }, [db, id])
+
+  const columns: PropertyDefinition[] = useMemo(() => db?.schema?.properties ?? [], [db])
+
+  const addRow = useCallback(async () => {
+    try {
+      const row = await createDatabaseRow(id)
+      setRows((prev) => [...prev, row])
+    } catch (error) {
+      console.error(error)
+    }
+  }, [id])
+
+  const deleteRow = useCallback(async (rowId: string) => {
+    if (!confirm('Delete this entry and its page?')) return
+    try {
+      await databasesApi.deleteRow(id, rowId)
+      setRows((prev) => prev.filter((row) => row.id !== rowId))
+    } catch (error) {
+      console.error(error)
+    }
+  }, [id])
+
+  const updateName = useCallback(async (rowId: string, title: string) => {
+    const row = rows.find((item) => item.id === rowId)
+    if (!row) return
+    try {
+      await updateDatabaseRowTitle(row, id, title)
+      setRows((prev) => prev.map((item) => item.id === rowId ? { ...item, leaf_title: title } : item))
+    } catch (error) {
+      console.error(error)
+    }
+  }, [rows, id])
+
+  const updateCell = useCallback(async (rowId: string, key: string, value: string) => {
+    const row = rows.find((item) => item.id === rowId)
+    if (!row) return
+    const column = columns.find((item) => item.key === key)
+    const parsedValue: unknown = column?.type === 'tags'
+      ? value.split(',').map((tag) => tag.trim()).filter(Boolean)
+      : value
+    const updated = await databasesApi.updateRow(id, rowId, {
+      properties: { ...row.properties, [key]: parsedValue },
+    })
+    setRows((prev) => prev.map((item) => (item.id === rowId ? updated : item)))
+  }, [id, rows, columns])
+
+  const addColumn = useCallback(async (definition: PropertyDefinition) => {
+    if (!db) return
+    const newSchema = { properties: [...(db.schema?.properties ?? []), definition] }
+    try {
+      const updated = await databasesApi.update(id, {
+        title: db.title,
+        schema: newSchema,
+        view_type: db.view_type,
+        parent_leaf_id: db.parent_leaf_id ?? undefined,
+      })
+      setDb(updated)
+      setShowAddCol(false)
+    } catch (error) {
+      console.error(error)
+    }
+  }, [db, id])
+
+  const breadcrumbs = useDatabaseBreadcrumbs(db?.parent_leaf_id)
+  const activeView = db?.view_type === 'list' ? 'board' : (db?.view_type || 'table')
+
+  return {
+    db,
+    rows,
+    loading,
+    showAddCol,
+    setShowAddCol,
+    titleDraft,
+    setTitleDraft,
+    saveStatus,
+    flushTitleSave,
+    breadcrumbs,
+    columns,
+    activeView,
+    addRow,
+    deleteRow,
+    updateName,
+    updateCell,
+    addColumn,
+    setViewType,
+  }
+}

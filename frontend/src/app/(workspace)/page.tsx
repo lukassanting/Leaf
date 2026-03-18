@@ -1,41 +1,133 @@
 'use client'
 
-import { useEffect } from 'react'
+import Link from 'next/link'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { leavesApi } from '@/lib/api'
+import { useNavigationProgress } from '@/components/NavigationProgress'
 import { getCachedTree } from '@/lib/leafCache'
+import { createLeafAndPrimeCache } from '@/lib/leafMutations'
+import { warmEditorRoute } from '@/lib/warmEditorRoute'
+import { useWarmWorkspaceRoutes } from '@/hooks/useWarmWorkspaceRoutes'
+import { LeafIcon } from '@/components/Icons'
+
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
 
 export default function HomePage() {
   const router = useRouter()
+  const { startNavigation, stopNavigation } = useNavigationProgress()
+  const [pages, setPages] = useState<{ id: string; title: string }[]>([])
+  const [creating, setCreating] = useState(false)
+
+  useWarmWorkspaceRoutes()
 
   useEffect(() => {
-    const redirect = async () => {
-      // Try cached tree first for instant redirect
-      const cached = await getCachedTree()
-      if (cached && cached.length > 0) {
-        router.replace(`/editor/${cached[0].id}`)
-        return
-      }
+    getCachedTree().then((tree) => {
+      if (!tree?.length) return
+      const roots = tree
+        .filter((n) => !n.parent_id)
+        .slice(0, 8)
+        .map((n) => ({ id: n.id, title: n.title || 'Untitled' }))
+      setPages(roots)
+    })
+  }, [])
 
-      // Fall back to API
-      try {
-        const tree = await leavesApi.getTree()
-        if (tree.length > 0) {
-          router.replace(`/editor/${tree[0].id}`)
-          return
-        }
-      } catch {}
-
-      // No pages exist — create one
-      try {
-        const leaf = await leavesApi.create({ title: 'Untitled' })
-        router.replace(`/editor/${leaf.id}`)
-      } catch {
-        console.error('Failed to create initial page')
-      }
+  const handleNewPage = useCallback(async () => {
+    if (creating) return
+    setCreating(true)
+    try {
+      startNavigation()
+      void warmEditorRoute()
+      const leaf = await createLeafAndPrimeCache({ title: 'Untitled' }, { parent_id: null, kind: 'page' })
+      router.push(`/editor/${leaf.id}`)
+    } catch {
+      stopNavigation()
+      console.error('Failed to create page')
+      setCreating(false)
     }
-    redirect()
-  }, [router])
+  }, [router, creating, startNavigation, stopNavigation])
 
-  return <div className="flex-1 flex items-center justify-center text-leaf-300 text-sm">Loading…</div>
+  return (
+    <div
+      className="flex-1 flex flex-col items-center justify-center min-h-screen px-8"
+      style={{ backgroundColor: 'var(--background)' }}
+    >
+      <div className="w-full max-w-xl">
+        {/* Greeting */}
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-2">
+            <span style={{ color: 'var(--color-primary)' }}>
+              <LeafIcon size={26} />
+            </span>
+            <h1
+              className="text-3xl font-medium tracking-tight"
+              style={{ color: 'var(--color-text-dark)' }}
+              suppressHydrationWarning
+            >
+              {greeting()}
+            </h1>
+          </div>
+          <p className="text-sm ml-11" style={{ color: 'var(--color-text-muted)' }}>
+            Pick up where you left off, or start something new.
+          </p>
+        </div>
+
+        {/* Recent pages */}
+        {pages.length > 0 && (
+          <div className="mb-8">
+            <p
+              className="text-[10px] font-medium tracking-widest uppercase mb-3"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              Recent
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {pages.map((page) => (
+                <Link
+                  key={page.id}
+                  href={`/editor/${page.id}`}
+                  className="flex items-center gap-2.5 px-4 py-3 rounded-lg transition-colors duration-150"
+                  style={{ border: '1px solid var(--color-border)', background: '#fff' }}
+                  onClick={() => startNavigation()}
+                  onMouseEnter={(e) => {
+                    void warmEditorRoute()
+                    e.currentTarget.style.backgroundColor = 'var(--color-hover)'
+                  }}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}
+                >
+                  <span className="shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+                    <LeafIcon size={13} />
+                  </span>
+                  <span
+                    className="text-sm font-medium truncate"
+                    style={{ color: 'var(--color-text-dark)' }}
+                  >
+                    {page.title}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* New page action */}
+        <button
+          type="button"
+          onClick={handleNewPage}
+          onMouseEnter={() => { void warmEditorRoute() }}
+          onFocus={() => { void warmEditorRoute() }}
+          disabled={creating}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-opacity duration-150 disabled:opacity-50"
+          style={{ background: 'var(--color-primary)', color: '#fff' }}
+        >
+          <span className="text-base leading-none">+</span>
+          {creating ? 'Creating…' : 'New page'}
+        </button>
+      </div>
+    </div>
+  )
 }

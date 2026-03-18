@@ -3,7 +3,7 @@ from uuid import UUID
 
 # Local imports
 from app.database.operations.leaf_operations import LeafOperations
-from app.dtos.leaf_dtos import Leaf, LeafContentUpdate, LeafCreate, LeafReorderChildren, LeafTreeItem, LeafType
+from app.dtos.leaf_dtos import Leaf, LeafContentUpdate, LeafCreate, LeafReorderChildren, LeafTreeItem, LeafType, LeafUpdate
 
 router = APIRouter()
 
@@ -59,7 +59,7 @@ async def reorder_leaf_children(
     return await leaf_ops.reorder_children(leaf_id, body.child_ids)
 
 @router.put("/leaves/{leaf_id}", response_model=Leaf)
-async def update_leaf(leaf_id: UUID, leaf: LeafCreate, leaf_ops: LeafOperations = Depends(LeafOperations)):
+async def update_leaf(leaf_id: UUID, leaf: LeafUpdate, leaf_ops: LeafOperations = Depends(LeafOperations)):
     return await leaf_ops.update_leaf(leaf_id, leaf)
 
 @router.delete("/leaves/{leaf_id}")

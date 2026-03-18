@@ -100,6 +100,9 @@ User → Next.js frontend (editor + sidebar) ⇄ Local cache (IndexedDB)
 - [x] Editor and database view share the same page layout: `max-w-3xl mx-auto px-12 py-12`, large editable title.
 - [x] Sidebar: "New page" and "New database" labeled buttons, databases section, active page highlight.
 - [x] `postcss.config.mjs` uses ESM only (no conflicting `module.exports`).
+- [x] Home page: greeting (morning/afternoon/evening) + recent pages grid + "New page" CTA; replaces the old auto-redirect.
+- [x] Editor mode toggle (Rich/Markdown) and Export button are now correctly wired — mode switch triggers HTML↔Markdown conversion; Export downloads `.md` file.
+- [x] New-page creation pre-populates IndexedDB cache so the editor route gets an instant cache hit (eliminates redundant API call).
 
 ### DevOps and DX
 
@@ -111,31 +114,64 @@ User → Next.js frontend (editor + sidebar) ⇄ Local cache (IndexedDB)
 
 ---
 
-## 4. Future / optional next steps
+## 4. Roadmap
 
-### Performance and scale
+### Phase 0 — Critical bugs (highest priority)
+
+| # | Item | Files | Status |
+|---|------|-------|--------|
+| 0.1 | Fix slash commands: `idx` resets to 0 on every keystroke in `onUpdate`, breaking arrow-key selection; pass `range.from` in event detail so async insertions (subpage, database) land at the right position | `SlashCommands.tsx`, `Editor.tsx` | [x] |
+| 0.2 | Fix breadcrumbs: editor + database pages show ancestor chain but omit the current page/database as the terminal crumb | `editor/[id]/page.tsx`, `databases/[id]/page.tsx` | [x] |
+| 0.3 | Fix creation speed: `leaf-tree-changed` after create triggers a full 2-API re-fetch; replace with optimistic `leaf-created` event carrying node data so the sidebar appends without a round trip; also merge double DB commit in backend `create_leaf`; file writes moved to non-blocking thread pool; editor loading spinner removed | `Sidebar.tsx`, `SidebarTree.tsx`, `editor/[id]/page.tsx`, `leaf_operations.py` | [x] |
+| 0.4 | Fix slash command idx out-of-bounds: clamp `idx` in `onUpdate` when filtered list shrinks; prevented crash on Enter with stale index | `SlashCommands.tsx` | [x] |
+| 0.5 | Fix mode toggle: was disconnected — `setEditorMode` in page never reached Editor's internal state; fix by making mode a controlled prop + exposing `setMode` via `EditorActions` ref; fix Export button which was calling `saveNow` instead of exporting markdown | `Editor.tsx`, `editor/[id]/page.tsx` | [x] |
+| 0.6 | Home page: replace auto-redirect with a greeting + recent pages grid + New page button | `(workspace)/page.tsx` | [x] |
+| 0.7 | Pre-populate leaf cache on creation so editor page gets instant cache hit instead of extra API call | `Sidebar.tsx`, `SidebarTree.tsx`, `(workspace)/page.tsx` | [x] |
+
+### Phase 1 — Quick wins (≤1 day each, do in one session)
+
+Recommended order for max impact per hour:
+
+| # | Item | Complexity |
+|---|------|------------|
+| 1.1 | Markdown input shortcuts: add `@tiptap/extension-typography` + `markInputRule` for `**bold**` | S |
+| 1.2 | Content width toggle: replace hardcoded `max-w-2xl` with `normal / wide / full` state + button, persisted to localStorage | S |
+| 1.3 | Focus mode (`Ctrl+.`): fades sidebar + topbar via opacity transition; second press or Escape restores | S |
+| 1.4 | Copy as Markdown: right-click context menu on editor using existing TurndownService | S |
+| 1.5 | Scroll position memory: `sessionStorage` keyed by leafId, restored after load | S |
+| 1.6 | Tab to indent: add `@tiptap/extension-indent` for Tab/Shift-Tab on paragraphs and headings | S |
+| 1.7 | Reading time: show `~N min read` in status bar when word count > 1000 | XS |
+| 1.8 | Autosave indicator polish: `idle` shows nothing, `saved` shows "Saved" with 1.5 s fade | S |
+
+### Phase 2 — Medium features (2–3 days each)
+
+| # | Item | Complexity | Notes |
+|---|------|------------|-------|
+| 2.1 | Quick Switcher (`Cmd+K`): modal, fuzzy search on cached tree + new `/leaves/search` backend endpoint; recent pages first, then title match, then content | M | Highest ROI in Phase 2 |
+| 2.2 | Block drag handle: `⠿` button left of `+`; wire to ProseMirror native drag with 200 ms CSS transition | M | Do after 0.1 slash fix |
+| 2.3 | Typewriter mode: `coordsAtPos` → center-scroll on `onSelectionUpdate`; toggle in topbar | S–M | |
+| 2.4 | `[[Wikilinks]]`: new TipTap `Suggestion` extension on `[[`; searches cached tree; inserts inline `WikiLinkNode` | M | Reuse fuzzy logic from 2.1 |
+| 2.5 | Backlinks panel: collapsible section at bottom of editor; new `GET /leaves/{id}/backlinks` endpoint | M | |
+| 2.6 | Inline database in editor: `InlineDatabaseNode` TipTap extension that renders a mini table inline; slash command offers "card" vs "inline" | M–L | |
+
+### Phase 3 — Large features (week+)
+
+| # | Item | Notes |
+|---|------|-------|
+| 3.1 | Kanban / Board view: group database rows by status column; drag cards between columns using `@dnd-kit/core` | Highest ROI in Phase 3 |
+| 3.2 | Due dates inline: `@tomorrow`, `@2026-04-01` → inline date pill via `Suggestion` extension + `chrono-node` | Blocked by 2.4 for pattern |
+| 3.3 | Task status cycling: right-click `[ ]` cycles todo → in-progress → done → cancelled; checkbox shape/color changes per state | |
+| 3.4 | Today / daily note page: `/today` route; auto-creates a dated leaf; pulls tasks due today | Requires 3.2 for full value |
+| 3.5 | Print / PDF: `@media print` CSS that hides chrome; "Print" button in topbar | Simple |
+
+### Future / optional
 
 - Add pagination (or cursor) to `GET /leaves` for large workspaces.
 - Lazy-load sidebar children on expand instead of loading the full tree every time.
-- Preload adjacent or recent pages on navigation to make it feel instant.
-
-### Editor
-
-- Richer markdown support: full CommonMark/GFM in the Markdown view with faithful round-trip.
-- Slash commands (e.g. `/heading`, `/code`) like Notion.
-- Optional block-based schema while keeping export/import to plain markdown.
-
-### Sidebar and navigation
-
-- "Favorites" or "Recent" section in the sidebar.
-- Move page to another parent (drag to a different folder / drag into a node).
-- Quick open (Cmd+K) modal to jump to any page.
-
-### Databases
-
-- Board (kanban) view — group entries by a select/status column.
-- Relation columns that link entries across databases.
-- Sorting and filtering entries by column value.
+- `[[wikilinks]]` → inline property parsing (`status:: in progress` → tag pill, queryable in databases).
+- Linking to database records from `[[` search.
+- Board view relation columns linking entries across databases.
+- Sorting and filtering database entries by column value.
 - Calendar view for date columns.
 
 ### Local-first and sync
@@ -266,4 +302,4 @@ These are `null` until CRDT is added. AIs reading the files today will see them 
 
 ---
 
-*Last updated: 2026-03-17. Use this doc with your code editor and planner to prioritize and track tasks.*
+*Last updated: 2026-03-18. Use this doc with your code editor and planner to prioritize and track tasks.*

@@ -2,7 +2,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database.operations.database_operations import DatabaseOperations
-from app.dtos.database_dtos import Database, DatabaseCreate, Row, RowCreate, RowUpdate
+from app.dtos.database_dtos import Database, DatabaseCreate, DatabaseUpdate, Row, RowCreate, RowUpdate
 
 router = APIRouter()
 
@@ -34,7 +34,7 @@ def get_database(
 @router.put("/databases/{database_id}", response_model=Database)
 def update_database(
     database_id: UUID,
-    body: DatabaseCreate,
+    body: DatabaseUpdate,
     ops: DatabaseOperations = Depends(DatabaseOperations),
 ):
     db = ops.update_database(database_id, body)

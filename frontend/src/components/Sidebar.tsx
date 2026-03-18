@@ -3,27 +3,35 @@
 import Link from 'next/link'
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { leavesApi } from '@/lib/api'
+import { useNavigationProgress } from '@/components/NavigationProgress'
+import { createLeafAndPrimeCache } from '@/lib/leafMutations'
+import { warmEditorRoute } from '@/lib/warmEditorRoute'
+import { useWarmWorkspaceRoutes } from '@/hooks/useWarmWorkspaceRoutes'
 import { SidebarTree } from './SidebarTree'
 import { LeafIcon } from './Icons'
 
 export function Sidebar({ activeId }: { activeId?: string }) {
   const router = useRouter()
+  const { startNavigation, stopNavigation } = useNavigationProgress()
   const [creatingPage, setCreatingPage] = useState(false)
+
+  useWarmWorkspaceRoutes()
 
   const handleNewPage = useCallback(async () => {
     if (creatingPage) return
     setCreatingPage(true)
     try {
-      const leaf = await leavesApi.create({ title: 'Untitled' })
-      window.dispatchEvent(new Event('leaf-tree-changed'))
+      startNavigation()
+      void warmEditorRoute()
+      const leaf = await createLeafAndPrimeCache({ title: 'Untitled' }, { parent_id: null, kind: 'page' })
       router.push(`/editor/${leaf.id}`)
     } catch {
+      stopNavigation()
       console.error('Failed to create page')
     } finally {
       setCreatingPage(false)
     }
-  }, [router, creatingPage])
+  }, [router, creatingPage, startNavigation, stopNavigation])
 
   return (
     <aside
@@ -55,10 +63,14 @@ export function Sidebar({ activeId }: { activeId?: string }) {
         <button
           type="button"
           onClick={handleNewPage}
+          onMouseEnter={(e) => {
+            void warmEditorRoute()
+            e.currentTarget.style.backgroundColor = 'var(--color-hover)'
+          }}
+          onFocus={() => { void warmEditorRoute() }}
           disabled={creatingPage}
           className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors duration-150 text-left disabled:opacity-40"
           style={{ color: 'var(--color-text-muted)' }}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-hover)')}
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}
         >
           <span className="text-base leading-none">+</span>

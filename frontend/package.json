@@ -7,14 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "npm run lint"
+    "test": "npm run lint",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@tiptap/extension-placeholder": "^2.14.0",
+    "@tiptap/extension-placeholder": "^2.27.2",
     "@tiptap/extension-task-item": "^2.27.2",
     "@tiptap/extension-task-list": "^2.27.2",
-    "@tiptap/react": "^2.14.0",
-    "@tiptap/starter-kit": "^2.14.0",
+    "@tiptap/react": "^2.27.2",
+    "@tiptap/starter-kit": "^2.27.2",
     "@tiptap/suggestion": "^2.27.2",
     "axios": "^1.9.0",
     "markdown-it": "^14.1.0",
@@ -25,11 +26,13 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/turndown": "^5.0.6",
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
     "tailwindcss": "^4",

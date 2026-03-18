@@ -1,6 +1,7 @@
 from datetime import datetime
-from pydantic import BaseModel
 from typing import Any, Optional
+
+from pydantic import BaseModel, Field
 
 
 # ─── Schema (column definitions) ─────────────────────────────────────────────
@@ -12,7 +13,7 @@ class PropertyDefinition(BaseModel):
 
 
 class DatabaseSchema(BaseModel):
-    properties: list[PropertyDefinition] = []
+    properties: list[PropertyDefinition] = Field(default_factory=list)
 
 
 # ─── Database ─────────────────────────────────────────────────────────────────
@@ -21,6 +22,13 @@ class DatabaseCreate(BaseModel):
     title: str = "Untitled database"
     schema: Optional[DatabaseSchema] = None
     view_type: str = "table"
+    parent_leaf_id: Optional[str] = None
+
+
+class DatabaseUpdate(BaseModel):
+    title: Optional[str] = None
+    schema: Optional[DatabaseSchema] = None
+    view_type: Optional[str] = None
     parent_leaf_id: Optional[str] = None
 
 
@@ -37,7 +45,7 @@ class Database(BaseModel):
 # ─── Rows ─────────────────────────────────────────────────────────────────────
 
 class RowCreate(BaseModel):
-    properties: dict[str, Any] = {}
+    properties: dict[str, Any] = Field(default_factory=dict)
 
 
 class RowUpdate(BaseModel):

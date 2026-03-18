@@ -4,14 +4,21 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { databasesApi } from '@/lib/api'
+import { useNavigationProgress } from '@/components/NavigationProgress'
+import { createDatabaseAndEmit } from '@/lib/databaseMutations'
+import { useWarmWorkspaceRoutes } from '@/hooks/useWarmWorkspaceRoutes'
+import { warmDatabaseRoute } from '@/lib/warmEditorRoute'
 import type { Database } from '@/lib/api'
 
 export default function DatabasesPage() {
   const router = useRouter()
+  const { startNavigation, stopNavigation } = useNavigationProgress()
   const [list, setList] = useState<Database[]>([])
   const [loading, setLoading] = useState(true)
   const [newTitle, setNewTitle] = useState('')
   const [creating, setCreating] = useState(false)
+
+  useWarmWorkspaceRoutes()
 
   useEffect(() => {
     databasesApi.list()
@@ -24,16 +31,19 @@ export default function DatabasesPage() {
     const title = newTitle.trim() || 'Untitled Database'
     setCreating(true)
     try {
-      const db = await databasesApi.create({ title })
+      startNavigation()
+      void warmDatabaseRoute()
+      const db = await createDatabaseAndEmit({ title })
       setList((prev) => [...prev, db])
       setNewTitle('')
       router.push(`/databases/${db.id}`)
     } catch (e) {
+      stopNavigation()
       console.error(e)
     } finally {
       setCreating(false)
     }
-  }, [newTitle, router])
+  }, [newTitle, router, startNavigation, stopNavigation])
 
   return (
     <main className="flex-1 p-8 max-w-3xl">
@@ -72,6 +82,8 @@ export default function DatabasesPage() {
               <Link
                 href={`/databases/${db.id}`}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-leaf-50 group"
+                onClick={() => startNavigation()}
+                onMouseEnter={() => { void warmDatabaseRoute() }}
               >
                 <span className="text-leaf-400 text-sm">⊞</span>
                 <span className="text-sm font-medium text-leaf-800 group-hover:text-leaf-900">

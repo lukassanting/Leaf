@@ -1,6 +1,7 @@
 'use client'
 
 import { useParams } from 'next/navigation'
+import { NavigationProgressProvider } from '@/components/NavigationProgress'
 import { Sidebar } from '@/components/Sidebar'
 
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
@@ -9,9 +10,11 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   const activeId = params?.id as string | undefined
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
-      <Sidebar activeId={activeId} />
-      <div className="flex-1 min-w-0">{children}</div>
-    </div>
+    <NavigationProgressProvider>
+      <div className="flex min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
+        <Sidebar activeId={activeId} />
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+    </NavigationProgressProvider>
   )
 }

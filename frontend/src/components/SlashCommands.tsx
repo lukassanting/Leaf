@@ -5,6 +5,7 @@
  * No tippy.js — feeds menu state back to the Editor as React state.
  */
 
+import { createPortal } from 'react-dom'
 import type { Dispatch, SetStateAction } from 'react'
 import { Extension } from '@tiptap/core'
 import Suggestion, { SuggestionOptions } from '@tiptap/suggestion'
@@ -25,7 +26,8 @@ export type SlashItem = {
 export type SlashMenuState = {
   items: SlashItem[]
   selectedIndex: number
-  rect: DOMRect
+  /** Call this at render time to get fresh coordinates; avoids stale rect from onStart */
+  getRect: () => DOMRect | null
   select: (item: SlashItem) => void
   onKeyDown: (e: KeyboardEvent) => boolean
 } | null
@@ -61,8 +63,9 @@ export function buildSlashExtension(
     startOfLine: false,
 
     command({ editor, range, props: item }) {
+      const pos = range.from
       editor.chain().focus().deleteRange(range).run()
-      window.dispatchEvent(new CustomEvent('slash-action', { detail: item.action }))
+      window.dispatchEvent(new CustomEvent('slash-action', { detail: { action: item.action, pos } }))
     },
 
     items({ query }) {
@@ -75,17 +78,18 @@ export function buildSlashExtension(
 
     render() {
       let idx = 0
+      let getRect: () => DOMRect | null = () => null
 
-      const publish = (items: SlashItem[], rect: DOMRect, selectFn: (item: SlashItem) => void) => {
+      const publish = (items: SlashItem[], selectFn: (item: SlashItem) => void) => {
         setMenu({
           items,
           selectedIndex: idx,
-          rect,
+          getRect,
           select: selectFn,
           onKeyDown(e) {
             if (e.key === 'ArrowUp')   { idx = (idx - 1 + items.length) % items.length; setMenu((m) => m ? { ...m, selectedIndex: idx } : null); return true }
             if (e.key === 'ArrowDown') { idx = (idx + 1) % items.length;                setMenu((m) => m ? { ...m, selectedIndex: idx } : null); return true }
-            if (e.key === 'Enter')     { selectFn(items[idx]); return true }
+            if (e.key === 'Enter')     { const item = items[idx]; if (item) selectFn(item); return true }
             return false
           },
         })
@@ -94,15 +98,13 @@ export function buildSlashExtension(
       return {
         onStart(props) {
           idx = 0
-          const rect = props.clientRect?.()
-          if (!rect) return
-          publish(props.items, rect, (item) => props.command(item))
+          getRect = () => props.clientRect?.() ?? null
+          publish(props.items, (item) => props.command(item))
         },
         onUpdate(props) {
-          idx = 0
-          const rect = props.clientRect?.()
-          if (!rect) return
-          publish(props.items, rect, (item) => props.command(item))
+          getRect = () => props.clientRect?.() ?? null
+          idx = Math.min(idx, Math.max(0, props.items.length - 1))
+          publish(props.items, (item) => props.command(item))
         },
         onKeyDown({ event }) {
           if (event.key === 'Escape') { setMenu(null); return true }
@@ -142,34 +144,34 @@ export function SlashMenuPanel({
 }) {
   if (!menu || !menu.items.length) return null
 
-  // Group items, preserving global index for keyboard selection
-  let runningIdx = 0
-  const grouped: { group: SlashGroup; items: { item: SlashItem; idx: number }[] }[] = []
+  // Get fresh position at render time
+  const rect = menu.getRect()
+  if (!rect) return null
 
+  const grouped: { group: SlashGroup; items: { item: SlashItem; idx: number }[] }[] = []
   for (const group of GROUPS) {
     const groupItems = menu.items
       .map((item, i) => ({ item, globalI: i }))
       .filter(({ item }) => item.group === group)
-
     if (groupItems.length === 0) continue
-    grouped.push({
-      group,
-      items: groupItems.map(({ item, globalI }) => ({ item, idx: globalI })),
-    })
-    runningIdx += groupItems.length
+    grouped.push({ group, items: groupItems.map(({ item, globalI }) => ({ item, idx: globalI })) })
   }
-  void runningIdx
 
-  return (
+  // Flip above cursor if too close to bottom
+  const spaceBelow = window.innerHeight - rect.bottom
+  const top = spaceBelow < 240 ? rect.top - 6 - Math.min(240, window.innerHeight * 0.4) : rect.bottom + 6
+  const left = Math.min(rect.left, window.innerWidth - 272)
+
+  const panel = (
     <div
-      className="fixed z-50 rounded-lg overflow-hidden"
+      className="fixed z-[9999] rounded-lg overflow-hidden"
       style={{
-        top: menu.rect.bottom + 6,
-        left: Math.min(menu.rect.left, window.innerWidth - 272),
+        top,
+        left,
         width: 260,
         background: '#fff',
         border: '1px solid var(--color-border)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.10)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
       }}
       onMouseDown={(e) => e.preventDefault()}
     >
@@ -189,9 +191,7 @@ export function SlashMenuPanel({
                 type="button"
                 onMouseDown={() => menu.select(item)}
                 className="w-full flex items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors duration-100"
-                style={{
-                  backgroundColor: isSelected ? 'var(--color-hover)' : undefined,
-                }}
+                style={{ backgroundColor: isSelected ? 'var(--color-hover)' : undefined }}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-hover)')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isSelected ? 'var(--color-hover)' : '')}
               >
@@ -216,4 +216,6 @@ export function SlashMenuPanel({
       )}
     </div>
   )
+
+  return createPortal(panel, document.body)
 }

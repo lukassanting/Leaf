@@ -1,33 +1,40 @@
 from datetime import datetime
-from pydantic import BaseModel, computed_field
-from typing import Optional
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, Field
 
 class LeafType(str, Enum):
     PAGE = "page"
     PROJECT = "project"
+
+
+def infer_leaf_type(parent_id: Optional[str], database_id: Optional[str]) -> LeafType:
+    if parent_id or database_id:
+        return LeafType.PAGE
+    return LeafType.PROJECT
+
 
 class LeafCreate(BaseModel):
     title: str
     description: Optional[str] = None
     content: Optional[str] = None
     parent_id: Optional[str] = None
-    children_ids: Optional[list[str]] = []
-    tags: Optional[list[str]] = []
+    database_id: Optional[str] = None
+    children_ids: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
 
-    @computed_field
-    @property
-    def type(self) -> LeafType:
-        if not self.parent_id:
-            return LeafType.PROJECT
-        return LeafType.PAGE
 
-    def to_dict(self) -> dict:
-        return {
-            **self.model_dump(),
-            "type": self.type.value
-        }
-    
+class LeafUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    content: Optional[str] = None
+    parent_id: Optional[str] = None
+    database_id: Optional[str] = None
+    children_ids: Optional[list[str]] = None
+    tags: Optional[list[str]] = None
+
+
 class LeafContentUpdate(BaseModel):
     """Minimal payload for autosave; optional updated_at for conflict detection."""
     content: str
@@ -41,8 +48,9 @@ class Leaf(BaseModel):
     description: Optional[str] = None
     content: Optional[str] = None
     parent_id: Optional[str] = None
-    children_ids: Optional[list[str]] = []
-    tags: list[str] = []
+    database_id: Optional[str] = None
+    children_ids: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
@@ -53,11 +61,11 @@ class LeafTreeItem(BaseModel):
     title: str
     type: LeafType
     parent_id: Optional[str] = None
-    children_ids: Optional[list[str]] = []
-    tags: list[str] = []
+    children_ids: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
     order: int = 0
 
 
 class LeafReorderChildren(BaseModel):
     """Payload for reordering children of a leaf."""
-    child_ids: list[str] = []
+    child_ids: list[str] = Field(default_factory=list)

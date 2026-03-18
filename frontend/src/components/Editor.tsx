@@ -1,11 +1,14 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useEditor, EditorContent, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react'
-import { Node, mergeAttributes } from '@tiptap/core'
+import { Node, mergeAttributes, type AnyExtension } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
+import { useNavigationProgress } from '@/components/NavigationProgress'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { warmDatabaseRoute, warmEditorRoute } from '@/lib/warmEditorRoute'
 import TurndownService from 'turndown'
 import MarkdownIt from 'markdown-it'
 import { buildSlashExtension, SlashMenuState, SlashMenuPanel, SLASH_ITEMS } from './SlashCommands'
@@ -14,6 +17,8 @@ import { LeafIcon, DatabaseIcon } from './Icons'
 // ─── Page/Database card node ──────────────────────────────────────────────────
 
 function PageCardView({ node, deleteNode }: { node: { attrs: { id: string; title: string; kind: string } }; deleteNode: () => void }) {
+  const router = useRouter()
+  const { startNavigation } = useNavigationProgress()
   const { id, title, kind } = node.attrs
   const href = kind === 'database' ? `/databases/${id}` : `/editor/${id}`
   return (
@@ -24,7 +29,15 @@ function PageCardView({ node, deleteNode }: { node: { attrs: { id: string; title
         style={{ border: '1px solid var(--color-border)', background: '#fff' }}
         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-hover)')}
         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}
-        onClick={() => { window.location.href = href }}
+        onClick={() => {
+          startNavigation()
+          if (kind === 'database') {
+            void warmDatabaseRoute()
+          } else {
+            void warmEditorRoute()
+          }
+          router.push(href)
+        }}
       >
         <span className="shrink-0" style={{ color: 'var(--color-text-muted)' }}>
           {kind === 'database' ? <DatabaseIcon size={14} /> : <LeafIcon size={14} />}
@@ -71,7 +84,7 @@ const PageCard = Node.create({
     return ['div', mergeAttributes({ 'data-type': 'page-card' }, HTMLAttributes)]
   },
   addNodeView() {
-    return ReactNodeViewRenderer(PageCardView as Parameters<typeof ReactNodeViewRenderer>[0])
+    return ReactNodeViewRenderer(PageCardView as unknown as Parameters<typeof ReactNodeViewRenderer>[0])
   },
 })
 
@@ -126,7 +139,7 @@ function BlockDropdown({ onSelect, onClose }: { onSelect: (action: string) => vo
 
 // ─── Converters ───────────────────────────────────────────────────────────────
 
-let Placeholder: ReturnType<typeof import('@tiptap/extension-placeholder')['default']> | null = null
+let Placeholder: { configure: (options: { placeholder: string }) => AnyExtension } | null = null
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   Placeholder = require('@tiptap/extension-placeholder').default
@@ -146,19 +159,26 @@ function markdownToHtml(mdText: string): string {
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
+export type EditorActions = {
+  exportMd: () => void
+  importMd: () => void
+  setMode: (m: 'rich' | 'markdown') => void
+}
+
 type Props = {
   content: string
   onUpdate: (html: string) => void
   onCreateSubPage?: (insertCard: (id: string, title: string) => void) => void
   onCreateDatabase?: (insertCard: (id: string, title: string) => void) => void
-  /** Called when mode or word count changes — for the status bar */
   onStatusChange?: (mode: 'rich' | 'markdown', wordCount: number) => void
+  mode: 'rich' | 'markdown'
+  onModeChange: (mode: 'rich' | 'markdown') => void
+  actionsRef?: React.MutableRefObject<EditorActions | null>
 }
 
 // ─── Editor ───────────────────────────────────────────────────────────────────
 
-export default function Editor({ content, onUpdate, onCreateSubPage, onCreateDatabase, onStatusChange }: Props) {
-  const [mode, setMode] = useState<'rich' | 'markdown'>('rich')
+export default function Editor({ content, onUpdate, onCreateSubPage, onCreateDatabase, onStatusChange, mode, onModeChange, actionsRef }: Props) {
   const [markdown, setMarkdown] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -167,7 +187,23 @@ export default function Editor({ content, onUpdate, onCreateSubPage, onCreateDat
   const pendingInsertPos = useRef<number | null>(null)
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [slashMenu, setSlashMenu] = useState<SlashMenuState>(null)
-  const slashHandlerRef = useRef<(action: string) => void>(() => {})
+  const slashHandlerRef = useRef<(detail: { action: string; pos: number }) => void>(() => {})
+
+  // Stable refs for callbacks — prevents TipTap from calling setOptions (and crashing the
+  // ProseMirror view) every time the parent re-renders with new function references.
+  const onUpdateRef = useRef(onUpdate)
+  const onStatusChangeRef = useRef(onStatusChange)
+  const onCreateSubPageRef = useRef(onCreateSubPage)
+  const onCreateDatabaseRef = useRef(onCreateDatabase)
+  const onModeChangeRef = useRef(onModeChange)
+  const modeRef = useRef(mode)
+  const initialContentRef = useRef(content)
+  onUpdateRef.current = onUpdate
+  onStatusChangeRef.current = onStatusChange
+  onCreateSubPageRef.current = onCreateSubPage
+  onCreateDatabaseRef.current = onCreateDatabase
+  onModeChangeRef.current = onModeChange
+  modeRef.current = mode
 
   const extensions = useMemo(() => [
     StarterKit,
@@ -176,23 +212,27 @@ export default function Editor({ content, onUpdate, onCreateSubPage, onCreateDat
     TaskItem.configure({ nested: true }),
     buildSlashExtension(setSlashMenu),
     ...(Placeholder ? [Placeholder.configure({ placeholder: 'Write something… or type / for commands' })] : []),
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [])
+
+  const editorProps = useMemo(() => ({
+    attributes: { class: 'leaf-prose max-w-none min-h-[50vh] focus:outline-none' },
+  }), [])
+
+  const handleEditorUpdate = useCallback(({ editor }: { editor: import('@tiptap/core').Editor }) => {
+    onUpdateRef.current(editor.getHTML())
+    const text = editor.state.doc.textContent
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0
+    onStatusChangeRef.current?.(modeRef.current, words)
+  }, [])
 
   const editor = useEditor({
     extensions,
-    content,
-    editorProps: {
-      attributes: { class: 'leaf-prose max-w-none min-h-[50vh] focus:outline-none' },
-    },
-    onUpdate: ({ editor }) => {
-      onUpdate(editor.getHTML())
-      // Word count
-      const text = editor.state.doc.textContent
-      const words = text.trim() ? text.trim().split(/\s+/).length : 0
-      onStatusChange?.(mode, words)
-    },
-  })
+    content: initialContentRef.current,
+    immediatelyRender: false,
+    shouldRerenderOnTransaction: false,
+    editorProps,
+    onUpdate: handleEditorUpdate,
+  }, [extensions, editorProps, handleEditorUpdate])
 
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
@@ -202,15 +242,14 @@ export default function Editor({ content, onUpdate, onCreateSubPage, onCreateDat
 
   // Slash-action bridge
   useEffect(() => {
-    const handler = (e: Event) => slashHandlerRef.current((e as CustomEvent<string>).detail)
+    const handler = (e: Event) => slashHandlerRef.current((e as CustomEvent<{ action: string; pos: number }>).detail)
     window.addEventListener('slash-action', handler)
     return () => window.removeEventListener('slash-action', handler)
   }, [])
 
   useEffect(() => {
-    slashHandlerRef.current = (action: string) => {
+    slashHandlerRef.current = ({ action, pos }: { action: string; pos: number }) => {
       if (!editor) return
-      const pos = editor.state.selection.from
       const insertCard = (id: string, title: string, kind: 'page' | 'database') => {
         editor.chain().focus().insertContentAt(pos, { type: 'pageCard', attrs: { id, title, kind } }).run()
       }
@@ -226,11 +265,11 @@ export default function Editor({ content, onUpdate, onCreateSubPage, onCreateDat
         case 'ordered': editor.chain().focus().toggleOrderedList().run(); break
         case 'todo': editor.chain().focus().toggleTaskList().run(); break
         case 'quote': editor.chain().focus().toggleBlockquote().run(); break
-        case 'subpage': onCreateSubPage?.((id, title) => insertCard(id, title, 'page')); break
-        case 'database': onCreateDatabase?.((id, title) => insertCard(id, title, 'database')); break
+        case 'subpage': onCreateSubPageRef.current?.((id, title) => insertCard(id, title, 'page')); break
+        case 'database': onCreateDatabaseRef.current?.((id, title) => insertCard(id, title, 'database')); break
       }
     }
-  }, [editor, onCreateSubPage, onCreateDatabase])
+  }, [editor])
 
   // ─── Block + menu positioning ─────────────────────────────────────────────
 
@@ -283,10 +322,10 @@ export default function Editor({ content, onUpdate, onCreateSubPage, onCreateDat
       case 'ordered': editor.chain().focus().setTextSelection(pos - 1).toggleOrderedList().run(); break
       case 'todo': editor.chain().focus().setTextSelection(pos - 1).toggleTaskList().run(); break
       case 'quote': editor.chain().focus().setTextSelection(pos - 1).toggleBlockquote().run(); break
-      case 'subpage': onCreateSubPage?.((id, title) => insertCard(id, title, 'page')); break
-      case 'database': onCreateDatabase?.((id, title) => insertCard(id, title, 'database')); break
+      case 'subpage': onCreateSubPageRef.current?.((id, title) => insertCard(id, title, 'page')); break
+      case 'database': onCreateDatabaseRef.current?.((id, title) => insertCard(id, title, 'database')); break
     }
-  }, [editor, onCreateSubPage, onCreateDatabase])
+  }, [editor])
 
   // ─── Mode toggle ──────────────────────────────────────────────────────────
 
@@ -296,13 +335,13 @@ export default function Editor({ content, onUpdate, onCreateSubPage, onCreateDat
     if (next === 'rich' && editor) {
       const html = markdownToHtml(markdown)
       editor.commands.setContent(html || '<p></p>')
-      onUpdate(editor.getHTML())
+      onUpdateRef.current(editor.getHTML())
     }
-    setMode(next)
+    onModeChangeRef.current(next)
     const text = editor?.state.doc.textContent ?? markdown
     const words = text.trim() ? text.trim().split(/\s+/).length : 0
-    onStatusChange?.(next, words)
-  }, [mode, markdown, editor, onUpdate, onStatusChange])
+    onStatusChangeRef.current?.(next, words)
+  }, [mode, markdown, editor])
 
   const handleExport = useCallback(() => {
     const text = mode === 'rich' && editor ? htmlToMarkdown(editor.getHTML()) : markdown
@@ -324,16 +363,18 @@ export default function Editor({ content, onUpdate, onCreateSubPage, onCreateDat
         setMarkdown(text)
       } else if (editor) {
         editor.commands.setContent(markdownToHtml(text) || '<p></p>')
-        onUpdate(editor.getHTML())
+        onUpdateRef.current(editor.getHTML())
       }
     }
     reader.readAsText(file)
     e.target.value = ''
-  }, [mode, editor, onUpdate])
+  }, [mode, editor])
 
-  // Expose mode toggle for parent (status bar)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(Editor as any)._modeRef = { mode, setMode: handleModeChange }
+  useEffect(() => {
+    if (actionsRef) {
+      actionsRef.current = { exportMd: handleExport, importMd: handleImport, setMode: handleModeChange }
+    }
+  }, [actionsRef, handleExport, handleImport, handleModeChange])
 
   return (
     <div className="flex flex-col">
@@ -406,13 +447,6 @@ export default function Editor({ content, onUpdate, onCreateSubPage, onCreateDat
         <SlashMenuPanel menu={slashMenu} globalIdx={slashMenu.selectedIndex} />
       )}
 
-      {/* Export / Import hidden actions — exposed via handleExport/handleImport refs */}
-      <div style={{ display: 'none' }}>
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        {((Editor as any)._exportRef = handleExport) && null}
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        {((Editor as any)._importRef = handleImport) && null}
-      </div>
     </div>
   )
 }
