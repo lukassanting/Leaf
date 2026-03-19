@@ -73,7 +73,7 @@ export function PageIdentityHeader({
   description,
   onDescriptionChange,
   onDescriptionBlur,
-  descriptionPlaceholder = 'Add a description…',
+  descriptionPlaceholder = 'Add a description...',
   tags,
   onTagsChange,
   onIconClick,
@@ -102,28 +102,14 @@ export function PageIdentityHeader({
   return (
     <div
       style={{
-        padding: '24px 24px 18px',
+        padding: '28px 0 20px',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        textAlign: 'center',
+        alignItems: 'flex-start',
         borderBottom: '1px solid var(--leaf-border-soft)',
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.86), rgba(250,250,250,0.64))',
       }}
     >
-      <div
-        style={{
-          fontSize: 9.5,
-          fontWeight: 600,
-          letterSpacing: '0.09em',
-          textTransform: 'uppercase',
-          color: 'var(--leaf-text-muted)',
-          marginBottom: 8,
-        }}
-      >
-        {kind === 'database' ? 'Database surface' : 'Page surface'}
-      </div>
-      <div style={{ position: 'relative', display: 'inline-block', marginBottom: 12 }}>
+      <div style={{ position: 'relative', display: 'inline-block', marginBottom: 14 }}>
         <button
           ref={iconButtonRef}
           type="button"
@@ -133,7 +119,7 @@ export function PageIdentityHeader({
             width: 48,
             height: 48,
             borderRadius: 12,
-            background: '#fff',
+            background: 'var(--leaf-bg-tag)',
             border: '1px solid var(--leaf-border-strong)',
             display: 'flex',
             alignItems: 'center',
@@ -175,12 +161,11 @@ export function PageIdentityHeader({
         ref={titleInputRef}
         className="bg-transparent border-none outline-none font-medium leading-tight"
         style={{
-          fontSize: 32,
+          fontSize: 30,
           fontWeight: 500,
           color: 'var(--leaf-text-title)',
           letterSpacing: '-0.02em',
           lineHeight: 1.2,
-          textAlign: 'center',
           width: '100%',
           maxWidth: 680,
           caretColor: 'var(--leaf-green)',
@@ -203,13 +188,12 @@ export function PageIdentityHeader({
           ref={descriptionInputRef}
           className="bg-transparent border-none outline-none"
           style={{
-            fontSize: 13.5,
-            color: description ? 'var(--leaf-text-muted)' : 'var(--leaf-text-hint)',
+            fontSize: 14,
+            color: description ? 'var(--leaf-text-body)' : 'var(--leaf-text-hint)',
             marginTop: 6,
-            maxWidth: 560,
+            maxWidth: 680,
             width: '100%',
             lineHeight: 1.6,
-            textAlign: 'center',
             caretColor: canEditDescription ? 'var(--leaf-green)' : undefined,
             cursor: canEditDescription ? 'text' : 'default',
           }}

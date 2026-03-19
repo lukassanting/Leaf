@@ -47,7 +47,7 @@ export default function DatabasesPage() {
 
   return (
     <main className="flex-1 p-8 max-w-3xl">
-      <h1 className="mb-1 text-2xl font-bold" style={{ color: 'var(--leaf-text-title)' }}>Databases</h1>
+      <h1 className="mb-1 text-2xl font-medium" style={{ color: 'var(--leaf-text-title)' }}>Databases</h1>
       <p className="mb-6 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>
         Table views for structured data. Rows can link to pages.
       </p>

@@ -11,33 +11,34 @@ Read this before touching any styles.
 
 | Token | Hex | Usage |
 |---|---|---|
-| `sidebar-bg` | `#f0f3ed` | Sidebar background |
-| `editor-bg` | `#fefffe` | Editor / main area background |
-| `primary` | `#3d8c52` | Buttons, active highlights, links |
-| `primary-dark` | `#2d7042` | Hover state for primary |
-| `text-dark` | `#1a3828` | Page titles, headings |
-| `text-body` | `#374f42` | Body / paragraph text |
-| `text-muted` | `#8fa898` | Placeholders, secondary labels, meta |
-| `border` | `#dce5d7` | All dividers and borders |
-| `tag-bg` | `#edf5e8` | Tag pill background |
-| `tag-border` | `#c5ddb8` | Tag pill border |
-| `tag-text` | `#3b6b4a` | Tag pill text |
-| `sidebar-active` | `rgba(61,140,82,0.14)` | Active page row in sidebar |
-| `hover` | `rgba(61,140,82,0.08)` | Hover row in sidebar / editor |
+| `sidebar-bg` | `#f4f4f5` | Sidebar background (zinc-100) |
+| `editor-bg` | `#ffffff` | Editor / main area background |
+| `app-bg` | `#fafafa` | App frame / status bar surface |
+| `primary` | `#10b981` | Buttons, active highlights, links (emerald-500) |
+| `primary-dark` | `#047857` | Hover state for primary (emerald-700) |
+| `text-dark` | `#18181b` | Page titles, headings (zinc-900) |
+| `text-body` | `#3f3f46` | Body / paragraph text (zinc-700) |
+| `text-muted` | `#71717a` | Placeholders, secondary labels, meta (zinc-500) |
+| `border` | `#e4e4e7` | All dividers and borders (zinc-300) |
+| `tag-bg` | `#ecfdf5` | Tag pill background (emerald-50) |
+| `tag-border` | `#a7f3d0` | Tag pill border (emerald-200) |
+| `tag-text` | `#047857` | Tag pill text (emerald-700) |
+| `sidebar-active` | `rgba(16,185,129,0.14)` | Active page row in sidebar |
+| `hover` | `rgba(16,185,129,0.08)` | Hover row in sidebar / editor |
 
 Tailwind mapping (leaf- scale):
 
 ```
-leaf-50  → #f0f3ed   (sidebar bg)
-leaf-100 → #edf5e8   (tag bg / lightest tint)
-leaf-200 → #c5ddb8   (tag border / soft border)
-leaf-300 → #dce5d7   (standard border)
-leaf-400 → #8fa898   (muted text)
-leaf-500 → #3d8c52   (primary green)
-leaf-600 → #2d7042   (primary hover)
-leaf-700 → #374f42   (body text)
-leaf-800 → #1e3d2e   (dark text, headings)
-leaf-900 → #1a3828   (darkest — title)
+leaf-50  → #f4f4f5   (sidebar bg — zinc-100)
+leaf-100 → #ecfdf5   (tag bg — emerald-50)
+leaf-200 → #a7f3d0   (tag border — emerald-200)
+leaf-300 → #e4e4e7   (standard border — zinc-300)
+leaf-400 → #71717a   (muted text — zinc-500)
+leaf-500 → #10b981   (primary green — emerald-500)
+leaf-600 → #047857   (primary hover — emerald-700)
+leaf-700 → #3f3f46   (body text — zinc-700)
+leaf-800 → #27272a   (dark text — zinc-800)
+leaf-900 → #18181b   (darkest — title — zinc-900)
 ```
 
 ---
@@ -72,38 +73,62 @@ Small block-type icons (for slash menu tiles) are also in `Icons.tsx`.
 
 ## 4. Layout
 
-### Workspace shell
+### Workspace shell (three-pane)
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│ Sidebar (240px, #f0f3ed) │ Editor area (#fefffe)         │
-│                          │                               │
-│  Leaf                    │  [Breadcrumbs]  [Export]      │
-│  ──────────────          │  ─────────────────────────    │
-│  🌿 Page 1               │  🌿  My Page Title             │
-│    🌿 Sub-page           │                               │
-│  ⊞  Database 1           │  created: …  [+tag] [+prop]  │
-│                          │                               │
-│  + New page              │  Block content…               │
-│                          │  ─────────────────────────    │
-│                          │  ● Synced  124w │ Rich        │
-└──────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ Left sidebar (260px)  │  Center canvas                │ Right sidebar│
+│ #f4f4f5               │  #ffffff                      │ (280px)      │
+│                       │                               │ #f4f4f5      │
+│  Leaf                 │ Breadcrumbs / Leaf Project     │              │
+│  ──────────────       │  [Ask AI ⌘K]  [...] [toggles] │ Page Info    │
+│  🔍 Search            │  ─────────────────────────     │ ──────────── │
+│  🕐 Recent            │                               │ METADATA     │
+│  ⚙ Settings           │  🌿  Architecture Docs         │  Created     │
+│                       │  description text…            │  Author      │
+│  KNOWLEDGE BASE       │                               │  Tags        │
+│  📊 Graph View        │  ┌─ Project Tasks ──────────┐ │ ──────────── │
+│                       │  │ Table Board Gallery List  │ │ Description  │
+│  Personal             │  │ ─────────────────────────│ │ ──────────── │
+│   🌿 Daily Notes      │  │ Name  Status  Tags  Est  │ │ PAGE OUTLINE │
+│   🌿 Reading List     │  │ ...   ...     ...   ...  │ │  1. Heading  │
+│   🌿 Idea Dump        │  └──────────────────────────┘ │   1.1 Sub    │
+│                       │                               │ ──────────── │
+│  PROJECTS             │  ─────────────────────────     │ LINKED       │
+│   ▼ Leaf Development  │  ● Synced  124w │ Rich        │ MENTIONS     │
+│      🌿 Arch Docs     │                               │  [card]      │
+│      🌿 Task Board    │                               │  [card]      │
+│      🌿 Design System │                               │              │
+│                       │                               │              │
+│  [+ New page]         │                               │              │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Editor page structure (top to bottom)
 
-1. Top bar: breadcrumbs (left) + Export button (right) — 40px
-2. Title row: SVG icon + large editable title
-3. Properties row: Created date · Tags pill input · + Add property (all inline, no border)
-4. Divider line
-5. Editor content (ProseMirror)
-6. Status bar: `● Synced  N words` left, `Rich | Markdown` toggle right — 32px
+1. Top bar: sidebar toggle (left) + breadcrumbs (center) + `Ask AI ⌘K` button + width controls + focus toggle + sidebar toggle (right) — 48px
+2. Title row: SVG icon + large editable title (left-aligned)
+3. Description row: editable description text
+4. Tags row: coloured pill chips with `+ Add…` affordance
+5. Divider line
+6. Editor content (ProseMirror)
+7. Status bar: `● Synced  N words` left, `Rich | Markdown` toggle right — 28px
 
-### Sidebar structure (top to bottom)
+### Left sidebar structure (top to bottom)
 
-1. Branding: "Leaf" wordmark — 44px header
-2. Tree (scrollable, flex-1)
-3. "+ New page" button — 40px footer
+1. Branding: leaf icon + "Leaf" wordmark — 44px header
+2. Navigation: Search, Recent, Settings buttons
+3. `KNOWLEDGE BASE` section label (muted, uppercase, tracked) with Graph View
+4. `Personal` section label with page tree
+5. `PROJECTS` section label with project tree
+6. `+ New page` button — footer
+
+### Right sidebar structure (top to bottom)
+
+1. "Page Info" header
+2. `METADATA` section: Created date, Author, Tags (coloured pills), Description
+3. `PAGE OUTLINE` section: hierarchical heading list with active heading indicator (green dot)
+4. `LINKED MENTIONS` section: backlink cards with title, snippet, and highlighted wikilink text
 
 ---
 
@@ -136,7 +161,7 @@ Structure:
 - Width: 260px
 - Keyboard: ArrowUp/Down navigate, Enter inserts, Escape dismisses
 - Dismiss on click outside
-- Icon tile: 28×28px, background `#edf5e8`, border-radius 6px, color `#3d8c52`
+- Icon tile: 28×28px, background `#ecfdf5`, border-radius 6px, color `#10b981`
 
 ---
 
@@ -144,9 +169,9 @@ Structure:
 
 - No `font-semibold` or `font-bold` anywhere — use `font-medium` (500) at most
 - No coloured text heavier than `text-leaf-800`
-- Border colour always `border-leaf-300` (`#dce5d7`)
-- Active sidebar row: `bg-[rgba(61,140,82,0.14)]`
-- Hover row: `hover:bg-[rgba(61,140,82,0.08)]`
+- Border colour always `border-leaf-300` (`#e4e4e7`)
+- Active sidebar row: `bg-[rgba(16,185,129,0.14)]`
+- Hover row: `hover:bg-[rgba(16,185,129,0.08)]`
 - Rounded corners: `rounded-md` (6px) for rows, `rounded-lg` (8px) for panels/modals
 - All transitions: `transition-colors duration-150`
 
@@ -160,73 +185,78 @@ Structure:
 
 ---
 
-## 11. v3 additions
+## 8. Database views
 
-### Updated shell
+Four view types are available via the view switcher toolbar:
 
-The v3 shell replaces the older left-sidebar layout described above.
+### Table view
+- Rounded bordered table container
+- Header row with light gray background (`#fafafa`) and muted column labels
+- Column borders between cells
+- Name column with page icon and link affordance
+- Tag/status/number columns with appropriate renderers
+- `+ New` row in footer, `+ Add property` in header
 
-```
-App (flex row, 100vw × 100vh)
-├── Editor area (flex: 1, flex column)
-│   ├── Top strip (38px)
-│   ├── Centered identity header
-│   ├── Editor / database canvas (flex: 1, overflow-y: auto)
-│   └── Status bar (28px)
-└── Right sidebar (232px)
-```
+### Board view (Kanban)
+- Columns grouped by Status property
+- Column headers: status pill + count badge + `+` and `...` buttons
+- Cards: white with subtle border, showing title + tags + estimate
+- `+ New` affordance at bottom of each column and as a new-column placeholder
 
-Use these CSS variables for shell surfaces:
+### Gallery view
+- 3-column responsive grid of cards
+- Cover area with light tinted backgrounds and image placeholders
+- Card body: title, status pill, tags, meta
+- "New Page" card with `+` icon at the end
 
-- `--leaf-bg-app`: app frame / status bar surface
-- `--leaf-bg-editor`: editor canvas and top strip
-- `--leaf-bg-sidebar`: right sidebar surface
-- `--leaf-bg-hover`: subtle hover state
-- `--leaf-bg-active`: active row state
-- `--leaf-bg-tag`: pale tag and icon-chip background
-- `--leaf-border-soft`: soft separators
-- `--leaf-border-strong`: stronger separators and control borders
-- `--leaf-text-title`: primary title text
-- `--leaf-text-body`: body text
-- `--leaf-text-sidebar`: emphasized sidebar / breadcrumb current page text
-- `--leaf-text-muted`: secondary labels and metadata
-- `--leaf-text-hint`: placeholder text
-- `--leaf-green`: primary action green
-- `--leaf-green-light`: lighter accent green for drop zones and soft emphasis
+### List view
+- Minimal rows with page icon and title on left
+- Tags and status pill aligned to right
+- `+ New` row at bottom
 
-### Centered identity header
+### Shared database styling
+- View switcher: pill-shaped toggle group with active highlight
+- Action buttons: `Filter`, `Sort`, `Search` (secondary), `New` (primary green)
+- Tag pills use semantic tones:
+  - positive (Done, Active): `#ecfdf5 / #047857 / #a7f3d0`
+  - warning (In Progress, Review): `#fef5e0 / #7a5c10 / #e8d48a`
+  - negative (Risk, Urgent, Bug): `#fef0ee / #8a3a2a / #e8c0b8`
+  - neutral (To Do, default): `#f4f4f5 / #3f3f46 / rgba(0,0,0,0.06)`
 
-- Icon frame: `52x52`, `border-radius: 12px`, `background: --leaf-bg-tag`, `border: 0.5px solid --leaf-border-strong`
-- Title: `28px`, `500`, `--leaf-text-title`, centered, `max-width: 680px`
-- Description: `13.5px`, `--leaf-text-hint` when empty, centered, `max-width: 480px`
-- Tags: `11px`, `border-radius: 4px`, `padding: 3px 8px`
-- Header spacing: `padding: 36px 0 24px`, bottom border `0.5px solid --leaf-border-soft`
+---
 
-### Icon picker exception
+## 9. Top navigation
 
-The earlier “no emoji anywhere in the app” rule is superseded for the icon picker content only.
+- Sticky bar with glass-like translucency (`background: rgba(255,255,255,0.88)`, `backdrop-filter: blur(18px)`)
+- Three sections: left (sidebar toggle), center (breadcrumbs + title), right (Ask AI + controls + sidebar toggle)
+- `Ask AI ⌘K` button: green background with white text, sparkle icon
+- Width mode switcher: segmented control with normal/wide/full options
+- Focus mode: fullscreen icon, hides both sidebars
 
-- Emoji may appear only as user-selected page/database icons and inside the icon picker grid.
-- UI chrome, navigation, and controls should still use SVG icons from `src/components/Icons.tsx`.
+---
 
-### Right sidebar
+## 10. Right sidebar sections
 
-- Width: `232px`
-- Border-left: `0.5px solid --leaf-border-strong`
-- Sections: identity, properties, page tree, backlinks, footer action
-- Tree rows: `font-size: 12px`, `border-radius: 5px`, `padding: 4px 5px`
-- Indent progression: `5px`, `14px`, `24px`, `34px`
+### METADATA
+Clean key-value rows:
+- Created: date display
+- Author: name with avatar
+- Tags: coloured pill chips
+- Description: multi-line text, truncated with expand affordance
 
-### Database component styling
+### PAGE OUTLINE
+- Hierarchical heading list indented by level
+- Active heading marked with green dot indicator
+- Heading levels shown as `1.`, `2.1`, `3.1` style numbering
 
-- View switcher container: `background: #eef3eb`, `border-radius: 20px`, `padding: 3px`
-- Secondary action buttons: `font-size: 12px`, `padding: 5px 11px`, `border-radius: 7px`, `border: 0.5px solid #cdd9c6`
-- Primary action button: `background: --leaf-green`, `color: white`, `border-color: --leaf-green`
-- Shared tag pills:
-  - positive: `#edf5e8 / #3b6b4a / #c5ddb8`
-  - warning: `#fef5e0 / #7a5c10 / #e8d48a`
-  - negative: `#fef0ee / #8a3a2a / #e8c0b8`
-  - neutral: `#f0f3ed / #5a8a6a / #ccddc4`
+### LINKED MENTIONS
+- Cards with green left-accent strip
+- Title in medium weight, snippet text below
+- Highlighted `[[wikilink]]` text in green within snippets
+
+---
+
+## 11. Inline database blocks and column layouts
 
 ### Inline database blocks
 
@@ -242,78 +272,36 @@ The earlier “no emoji anywhere in the app” rule is superseded for the icon p
 - Each column surface should read as a soft drop zone: pale background, dashed border, subtle handle, no heavy chrome.
 - Current column blocks are lightweight text columns; future nested-block columns should preserve the same outer shell and spacing.
 
-### Interaction patterns
+---
+
+## 12. Interaction patterns
 
 - Width modes:
   - `normal`: `max-width: 680px`
   - `wide`: `max-width: 960px`
   - `full`: `max-width: 100%` with `padding: 0 24px`
-- Focus mode hides the top strip and right sidebar, leaving the canvas and status bar.
+- Focus mode hides the top strip and both sidebars, leaving the canvas and status bar.
 - Slash menu width: `248px` to `260px`, instant open/close, grouped by `Text`, `Structure`, `Insert`
 - Block handles and drag affordances must stay subtle and only appear on hover.
 
-## 12. v4 direction
+---
 
-### Three-pane shell
+## 13. Icon picker exception
 
-The default shell for the next version is:
+The earlier "no emoji anywhere in the app" rule is superseded for the icon picker content only.
 
-```
-App
-├── Left sidebar (navigation)
-├── Center canvas
-│   ├── Sticky top navigation
-│   ├── Identity header
-│   ├── Page or database content
-│   └── Status bar
-└── Right sidebar (context)
-```
+- Emoji may appear only as user-selected page/database icons and inside the icon picker grid.
+- UI chrome, navigation, and controls should still use SVG icons from `src/components/Icons.tsx`.
 
-- Left sidebar width target: `260px`
-- Right sidebar width target: `280px`
-- Center canvas remains the primary focus surface
-- Both sidebars can be toggled off for distraction-free writing
+---
 
-### Left sidebar rules
-
-- Primary purpose: navigation and workspace structure
-- Includes graph entry, recent/system shortcuts, and the page tree
-- Section labels should be muted, uppercase, and tracked
-- Icons may use restrained accent color by archetype, but page/database rows still use Leaf design language
-
-### Right sidebar rules
-
-- Primary purpose: metadata and context, not chat
-- Sections should prioritize:
-  - metadata
-  - description
-  - page outline
-  - linked mentions
-  - lightweight AI/context placeholders
-
-### Top navigation
-
-- Sticky with glass-like translucency
-- Contains breadcrumb trail, sidebar toggles, width controls, focus mode, and an `Ask AI` trigger
-- Motion should feel springy and native, never abrupt
-
-### Floating AI companion
+## 14. Floating AI companion
 
 - AI remains a floating bottom-centered surface, not a permanent chat column
 - It should feel discoverable and premium, with subtle glow/accent treatment
 - Suggested actions appear before typing and collapse once input begins
-
-### Graph view
-
-- The graph follows explicit `[[Page]]` wikilinks, Obsidian-style
-- Graph relationships should not be inferred from plain text mentions by default
-- Page identity must stay uniquely resolvable for graph linking
-
-### Better columns
-
-- The current lightweight column treatment is transitional
-- The next version should move toward real block-based columns while preserving the subtle visual shell already established
+- Trigger: `Ask AI ⌘K` button in top nav or floating action button
 
 ---
 
-*Last updated: 2026-03-18*
+*Last updated: 2026-03-19*

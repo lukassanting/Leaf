@@ -101,7 +101,7 @@ export function EditorToolbar({ editor }: Props) {
             className={[
               'px-1.5 py-1 rounded text-xs font-mono transition',
               isActive
-                ? 'font-semibold'
+                ? 'font-medium'
                 : '',
             ].join(' ')}
             style={isActive

@@ -104,7 +104,7 @@ export default function GraphPage() {
                 style={{ borderColor: 'rgba(0,0,0,0.05)', background: 'rgba(255,255,255,0.82)', boxShadow: 'var(--leaf-shadow-soft)' }}
               >
                 <div style={{ fontSize: 11, color: 'var(--leaf-text-muted)', marginBottom: 6 }}>{card.label}</div>
-                <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--leaf-text-title)' }}>{card.value}</div>
+                <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--leaf-text-title)' }}>{card.value}</div>
               </div>
             ))}
           </div>

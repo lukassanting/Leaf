@@ -88,18 +88,12 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     <PaneVisContext.Provider value={{ leftOpen, setLeftOpen, rightOpen, setRightOpen }}>
     <AIContext.Provider value={{ aiOpen, setAiOpen }}>
     <NavigationProgressProvider>
-      <div
-        className="flex h-screen overflow-hidden"
-        style={{ background: 'linear-gradient(180deg, #fafafa 0%, #f4f4f5 100%)' }}
-      >
+      <div className="flex h-screen overflow-hidden" style={{ background: 'var(--leaf-bg-app)' }}>
         {!focusMode && leftOpen ? <SidebarLeft activeId={activeId} /> : null}
 
         <main
           className="relative flex min-w-0 flex-1 flex-col"
-          style={{
-            background: 'var(--leaf-bg-editor)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.95)',
-          }}
+          style={{ background: 'var(--leaf-bg-editor)' }}
         >
           {children}
         </main>
@@ -111,15 +105,17 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
         <button
           type="button"
           onClick={() => setAiOpen(true)}
-          className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full transition-transform duration-150 hover:scale-[1.02]"
+          className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full transition-transform duration-150 hover:scale-[1.02]"
           style={{
-            background: 'linear-gradient(180deg, rgba(16,185,129,0.96), rgba(5,150,105,0.96))',
+            background: 'var(--leaf-green)',
             color: '#fff',
-            boxShadow: '0 18px 44px rgba(16,185,129,0.24), 0 0 0 1px rgba(255,255,255,0.35) inset',
+            boxShadow: '0 12px 32px rgba(16,185,129,0.2), 0 0 0 1px rgba(255,255,255,0.3) inset',
           }}
           title="Open AI companion"
         >
-          <span style={{ fontSize: 20, lineHeight: 1 }}>✦</span>
+          <svg width="18" height="18" viewBox="0 0 12 12" fill="none">
+            <path d="M6 1L7 4.5L10.5 5L7.5 7.5L8.5 11L6 9L3.5 11L4.5 7.5L1.5 5L5 4.5L6 1Z" fill="currentColor" />
+          </svg>
         </button>
       ) : null}
 

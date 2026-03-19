@@ -54,6 +54,25 @@ function SmallIdentityIcon({
   return kind === 'database' ? <DatabaseIcon size={16} /> : <LeafIcon size={16} />
 }
 
+function SectionHeader({ children, icon }: { children: React.ReactNode; icon?: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-1.5 px-1 pb-2 pt-1">
+      {icon && <span style={{ color: 'var(--leaf-text-muted)' }}>{icon}</span>}
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: 500,
+          letterSpacing: '0.09em',
+          textTransform: 'uppercase',
+          color: 'var(--leaf-text-muted)',
+        }}
+      >
+        {children}
+      </span>
+    </div>
+  )
+}
+
 export function Sidebar({ activeId }: { activeId?: string }) {
   const pathname = usePathname()
   const { startNavigation } = useNavigationProgress()
@@ -163,15 +182,16 @@ export function Sidebar({ activeId }: { activeId?: string }) {
     }
   }, [activeId, pathname])
 
-  const propertyRows = useMemo(() => {
+  const metadataRows = useMemo(() => {
     if (!identity) return []
-    const rows: { key: string; value: string | string[] }[] = [
-      { key: 'Kind', value: identity.kind === 'database' ? 'Database' : 'Page' },
-    ]
-    if (identity.viewType) rows.push({ key: 'View', value: identity.viewType })
-    if (identity.createdAt) rows.push({ key: 'Created', value: new Date(identity.createdAt).toLocaleDateString() })
-    if (identity.updatedAt) rows.push({ key: 'Updated', value: new Date(identity.updatedAt).toLocaleDateString() })
-    if (identity.tags?.length) rows.push({ key: 'Tags', value: identity.tags })
+    const rows: { key: string; value: string | string[]; type?: string }[] = []
+    if (identity.createdAt) {
+      rows.push({
+        key: 'Created',
+        value: new Date(identity.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
+      })
+    }
+    if (identity.tags?.length) rows.push({ key: 'Tags', value: identity.tags, type: 'tags' })
     return rows
   }, [identity])
 
@@ -179,164 +199,167 @@ export function Sidebar({ activeId }: { activeId?: string }) {
     <aside
       className="hidden shrink-0 border-l md:flex md:flex-col"
       style={{
-        width: 320,
-        minWidth: 320,
-        background: 'linear-gradient(180deg, rgba(250,250,250,0.98), rgba(244,244,245,0.98))',
+        width: 280,
+        minWidth: 280,
+        background: 'var(--leaf-bg-sidebar)',
         borderLeftColor: 'var(--leaf-border-strong)',
       }}
     >
+      {/* Page Info header */}
       <div
         style={{
-          padding: '18px 18px 16px',
+          padding: '14px 16px 12px',
           borderBottom: '1px solid var(--leaf-border-soft)',
-          background: 'rgba(255,255,255,0.84)',
-          backdropFilter: 'blur(12px)',
         }}
       >
-        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--leaf-text-muted)', marginBottom: 12 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--leaf-text-title)' }}>
           Page Info
         </div>
-        <div
-          onClick={() => window.dispatchEvent(new CustomEvent('leaf-focus-header-field', { detail: 'icon' }))}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: '#fff',
-            border: '1px solid var(--leaf-border-strong)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 8,
-            overflow: 'hidden',
-            cursor: identity?.kind === 'page' ? 'pointer' : 'default',
-          }}
-        >
-          <SmallIdentityIcon kind={identity?.kind ?? 'page'} icon={identity?.icon} />
-        </div>
-        <div
-          onClick={() => window.dispatchEvent(new CustomEvent('leaf-focus-header-field', { detail: 'title' }))}
-          style={{ fontSize: 15, fontWeight: 600, color: 'var(--leaf-text-title)', marginBottom: 5, lineHeight: 1.3, cursor: identity ? 'pointer' : 'default' }}
-        >
-          {identity?.title ?? 'Select a page'}
-        </div>
-        <div
-          onClick={() => window.dispatchEvent(new CustomEvent('leaf-focus-header-field', { detail: 'description' }))}
-          style={{ fontSize: 12, color: 'var(--leaf-text-muted)', lineHeight: 1.6, cursor: identity?.kind === 'page' ? 'pointer' : 'default' }}
-        >
-          {identity?.description || (identity ? 'No description yet' : 'Select a page')}
-        </div>
-        {identity?.tags?.length ? (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
-            {identity.tags.map((tag) => (
-              <span
-                key={tag}
-                style={{
-                  fontSize: 10.5,
-                  background: 'var(--color-tag-bg)',
-                  color: 'var(--color-tag-text)',
-                  borderRadius: 999,
-                  padding: '2px 6px',
-                  border: '1px solid var(--color-tag-border)',
-                }}
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        ) : null}
       </div>
 
-      <div className="flex-1 overflow-y-auto" style={{ padding: '14px 14px 18px' }}>
-        <div style={{ border: '1px solid var(--leaf-border-soft)', background: 'rgba(255,255,255,0.74)', borderRadius: 18, padding: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.09em', textTransform: 'uppercase' as const, color: 'var(--leaf-text-muted)', padding: '0 2px 8px' }}>
-            Properties
-          </div>
-          {propertyRows.length === 0 ? (
-            <div style={{ fontSize: 11.5, color: 'var(--leaf-text-muted)', padding: '2px 4px' }}>
-              No properties yet
-            </div>
-          ) : propertyRows.map((row) => (
-            <div key={row.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '5px 4px', fontSize: 11.5 }}>
-              <div style={{ width: 72, flexShrink: 0, color: 'var(--leaf-text-muted)', fontSize: 11 }}>{row.key}</div>
-              <div style={{ color: 'var(--leaf-text-title)', flex: 1, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {Array.isArray(row.value)
-                  ? row.value.map((tag) => (
-                    <span
-                      key={tag}
-                      style={{
-                        fontSize: 10,
-                        background: 'var(--color-tag-bg)',
-                        color: 'var(--color-tag-text)',
-                        borderRadius: 999,
-                        padding: '1px 6px',
-                        border: '1px solid var(--color-tag-border)',
-                      }}
-                    >
-                      {tag}
-                    </span>
-                  ))
-                  : row.value}
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="flex-1 overflow-y-auto" style={{ padding: '12px 16px 18px' }}>
+        {/* METADATA section */}
+        <SectionHeader icon={
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 3H10M2 6H7M2 9H9" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+          </svg>
+        }>
+          Metadata
+        </SectionHeader>
 
-        <div style={{ border: '1px solid var(--leaf-border-soft)', background: 'rgba(255,255,255,0.74)', borderRadius: 18, padding: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.09em', textTransform: 'uppercase' as const, color: 'var(--leaf-text-muted)', padding: '0 2px 8px' }}>
-            Overview
-          </div>
-          <div
-            onClick={() => window.dispatchEvent(new CustomEvent('leaf-focus-header-field', { detail: 'description' }))}
-            style={{
-              fontSize: 12,
-              color: 'var(--leaf-text-body)',
-              lineHeight: 1.65,
-              padding: '2px 4px',
-              cursor: identity ? 'pointer' : 'default',
-            }}
-          >
-            {identity?.description || 'No description yet'}
-          </div>
-        </div>
-
-        <div style={{ border: '1px solid var(--leaf-border-soft)', background: 'rgba(255,255,255,0.74)', borderRadius: 18, padding: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.09em', textTransform: 'uppercase' as const, color: 'var(--leaf-text-muted)', padding: '0 2px 8px' }}>
-            Outline
-          </div>
-          {outline.length === 0 ? (
-            <div style={{ fontSize: 11.5, color: 'var(--leaf-text-muted)', padding: '2px 4px' }}>
-              No headings yet
+        <div style={{ marginBottom: 16 }}>
+          {metadataRows.length === 0 && !identity ? (
+            <div style={{ fontSize: 12, color: 'var(--leaf-text-muted)', padding: '2px 4px' }}>
+              Select a page
             </div>
           ) : (
-            <div style={{ borderLeft: '1px solid var(--leaf-border-strong)', marginLeft: 8 }}>
-              {outline.map((item, index) => (
-                <div key={item.id} style={{ position: 'relative' }}>
-                  {index === 0 ? (
-                    <div style={{ position: 'absolute', left: -4, top: 12, width: 6, height: 6, borderRadius: 999, background: 'var(--leaf-green)' }} />
-                  ) : null}
-                  <div
-                    style={{
-                      padding: '4px 0 4px 12px',
-                      fontSize: item.level === 1 ? 13 : 11.5,
-                      color: item.level === 1 ? 'var(--leaf-text-title)' : 'var(--leaf-text-body)',
-                      marginLeft: item.level === 1 ? 0 : item.level === 2 ? 10 : 18,
-                    }}
-                  >
-                    {item.label}
+            <>
+              {metadataRows.map((row) => (
+                <div key={row.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '4px 2px', fontSize: 12 }}>
+                  <div style={{ width: 64, flexShrink: 0, color: 'var(--leaf-text-muted)', fontSize: 11.5 }}>{row.key}</div>
+                  <div style={{ color: 'var(--leaf-text-title)', flex: 1, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    {row.type === 'tags' && Array.isArray(row.value)
+                      ? row.value.map((tag) => (
+                        <span
+                          key={tag}
+                          style={{
+                            fontSize: 11,
+                            background: 'var(--color-tag-bg)',
+                            color: 'var(--color-tag-text)',
+                            borderRadius: 4,
+                            padding: '2px 8px',
+                            border: '1px solid var(--color-tag-border)',
+                          }}
+                        >
+                          {tag}
+                        </span>
+                      ))
+                      : <span style={{ fontSize: 12, color: 'var(--leaf-text-body)' }}>{String(row.value)}</span>}
                   </div>
                 </div>
               ))}
+            </>
+          )}
+        </div>
+
+        {/* Description */}
+        {identity?.description ? (
+          <div style={{ marginBottom: 16 }}>
+            <SectionHeader icon={
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <rect x="1.5" y="1.5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1" />
+                <path d="M3.5 4H8.5M3.5 6H7M3.5 8H8" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" />
+              </svg>
+            }>
+              Description
+            </SectionHeader>
+            <div
+              onClick={() => window.dispatchEvent(new CustomEvent('leaf-focus-header-field', { detail: 'description' }))}
+              style={{
+                fontSize: 12,
+                color: 'var(--leaf-text-body)',
+                lineHeight: 1.6,
+                padding: '0 2px',
+                cursor: identity ? 'pointer' : 'default',
+              }}
+            >
+              {identity.description}
+            </div>
+          </div>
+        ) : null}
+
+        {/* PAGE OUTLINE section */}
+        <div style={{ marginBottom: 16 }}>
+          <SectionHeader icon={
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1" />
+              <path d="M6 3.5V6.5L8 7.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+            </svg>
+          }>
+            Page Outline
+          </SectionHeader>
+          {outline.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--leaf-text-muted)', padding: '2px 4px' }}>
+              No headings yet
+            </div>
+          ) : (
+            <div style={{ marginLeft: 4 }}>
+              {outline.map((item, index) => {
+                const prefix = item.level === 1
+                  ? `${index + 1}.`
+                  : item.level === 2
+                    ? `${index + 1}.1`
+                    : `${index + 1}.1`
+
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-start gap-2 rounded-md px-1.5 py-1 transition-colors duration-150"
+                    style={{
+                      marginLeft: item.level === 1 ? 0 : item.level === 2 ? 12 : 24,
+                      cursor: 'default',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-hover)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
+                  >
+                    {index === 0 ? (
+                      <span
+                        className="mt-1.5 shrink-0 rounded-full"
+                        style={{ width: 6, height: 6, background: 'var(--leaf-green)' }}
+                      />
+                    ) : (
+                      <span className="mt-1.5 shrink-0" style={{ width: 6 }} />
+                    )}
+                    <span
+                      style={{
+                        fontSize: item.level === 1 ? 12.5 : 12,
+                        color: index === 0 ? 'var(--leaf-green)' : item.level === 1 ? 'var(--leaf-text-title)' : 'var(--leaf-text-body)',
+                        fontWeight: item.level === 1 ? 500 : 400,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {prefix} {item.label}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
 
-        <div style={{ border: '1px solid var(--leaf-border-soft)', background: 'rgba(255,255,255,0.74)', borderRadius: 18, padding: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.09em', textTransform: 'uppercase' as const, color: 'var(--leaf-text-muted)', padding: '0 2px 8px' }}>
-            Backlinks
-          </div>
+        {/* LINKED MENTIONS section */}
+        <div>
+          <SectionHeader icon={
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M5 7L3.5 8.5C2.9 9.1 2.9 9.1 3.5 9.7C4.1 10.3 4.1 10.3 4.7 9.7L6.5 7.9" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+              <path d="M7 5L8.5 3.5C9.1 2.9 9.1 2.9 8.5 2.3C7.9 1.7 7.9 1.7 7.3 2.3L5.5 4.1" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+              <path d="M4.5 7.5L7.5 4.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+            </svg>
+          }>
+            Linked Mentions
+          </SectionHeader>
           {backlinks.length === 0 ? (
-            <div style={{ fontSize: 11.5, color: 'var(--leaf-text-muted)', padding: '2px 4px' }}>
+            <div style={{ fontSize: 12, color: 'var(--leaf-text-muted)', padding: '2px 4px' }}>
               No linked mentions yet
             </div>
           ) : backlinks.map((item) => (
@@ -344,19 +367,20 @@ export function Sidebar({ activeId }: { activeId?: string }) {
               key={item.id}
               href={`/editor/${item.id}`}
               onClick={() => startNavigation()}
+              className="block rounded-lg transition-colors duration-150"
               style={{
-                display: 'block',
-                padding: '10px 10px',
-                borderRadius: 12,
-                fontSize: 11.5,
+                padding: '8px 10px',
+                fontSize: 12,
                 color: 'var(--leaf-text-body)',
-                background: '#fff',
-                border: '1px solid var(--leaf-border-strong)',
+                background: 'rgba(255,255,255,0.7)',
+                borderLeft: '3px solid var(--leaf-green)',
                 marginBottom: 8,
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.9)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.7)' }}
             >
-              <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--leaf-text-title)', marginBottom: 4 }}>{item.title}</div>
-              <div style={{ fontSize: 11, color: 'var(--leaf-text-muted)', lineHeight: 1.55 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--leaf-text-title)', marginBottom: 3 }}>{item.title}</div>
+              <div style={{ fontSize: 11, color: 'var(--leaf-text-muted)', lineHeight: 1.5 }}>
                 {item.snippet}
               </div>
             </Link>
