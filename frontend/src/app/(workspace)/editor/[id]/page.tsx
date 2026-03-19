@@ -166,7 +166,7 @@ export default function EditorPage() {
   return (
     <div
       className="flex min-h-screen flex-col"
-      style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(248,251,247,0.95))' }}
+      style={{ background: 'var(--leaf-bg-editor)' }}
       onKeyDown={handleKeyDown}
     >
       {/* Top strip */}
@@ -175,6 +175,7 @@ export default function EditorPage() {
         currentTitle={title}
       />
 
+      <div style={{ maxWidth: contentMaxWidth, margin: contentMaxWidth ? '0 auto' : undefined, padding: contentPadding || '0 28px' }}>
       <PageIdentityHeader
         kind="page"
         icon={icon}
@@ -196,9 +197,10 @@ export default function EditorPage() {
         onTagsChange={(nextTags) => { void handleTagsSave(nextTags) }}
         showTags={false}
       />
+      </div>
 
       {/* Editor canvas */}
-      <div className="flex-1 overflow-y-auto" style={{ padding: '18px 0 40px' }}>
+      <div className="flex-1 overflow-y-auto" style={{ padding: '0 0 40px' }}>
         <div
           style={{
             maxWidth: contentMaxWidth,
@@ -206,14 +208,6 @@ export default function EditorPage() {
             padding: contentPadding || '0 28px',
           }}
         >
-          <div
-            className="rounded-[28px] border px-5 py-6 sm:px-10"
-            style={{
-              borderColor: 'rgba(0,0,0,0.04)',
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.78))',
-              boxShadow: '0 18px 60px rgba(24,24,27,0.06)',
-            }}
-          >
             <Editor
               content={content}
               onUpdate={(document) => {
@@ -228,7 +222,6 @@ export default function EditorPage() {
               onModeChange={setEditorMode}
               actionsRef={editorActionsRef}
             />
-          </div>
         </div>
       </div>
 
