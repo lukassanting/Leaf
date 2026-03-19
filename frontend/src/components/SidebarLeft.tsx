@@ -1,20 +1,21 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { databasesApi, leavesApi } from '@/lib/api'
 import { createLeafAndPrimeCache } from '@/lib/leafMutations'
 import { useNavigationProgress } from '@/components/NavigationProgress'
 import { SidebarTree } from './SidebarTree'
 import { warmEditorRoute } from '@/lib/warmEditorRoute'
-import { LeafIcon } from './Icons'
+import { DatabaseIcon, LeafIcon } from './Icons'
 import { ensureWorkspaceDefaults } from '@/lib/workspaceDefaults'
 
 type QuickAccessItem = {
   id: string
   title: string
   href: string
-  icon: 'graph' | 'journal' | 'notes'
+  icon: 'graph' | 'journal' | 'notes' | 'page' | 'database'
 }
 
 function NavIcon({ children, active }: { children: React.ReactNode; active?: boolean }) {
@@ -53,11 +54,11 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
     let cancelled = false
 
     void ensureWorkspaceDefaults()
-      .then(({ dailyJournal, notesDump }) => {
+      .then(({ journalDatabase, notesDump }) => {
         if (cancelled) return
         setQuickAccess([
           { id: 'graph', title: 'Graph View', href: '/graph', icon: 'graph' },
-          { id: dailyJournal.id, title: dailyJournal.title, href: `/editor/${dailyJournal.id}`, icon: 'journal' },
+          { id: journalDatabase.id, title: journalDatabase.title, href: `/databases/${journalDatabase.id}`, icon: 'journal' },
           { id: notesDump.id, title: notesDump.title, href: `/editor/${notesDump.id}`, icon: 'notes' },
         ])
       })
@@ -71,11 +72,46 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
     }
   }, [])
 
+  const [pinnedItems, setPinnedItems] = useState<QuickAccessItem[]>([])
+
+  const loadPinnedItems = useCallback(async () => {
+    try {
+      const pins: string[] = JSON.parse(localStorage.getItem('leaf-quick-access-pins') || '[]')
+      if (pins.length === 0) { setPinnedItems([]); return }
+
+      const items: QuickAccessItem[] = []
+      for (const id of pins) {
+        try {
+          const leaf = await leavesApi.get(id)
+          items.push({ id, title: leaf.title, href: `/editor/${id}`, icon: 'page' })
+        } catch {
+          try {
+            const db = await databasesApi.get(id)
+            items.push({ id, title: db.title, href: `/databases/${id}`, icon: 'database' })
+          } catch {
+            // item no longer exists, skip
+          }
+        }
+      }
+      setPinnedItems(items)
+    } catch {
+      setPinnedItems([])
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadPinnedItems()
+    const handler = () => { void loadPinnedItems() }
+    window.addEventListener('leaf-quick-access-changed', handler)
+    return () => window.removeEventListener('leaf-quick-access-changed', handler)
+  }, [loadPinnedItems])
+
   const activeQuickAccessId = useMemo(() => {
     if (pathname === '/graph') return 'graph'
-    const match = quickAccess.find((item) => item.href === pathname)
+    const allItems = [...quickAccess, ...pinnedItems]
+    const match = allItems.find((item) => item.href === pathname)
     return match?.id
-  }, [pathname, quickAccess])
+  }, [pathname, quickAccess, pinnedItems])
 
   const handleNewPage = async () => {
     try {
@@ -178,12 +214,12 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
         ))}
       </div>
 
-      {/* Personal section */}
+      {/* Quick Access section */}
       <div className="px-3 pb-1">
         <div className="flex items-center justify-between">
-          <SectionLabel>Personal</SectionLabel>
+          <SectionLabel>Quick Access</SectionLabel>
         </div>
-        {quickAccess.filter((item) => item.icon !== 'graph').map((item) => (
+        {[...quickAccess.filter((item) => item.icon !== 'graph'), ...pinnedItems].map((item) => (
           <Link
             key={item.id}
             href={item.href}
@@ -196,7 +232,7 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
             onClick={() => startNavigation()}
           >
             <NavIcon active={activeQuickAccessId === item.id}>
-              <LeafIcon size={14} />
+              {item.icon === 'journal' || item.icon === 'database' ? <DatabaseIcon size={14} /> : <LeafIcon size={14} />}
             </NavIcon>
             <span style={{ fontSize: 13 }}>{item.title}</span>
           </Link>

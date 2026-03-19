@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useNavigationProgress } from '@/components/NavigationProgress'
 import { databasesApi, leavesApi } from '@/lib/api'
@@ -79,6 +79,36 @@ export function Sidebar({ activeId }: { activeId?: string }) {
   const [identity, setIdentity] = useState<SidebarIdentityData | null>(null)
   const [backlinks, setBacklinks] = useState<BacklinkItem[]>([])
   const [outline, setOutline] = useState<OutlineItem[]>([])
+  const [isPinned, setIsPinned] = useState(false)
+
+  // Load pin state when activeId changes
+  useEffect(() => {
+    if (!activeId) { setIsPinned(false); return }
+    try {
+      const pins: string[] = JSON.parse(localStorage.getItem('leaf-quick-access-pins') || '[]')
+      setIsPinned(pins.includes(activeId))
+    } catch {
+      setIsPinned(false)
+    }
+  }, [activeId])
+
+  const togglePin = useCallback(() => {
+    if (!activeId || !identity) return
+    try {
+      const pins: string[] = JSON.parse(localStorage.getItem('leaf-quick-access-pins') || '[]')
+      let nextPins: string[]
+      if (pins.includes(activeId)) {
+        nextPins = pins.filter((id) => id !== activeId)
+      } else {
+        nextPins = [...pins, activeId]
+      }
+      localStorage.setItem('leaf-quick-access-pins', JSON.stringify(nextPins))
+      setIsPinned(!isPinned)
+      window.dispatchEvent(new CustomEvent('leaf-quick-access-changed'))
+    } catch {
+      // ignore
+    }
+  }, [activeId, identity, isPinned])
 
   useEffect(() => {
     let cancelled = false
@@ -216,6 +246,35 @@ export function Sidebar({ activeId }: { activeId?: string }) {
           Page Info
         </div>
       </div>
+
+      {/* Pin to Quick Access */}
+      {activeId && identity && (
+        <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--leaf-border-soft)' }}>
+          <button
+            type="button"
+            onClick={togglePin}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors duration-150"
+            style={{
+              fontSize: 12,
+              color: isPinned ? 'var(--leaf-green)' : 'var(--leaf-text-body)',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-hover)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M9.5 2L13 5.5L10.5 8L11 11.5L4.5 5L8 5.5L9.5 2Z"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinejoin="round"
+                fill={isPinned ? 'currentColor' : 'none'}
+              />
+              <path d="M5.5 10.5L2.5 13.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+            <span style={{ fontWeight: 500 }}>{isPinned ? 'Pinned to Quick Access' : 'Pin to Quick Access'}</span>
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto" style={{ padding: '12px 16px 18px' }}>
         {/* METADATA section */}
