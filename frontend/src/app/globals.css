@@ -2,6 +2,7 @@
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────
    See LEAF_DESIGN_GUIDE.md for the full token reference.
+   Palette: emerald green (#10b981) + zinc grays.
    ────────────────────────────────────────────────────────────────────────── */
 
 :root {
@@ -24,13 +25,13 @@
 
   /* Sidebar states */
   --color-active:      rgba(16, 185, 129, 0.14);
-  --color-hover:       rgba(24, 24, 27, 0.05);
+  --color-hover:       rgba(16, 185, 129, 0.08);
 
-  /* v3 tokens */
+  /* Shell surface tokens */
   --leaf-bg-sidebar:   #f4f4f5;
   --leaf-bg-editor:    #ffffff;
   --leaf-bg-app:       #fafafa;
-  --leaf-bg-hover:     rgba(24, 24, 27, 0.04);
+  --leaf-bg-hover:     rgba(16, 185, 129, 0.06);
   --leaf-bg-active:    rgba(16, 185, 129, 0.12);
   --leaf-bg-tag:       #ecfdf5;
   --leaf-border-soft:  #f0f0f1;
@@ -38,6 +39,7 @@
   --leaf-border-tag:   #a7f3d0;
   --leaf-text-title:   #18181b;
   --leaf-text-sidebar: #27272a;
+  --leaf-text-body:    #3f3f46;
   --leaf-text-hint:    #a1a1aa;
   --leaf-text-muted:   #71717a;
   --leaf-green:        #10b981;
@@ -51,7 +53,7 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -75,44 +77,44 @@ html, body {
 
 .ProseMirror {
   color: var(--color-text-body);
-  font-size: 15px;
-  line-height: 1.85;
+  font-size: 14px;
+  line-height: 1.75;
   outline: none;
   letter-spacing: -0.003em;
 }
 
-/* Headings — 500 weight only, never bold */
+/* Headings — 500 weight max, never 600/700 */
 .ProseMirror h1 {
-  font-size: 2.25rem;
-  font-weight: 600;
-  line-height: 1.15;
-  letter-spacing: -0.03em;
-  margin: 1.1em 0 0.48em;
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  margin: 1.2em 0 0.5em;
   color: var(--color-text-dark);
 }
 .ProseMirror h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.02em;
-  margin: 1.2em 0 0.42em;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  margin: 1.1em 0 0.4em;
   color: var(--color-text-dark);
 }
 .ProseMirror h3 {
-  font-size: 1.2rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  line-height: 1.35;
-  letter-spacing: -0.015em;
-  margin: 1em 0 0.34em;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  margin: 1em 0 0.35em;
   color: var(--color-text-dark);
 }
 
-.ProseMirror p  { margin: 0.42em 0; color: var(--color-text-body); }
+.ProseMirror p  { margin: 0.4em 0; color: var(--color-text-body); }
 
 /* Lists */
 .ProseMirror ul { list-style-type: disc;    padding-left: 1.5em; }
 .ProseMirror ol { list-style-type: decimal; padding-left: 1.5em; }
-.ProseMirror li { line-height: 1.75; margin: 0.15em 0; }
+.ProseMirror li { line-height: 1.7; margin: 0.15em 0; }
 
 /* Blockquote */
 .ProseMirror blockquote {
@@ -127,14 +129,26 @@ html, body {
 .ProseMirror pre {
   background: #fafafa;
   border: 1px solid #e4e4e7;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 0.875em 1em;
   overflow-x: auto;
   margin: 0.75em 0;
+  position: relative;
+}
+.ProseMirror pre::before {
+  content: attr(data-language);
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--color-text-muted);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
 }
 .ProseMirror code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12.5px;
+  font-size: 12px;
   background: #f4f4f5;
   padding: 0.1em 0.35em;
   border-radius: 3px;
@@ -153,15 +167,16 @@ html, body {
   display: flex;
   align-items: flex-start;
   gap: 0.5em;
-  line-height: 1.75;
+  line-height: 1.7;
 }
 .ProseMirror ul[data-type="taskList"] li > label { margin-top: 0.22em; flex-shrink: 0; }
 .ProseMirror ul[data-type="taskList"] li > div { flex: 1; }
 .ProseMirror ul[data-type="taskList"] li input[type="checkbox"] {
   accent-color: var(--color-primary);
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   cursor: pointer;
+  border-radius: 3px;
 }
 
 /* Placeholder */
@@ -182,4 +197,19 @@ html, body {
   color: var(--leaf-green);
   border: 1px solid rgba(16, 185, 129, 0.18);
   white-space: nowrap;
+}
+
+/* ─── Column layout blocks ─────────────────────────────────────────────── */
+.column-layout-cell {
+  background: rgba(236, 253, 245, 0.5);
+  border: 1px dashed rgba(16, 185, 129, 0.2);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+/* ─── Inline database embed ────────────────────────────────────────────── */
+.embedded-database-block {
+  border: 1px solid var(--leaf-border-strong);
+  border-radius: 10px;
+  overflow: hidden;
 }

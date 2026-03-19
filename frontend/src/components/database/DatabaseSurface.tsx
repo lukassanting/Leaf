@@ -1,7 +1,7 @@
 'use client'
 
 import type { DatabaseRow, PropertyDefinition, ViewType } from '@/lib/api'
-import { AddColumnModal, BoardView, DatabaseToolbar, GalleryView, TableView } from '@/components/database/DatabaseViews'
+import { AddColumnModal, BoardView, DatabaseToolbar, GalleryView, ListView, TableView } from '@/components/database/DatabaseViews'
 
 type Props = {
   activeView: ViewType
@@ -58,6 +58,15 @@ export function DatabaseSurface({
       )}
       {activeView === 'gallery' && (
         <GalleryView
+          rows={rows}
+          columns={columns}
+          onUpdateName={(rowId, title) => { void updateName(rowId, title) }}
+          onDeleteRow={(rowId) => { void deleteRow(rowId) }}
+          onAddRow={() => { void addRow() }}
+        />
+      )}
+      {activeView === 'list' && (
+        <ListView
           rows={rows}
           columns={columns}
           onUpdateName={(rowId, title) => { void updateName(rowId, title) }}

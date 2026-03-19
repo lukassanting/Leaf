@@ -42,15 +42,17 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 
 ### Workspace shell and metadata
 
-- [x] Centered identity header shared between page and database routes.
+- [x] Three-pane shell: left sidebar (navigation), center canvas, right sidebar (context).
+- [x] Left sidebar with KNOWLEDGE BASE, Personal, and PROJECTS sections.
+- [x] Right sidebar with METADATA, PAGE OUTLINE, and LINKED MENTIONS sections.
 - [x] Icon picker with SVG shapes, uploaded images, and emoji as user-selected content.
-- [x] Right sidebar showing live metadata, tree navigation, and backlinks.
 - [x] Width modes (`normal`, `wide`, `full`) and focus mode.
 - [x] Bottom status bar with sync state and mode label.
+- [x] `Ask AI ⌘K` button in top navigation.
 
 ### Databases
 
-- [x] Standalone database pages with shared toolbar and table/board/gallery views.
+- [x] Standalone database pages with shared toolbar and table/board/gallery/list views.
 - [x] Embedded databases render the same shared surface inline inside editor pages.
 - [x] Database metadata parity with pages: title, description, tags, icon.
 - [x] Row-backed pages, inline cell editing, schema-driven columns, and add-column flows.
@@ -152,7 +154,7 @@ Questions still open for the next milestone:
 | `frontend/src/components/SlashCommands.tsx` | Shared slash menu data and menu UI |
 | `frontend/src/components/database/DatabaseSurface.tsx` | Shared standalone/embedded database renderer |
 | `frontend/src/components/database/EmbeddedDatabaseBlock.tsx` | Inline database block wrapper |
-| `frontend/src/components/database/DatabaseViews.tsx` | Table/board/gallery views and toolbar |
+| `frontend/src/components/database/DatabaseViews.tsx` | Table/board/gallery/list views and toolbar |
 | `frontend/src/components/page/PageIdentityHeader.tsx` | Shared centered identity header |
 | `frontend/src/components/page/IconPicker.tsx` | Page/database icon picker |
 | `frontend/src/components/Sidebar.tsx` | Right sidebar metadata and navigation |
@@ -203,4 +205,4 @@ That means platform growth should focus first on:
 
 ---
 
-*Last updated: 2026-03-18. This roadmap reflects the completed v3 redesign and the recommended follow-up phase.*
+*Last updated: 2026-03-19. This roadmap reflects the three-pane shell redesign, list view addition, and the recommended follow-up phase.*

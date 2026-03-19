@@ -1,31 +1,40 @@
 # Leaf — Editor Design Reference
 
-Single source of truth for how the current v3 editor experience should look, feel, and behave.
+Single source of truth for how the current editor experience should look, feel, and behave.
 
 ---
 
 ## 1. Shell layout
 
-The editor and database routes now share the same shell:
+The editor and database routes share a three-pane shell:
 
 ```text
-App
-├── Top strip
-├── Centered identity header
-├── Main canvas
-└── Bottom status bar
-
-Right sidebar
-├── identity/meta
-├── tree
-└── backlinks
+App (flex row, 100vw × 100vh)
+├── Left sidebar (260px, navigation)
+│   ├── Branding
+│   ├── Search / Recent / Settings
+│   ├── KNOWLEDGE BASE section
+│   ├── Personal page tree
+│   └── PROJECTS page tree
+├── Center canvas (flex: 1, flex column)
+│   ├── Sticky top navigation (48px)
+│   ├── Identity header (title, description, tags)
+│   ├── Editor / database canvas (flex: 1, overflow-y: auto)
+│   └── Status bar (28px)
+└── Right sidebar (280px, context)
+    ├── Page Info header
+    ├── METADATA section
+    ├── PAGE OUTLINE section
+    └── LINKED MENTIONS section
 ```
 
 Key expectations:
 
-- The identity header is centered and shared between pages and databases.
-- The right sidebar is always the supporting surface for metadata and navigation.
+- The identity header is left-aligned and shared between pages and databases.
+- The left sidebar is for navigation and workspace structure.
+- The right sidebar is for metadata, page outline, and linked mentions.
 - The status bar remains visible at the bottom and carries sync state plus current mode.
+- Both sidebars can be toggled off for distraction-free writing.
 
 ---
 
@@ -124,9 +133,16 @@ Design intent:
 
 ## 7. Sidebar expectations
 
+### Left sidebar
+- Primary purpose: navigation and workspace structure.
+- Organized into sections: KNOWLEDGE BASE (Graph View), Personal (page tree), PROJECTS (project tree).
+- Section labels should be muted, uppercase, and tracked.
 - Pages and databases appear in the same navigational tree with distinct icons.
-- The sidebar should surface live metadata for the active route.
-- Clicking identity fields in the sidebar should focus the corresponding field in the centered header when possible.
+
+### Right sidebar
+- Primary purpose: metadata and context.
+- Three main sections: METADATA (created, author, tags), PAGE OUTLINE (hierarchical headings), LINKED MENTIONS (backlink cards).
+- Clicking identity fields in the sidebar should focus the corresponding field in the header when possible.
 - Backlinks belong in the sidebar, not inline below the editor body.
 
 ---
@@ -170,4 +186,4 @@ Non-negotiables:
 
 ---
 
-*Last updated: 2026-03-18 — reflects the shipped v3 shell, inline database embeds, and column layout blocks.*
+*Last updated: 2026-03-19 — reflects the three-pane shell, inline database embeds, column layout blocks, and database list view.*

@@ -6,16 +6,16 @@ const config: Config = {
     extend: {
       colors: {
         leaf: {
-          50:  '#f0f3ed', // sidebar bg
-          100: '#edf5e8', // tag bg / lightest tint
-          200: '#c5ddb8', // tag border / soft border
-          300: '#dce5d7', // standard border
-          400: '#8fa898', // muted text
-          500: '#3d8c52', // primary green
-          600: '#2d7042', // primary hover
-          700: '#374f42', // body text
-          800: '#1e3d2e', // dark text
-          900: '#1a3828', // darkest — titles
+          50:  '#f4f4f5', // sidebar bg (zinc-100)
+          100: '#ecfdf5', // tag bg (emerald-50)
+          200: '#a7f3d0', // tag border (emerald-200)
+          300: '#e4e4e7', // standard border (zinc-300)
+          400: '#71717a', // muted text (zinc-500)
+          500: '#10b981', // primary green (emerald-500)
+          600: '#047857', // primary hover (emerald-700)
+          700: '#3f3f46', // body text (zinc-700)
+          800: '#27272a', // dark text (zinc-800)
+          900: '#18181b', // darkest — titles (zinc-900)
         },
       },
       fontFamily: {
