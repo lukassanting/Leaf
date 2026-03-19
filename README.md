@@ -126,7 +126,7 @@ Leaf is now on the v3 shell and editor architecture:
 - **Schema-first content:** page bodies use structured `LeafDocument` JSON, with a migration path for legacy HTML content.
 - **Stable editor core:** custom TipTap-based editor with slash commands, block insertion, page embeds, inline database embeds, Markdown import/export, and rich/Markdown mode switching.
 - **Workspace shell:** centered identity header, icon picker, content width modes, focus mode, bottom status bar, and a live right sidebar for metadata, tree navigation, and backlinks.
-- **Database parity:** standalone and inline databases share the same table, board, and gallery surfaces plus shared metadata handling.
+- **Database parity:** standalone and inline databases share the same table, board, gallery, and list surfaces plus shared metadata handling.
 - **Column layouts:** persisted 2-column and 3-column layout blocks with inline editing and in-block drag reordering.
 - **Local-first sync:** IndexedDB cache, offline queueing, debounced autosave, and conflict-aware content patching.
 
@@ -136,7 +136,7 @@ Leaf is now on the v3 shell and editor architecture:
 - **Editor:** TipTap rich text with slash insertion, block menu, page/database embeds, 2-column and 3-column layout blocks, optional Markdown source mode, and Markdown import/export.
 - **Autosave:** Debounced PATCH to `/leaves/{id}/content` (~800 ms idle); Ctrl+S / Cmd+S to save immediately; optional conflict detection via `updated_at`.
 - **Local-first cache:** IndexedDB (with localStorage fallback) for instant page load and offline edits; pending saves sync when back online.
-- **Databases:** Notion-style collections of pages. Each entry is a real page. Views: Table, Board, Gallery. Schema-driven columns (text, number, tags, select). "Name" always links to the entry page. Inline cell editing and add-column flows are shared between standalone and embedded databases.
+- **Databases:** Notion-style collections of pages. Each entry is a real page. Views: Table, Board, Gallery, List. Schema-driven columns (text, number, tags, select). "Name" always links to the entry page. Inline cell editing and add-column flows are shared between standalone and embedded databases.
 - **Metadata parity:** Pages and databases both support title, description, tags, and icons.
 - **Testing:** Backend integration coverage for leaves/databases and Playwright coverage for editor persistence, slash embeds, todo interaction, inline databases, and column layouts.
 - **Stack:** Next.js 15 (App Router), FastAPI, MySQL, Tailwind CSS v4, TipTap, Docker Compose.

@@ -1,3 +1,26 @@
+/**
+ * Leaf frontend: Workspace shell layout (`frontend/src/app/(workspace)/layout.tsx`).
+ *
+ * Purpose:
+ * - Provides the shared UI chrome for workspace pages: sidebars, focus mode, AI companion, and sizing/layout state.
+ * - Exposes small React contexts/hooks (`useFocusMode`, `useContentWidth`, `useSidebarVis`, `usePaneVis`, `useAI`) that pages/components read.
+ *
+ * How to read:
+ * - Start from the exported hooks (they are simple context wrappers).
+ * - Then read `WorkspaceLayout` return tree: the providers wrap `children` plus the left/right sidebar and overlay buttons.
+ * - Keybindings are handled in the `useEffect` block (Cmd/Ctrl+K toggles AI, Cmd/Ctrl+. toggles focus mode, `Escape` closes AI).
+ *
+ * Update:
+ * - To add a new global workspace toggle, add a new context + hook, then wire it in the return JSX.
+ * - If you change keyboard shortcuts, update the `onKeyDown` handler.
+ * - If you add/remove sidebars, update the conditional rendering that checks `focusMode`, `leftOpen/rightOpen`, and `aiOpen`.
+ *
+ * Debug:
+ * - If something seems “stuck”, check state initialization and provider wiring order.
+ * - Keyboard shortcut issues: verify the `keydown` handler is mounted and that `event.preventDefault()` matches your desired behavior.
+ */
+
+
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'

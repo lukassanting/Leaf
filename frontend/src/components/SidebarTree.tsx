@@ -1,3 +1,31 @@
+/**
+ * Leaf UI: sidebar tree view (`frontend/src/components/SidebarTree.tsx`).
+ *
+ * Purpose:
+ * - Renders the hierarchical navigation tree of pages and databases.
+ * - Supports:
+ *   - expansion/collapse
+ *   - search filtering
+ *   - context menu actions (rename/delete/create child)
+ *   - drag/drop reorder for pages
+ *
+ * How to read:
+ * - This component is mostly UI wiring around `useSidebarTreeModel(activeId)`.
+ * - It delegates all interaction handlers (rename/delete/reorder/etc.) to the hook.
+ * - For row-level UI, it uses `SidebarTreeRow` and `SidebarTreeContextMenu`.
+ *
+ * Update:
+ * - If you change the tree interaction model, update `useSidebarTreeModel` and then
+ *   adjust the props/handler wiring here.
+ * - If you add new node actions, update the context menu component and hook.
+ *
+ * Debug:
+ * - If the tree is empty, check `useSidebarTreeModel` network/cache behavior.
+ * - If drag/drop doesn’t work, verify the `onDragStart/onDragOver/onDrop`
+ *   handlers are being passed to `SidebarTreeRow`.
+ */
+
+
 'use client'
 
 import { SidebarTreeContextMenu } from './SidebarTreeContextMenu'

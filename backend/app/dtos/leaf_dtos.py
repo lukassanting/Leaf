@@ -1,3 +1,24 @@
+"""
+Leaf DTOs (`backend/app/dtos/leaf_dtos.py`).
+
+Purpose:
+- Defines the Pydantic request/response schemas for leaf/page/project entities and graph data.
+
+How to read:
+- `LeafType` and `infer_leaf_type(...)` are used to decide page vs project classification.
+- `LeafCreate`, `LeafUpdate`, and `LeafContentUpdate` define what API endpoints accept.
+- `Leaf` is the full leaf response model.
+- `LeafTreeItem` is the lightweight model used for `/leaves/tree`.
+- `LeafGraphNode`, `LeafGraphEdge`, and `LeafGraph` are used by `/leaves/graph`.
+
+Update:
+- If the editor starts sending a new content shape, update `Leaf.content` typing and ensure backend serialization stays compatible.
+- If you add a new metadata field, add it to `Leaf`, then wire it through operations and model mappings.
+
+Debug:
+- When FastAPI validation fails, check the request payload against the DTO types here.
+"""
+
 from datetime import datetime
 from enum import Enum
 from typing import Any, Optional

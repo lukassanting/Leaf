@@ -1,3 +1,30 @@
+"""
+MySQL/SQLite persistence models (`backend/app/database/models/mysql_models.py`).
+
+Purpose:
+- Defines the SQLAlchemy ORM entities for the Leaf backend:
+  - `LeafModel`: the self-referential tree node (page or project), including content + metadata
+  - `DatabaseModel`: a “database container” (table view metadata)
+  - `DatabaseRowModel`: a row inside a database (properties JSON + optional linked `leaf_id`)
+  - `PageLinkModel`: tracks `[[wikilinks]]` between leaves for backlinks/graph
+
+How to read:
+- The model class docstrings (e.g. `DatabaseModel`, `DatabaseRowModel`, `PageLinkModel`) describe intent.
+- Pay attention to the column types:
+  - `children_ids`, `tags`, `icon`, `properties`, `schema` are JSON-like columns (`MySQLJSON = JSON`)
+  - `children_ids` is wrapped with `MutableList` so updates persist
+
+Update:
+- If you add/change fields:
+  1) update these models
+  2) ensure migrations/column backfills exist in `database/connectors/mysql.py`
+  3) update DTOs and operations mapping functions
+
+Debug:
+- Schema mismatch: verify the connector’s `_migrate_missing_columns()` and the DB already has new columns.
+- JSON behavior: check how SQLAlchemy + `MutableList` handles in-place edits for your JSON columns.
+"""
+
 from datetime import datetime
 from uuid import uuid4
 from sqlalchemy import func, Column, String, ForeignKey, DateTime, Text, Enum, Integer, JSON

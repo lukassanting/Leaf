@@ -1,3 +1,25 @@
+/**
+ * Leaf frontend: Graph view page (`frontend/src/app/(workspace)/graph/page.tsx`).
+ *
+ * Purpose:
+ * - Visualizes the leaf graph (nodes/edges) for explicit wikilinks/backlinks.
+ * - Provides a simple text filter and navigates to leaf editor on node click.
+ *
+ * How to read:
+ * - Data is loaded once in `useEffect` via `leavesApi.getGraph()`.
+ * - `query` filters nodes/edges using `useMemo` (title + path match).
+ * - The SVG is built from `layout.positions` + `filteredEdges` + `visibleNodes`.
+ *
+ * Update:
+ * - To change layout algorithm, modify the `layout` `useMemo` block.
+ * - To add better filtering (e.g., by degree), update the `filteredNodeIds` / `degreeMap` logic.
+ *
+ * Debug:
+ * - If graph is empty, check API response shape (`LeafGraph`) and whether `loading` flips to false.
+ * - If clicks don’t navigate, verify the `router.push(`/editor/${node.id}`)` call and the node id mapping.
+ */
+
+
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'

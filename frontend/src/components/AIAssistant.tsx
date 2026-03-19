@@ -1,3 +1,26 @@
+/**
+ * Leaf UI: AI assistant companion (`frontend/src/components/AIAssistant.tsx`).
+ *
+ * Purpose:
+ * - Renders a floating “AI Companion” command/input panel.
+ * - Provides a simple prompt input and a few starter suggestions.
+ * - Closes on `Esc` and calls the `onClose` prop.
+ *
+ * How to read:
+ * - `AIAssistant` is currently a UI-only shell:
+ *   - `submit()` simulates a “thinking” delay then resets the input.
+ *   - `suggestions` are a fixed list of sample prompts.
+ *
+ * Update:
+ * - To wire real AI integration, replace the `setTimeout` behavior with a call to your AI backend/provider.
+ * - Update suggestions and/or placeholder text to match desired UX.
+ *
+ * Debug:
+ * - If the panel doesn’t close with Esc, ensure the `onClose` prop is stable and that
+ *   the keydown listener is mounted (it is in the `useEffect`).
+ */
+
+
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
@@ -89,7 +112,7 @@ export function AIAssistant({ onClose }: { onClose: () => void }) {
         </div>
 
         <form onSubmit={submit} className="flex items-center gap-2 px-3 py-3">
-          <div style={{ color: 'var(--leaf-text-muted)' }}>Ctrl+K</div>
+          <div style={{ color: 'var(--leaf-text-muted)' }}>⌘K</div>
           <input
             ref={inputRef}
             value={input}

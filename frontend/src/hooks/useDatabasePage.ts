@@ -1,3 +1,31 @@
+/**
+ * Leaf hook: database page state/actions (`frontend/src/hooks/useDatabasePage.ts`).
+ *
+ * Purpose:
+ * - Owns the state for `/databases/[id]`:
+ *   - database metadata drafts (title/description/tags/icon)
+ *   - rows + columns derived from schema
+ *   - row/cell actions (add/delete/update)
+ *   - view-type changes and debounced title saving
+ *
+ * How to read:
+ * - `useEffect(... [id])` loads `databasesApi.get(id)` and `databasesApi.listRows(id)`.
+ * - `saveDatabase(patch)` delegates to `updateDatabaseAndEmitTitle`.
+ * - Local actions (`addRow`, `deleteRow`, `updateName`, `updateCell`, `addColumn`)
+ *   call the appropriate mutation helpers from `lib/databaseMutations.ts` or `databasesApi`.
+ *
+ * Update:
+ * - If you add new database metadata fields, keep drafts in state and expand `saveDatabase(...)`.
+ * - For schema changes, add to `PropertyDefinition` / `DatabaseSchema` and update `updateCell` parsing.
+ *
+ * Debug:
+ * - If row edits don’t persist:
+ *   - verify `updateCell` parses typed columns correctly
+ *   - inspect `databasesApi.updateRow` response handling
+ * - If the page gets stuck loading, check the `finally(() => setLoading(false))` block.
+ */
+
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -188,7 +216,7 @@ export function useDatabasePage(id: string) {
   }, [db, id])
 
   const breadcrumbs = useDatabaseBreadcrumbs(db?.parent_leaf_id)
-  const activeView = db?.view_type || 'table'
+  const activeView = db?.view_type === 'list' ? 'board' : (db?.view_type || 'table')
 
   return {
     db,

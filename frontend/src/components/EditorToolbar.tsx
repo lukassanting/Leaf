@@ -1,3 +1,26 @@
+/**
+ * Leaf UI: editor toolbar controls (`frontend/src/components/EditorToolbar.tsx`).
+ *
+ * Purpose:
+ * - Renders formatting buttons for the TipTap editor instance.
+ * - Supports toggling headings and inline block marks via `editor.chain()...run()`.
+ *
+ * How to read:
+ * - `items` is a list of buttons and separators.
+ * - For each button:
+ *   - `active()` decides styling (based on `editor.isActive(...)`)
+ *   - `action()` applies the command chain.
+ *
+ * Update:
+ * - To add a new formatting command, add a new item to `items`.
+ * - Ensure the command matches what the editor extensions support.
+ *
+ * Debug:
+ * - If a button does nothing, verify the editor instance exposes the relevant chain command
+ *   and that the required extension is loaded in `components/editor/LeafEditor.tsx`.
+ */
+
+
 'use client'
 
 import type { Editor } from '@tiptap/react'

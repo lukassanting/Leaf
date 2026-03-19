@@ -1,3 +1,33 @@
+/**
+ * Leaf UI: sidebar tree utilities (`frontend/src/components/sidebarTreeUtils.ts`).
+ *
+ * Purpose:
+ * - Converts API DTOs into a unified sidebar node shape.
+ * - Implements tree building + flattening/search behavior used by the sidebar UI.
+ *
+ * How to read:
+ * - Types:
+ *   - `SidebarNode` represents a page/database node in the sidebar.
+ *   - `TreeNode` is the hierarchical version with `children`.
+ * - Mapping:
+ *   - `mapLeafNodes` converts `LeafTreeItem[]` -> `SidebarNode[]` (kind='page')
+ *   - `mapDbNodes` converts `Database[]` -> `SidebarNode[]` (kind='database')
+ * - Tree ops:
+ *   - `buildTree` builds a parent/children tree from the flat node list
+ *   - `flattenTreeWithSearch` filters by search and preserves expansion state
+ *
+ * Update:
+ * - If you change node fields (e.g., `order` semantics), update the mapping and
+ *   sorting logic in `buildTree`.
+ * - If the search UX changes, update `flattenTreeWithSearch` and its ancestor marking.
+ *
+ * Debug:
+ * - If search hides nodes incorrectly:
+ *   - inspect the `matchSet`/ancestor marking logic
+ *   - verify `expanded` uses the expected “false means collapsed” semantics.
+ */
+
+
 import type { Database, LeafTreeItem } from '@/lib/api'
 
 export type SidebarNode = {

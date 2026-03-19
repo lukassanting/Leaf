@@ -1,3 +1,26 @@
+"""
+Logging integration (`backend/app/logger.py`).
+
+Purpose:
+- Integrates standard Python `logging` with `loguru`.
+- Provides `init_logging()` to route uvicorn and application logs into loguru output.
+
+How to read:
+- `InterceptHandler` converts `logging.LogRecord` entries into loguru logs.
+- `init_logging()`:
+  - clears handlers for uvicorn loggers
+  - installs the intercept handler on the `uvicorn` root logger
+  - configures loguru sink/format via `format_record`
+
+Update:
+- Change log formatting by updating `format_record()` or loguru defaults.
+- Add/adjust levels by changing loguru `logger.configure(... level=...)`.
+
+Debug:
+- If logs stop showing: ensure `init_logging()` is called from `backend/app/main.py`.
+- If output is duplicated: check whether uvicorn handlers are still attached elsewhere.
+"""
+
 import logging
 import sys
 from pprint import pformat

@@ -1,3 +1,29 @@
+/**
+ * Leaf UI: tags input (`frontend/src/components/editor/TagsInput.tsx`).
+ *
+ * Purpose:
+ * - Renders an editable list of tags as “chips”.
+ * - Supports adding via:
+ *   - pressing `Enter` or `,`
+ *   - blur (if draft is non-empty)
+ * - Supports removing via an `×` button.
+ * - Keeps tag list deduplicated (won’t add an existing tag).
+ *
+ * How to read:
+ * - `tags` comes from parent state.
+ * - `onChange(nextTags)` is called whenever the chip list changes.
+ *
+ * Update:
+ * - To change separators/UX:
+ *   - edit the `onKeyDown` handler (Enter/Comma)
+ *   - edit the `onBlur` handler
+ *
+ * Debug:
+ * - If tags don’t update, ensure parent passes a stable `onChange` and that
+ *   the parent stores the tag array as `string[]`.
+ */
+
+
 'use client'
 
 import { useState } from 'react'

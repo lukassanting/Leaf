@@ -1,3 +1,25 @@
+/**
+ * Leaf frontend: Databases list page (`frontend/src/app/(workspace)/databases/page.tsx`).
+ *
+ * Purpose:
+ * - Shows all database “tables” in the workspace.
+ * - Lets you create a new database and navigate to `/databases/[id]`.
+ *
+ * How to read:
+ * - `databasesApi.list()` fetches the list in `useEffect`.
+ * - `createDb()` uses `createDatabaseAndEmit()` and then pushes to the detail route.
+ * - `warmDatabaseRoute()` pre-warms the destination route for faster transitions.
+ *
+ * Update:
+ * - To change list rendering, edit the `list.map(...)` section.
+ * - To add search/filter, keep the existing `useState` structure but add derived filtering.
+ *
+ * Debug:
+ * - If “Loading…” never stops, check the `finally(() => setLoading(false))` behavior and API errors.
+ * - If create navigates incorrectly, inspect `createDatabaseAndEmit` and the returned `db.id`.
+ */
+
+
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'

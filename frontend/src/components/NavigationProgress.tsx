@@ -1,3 +1,26 @@
+/**
+ * Leaf UI: navigation progress overlay (`frontend/src/components/NavigationProgress.tsx`).
+ *
+ * Purpose:
+ * - Provides a context (`NavigationProgressProvider`) that other pages/components
+ *   can use to show a short “Loading…” spinner overlay during route transitions.
+ *
+ * How to read:
+ * - `startNavigation()` schedules the overlay to appear after a small delay (120ms).
+ * - `stopNavigation()` immediately hides it and cancels the pending timer.
+ * - The provider listens to `usePathname()` changes and hides overlay on route changes.
+ *
+ * Update:
+ * - To change delay duration or overlay UI, edit `startNavigation()` and the JSX at the bottom.
+ * - If you want different behavior per route, you can add props or more context fields.
+ *
+ * Debug:
+ * - If overlay never appears, check that callers call `startNavigation()` and later call
+ *   `stopNavigation()` (or rely on pathname change).
+ * - If overlay is stuck, ensure timers are cleared in both `stopNavigation()` and cleanup.
+ */
+
+
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'

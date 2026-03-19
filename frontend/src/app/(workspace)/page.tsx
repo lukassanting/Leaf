@@ -1,3 +1,26 @@
+/**
+ * Leaf frontend: Workspace home page (`frontend/src/app/(workspace)/page.tsx`).
+ *
+ * Purpose:
+ * - Shows “greeting”, “quick access” inline journal/pages, and “recent” root pages.
+ * - Handles creating a new leaf/page and navigates to the editor route.
+ *
+ * How to read:
+ * - `useEffect` loads the sidebar tree (`getCachedTree`) and primes default workspace items (`ensureWorkspaceDefaults`).
+ * - `handleNewPage` creates a leaf via `createLeafAndPrimeCache` and routes to `/editor/[id]`.
+ * - Navigation progress is wrapped with `useNavigationProgress` to improve perceived responsiveness.
+ *
+ * Update:
+ * - To change what appears in “quick access”, adjust the `ensureWorkspaceDefaults()` mapping and icons/labels.
+ * - To change limits/filters for “recent”, update the `roots.slice(0, 8)` logic.
+ * - If adding other warm routes, call the relevant `warmEditorRoute`/mutation helpers before navigation.
+ *
+ * Debug:
+ * - If lists don’t show, check `getCachedTree()` return shape and whether `ensureWorkspaceDefaults()` is resolving.
+ * - If navigation fails during creation, inspect the `catch` block in `handleNewPage` and console errors.
+ */
+
+
 'use client'
 
 import Link from 'next/link'

@@ -1,3 +1,27 @@
+"""
+Leaf exceptions (`backend/app/exceptions/exceptions.py`).
+
+Purpose:
+- Defines HTTP-friendly exception classes used by controllers/operations.
+- Centralizes both HTTP status codes and human-readable `detail` messages.
+
+How to read:
+- `LeafException` is the base type used for handler registration in `backend/app/main.py`.
+- Specialized subclasses:
+  - `LeafNotFound`: 404 when a leaf id doesn't exist
+  - `LeafAlreadyExists`: 400 for uniqueness constraint errors
+  - `FailedToCreateLeaf`: 400 when creation fails unexpectedly
+
+Update:
+- Add new exception subclasses by inheriting from `HTTPException` (or `LeafException` if you want standardized status/detail behavior).
+- Ensure your code raises these exceptions from operations and controllers.
+
+Debug:
+- If errors aren’t formatted as expected, confirm:
+  - `LeafException` is the exact type registered in `backend/app/main.py`
+  - the raised exception inherits from it
+"""
+
 from uuid import UUID
 from fastapi import HTTPException
 from loguru import logger

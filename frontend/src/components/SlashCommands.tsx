@@ -111,13 +111,11 @@ export function SlashMenuPanel({
 
   const panel = (
     <div
-      className="fixed z-[9999] rounded-lg"
+      className="fixed z-[9999] rounded-lg overflow-hidden"
       style={{
         top,
         left,
         width: 260,
-        maxHeight: 320,
-        overflowY: 'auto',
         background: '#fff',
         border: '1px solid var(--color-border)',
         boxShadow: '0 4px 20px rgba(0,0,0,0.12)',

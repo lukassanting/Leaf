@@ -1,3 +1,33 @@
+/**
+ * Leaf frontend: Leaf editor page (`frontend/src/app/(workspace)/editor/[id]/page.tsx`).
+ *
+ * Purpose:
+ * - Main route for viewing/editing a single leaf (page/project).
+ * - Orchestrates data loading, autosave, and metadata editing (title/description/tags/icon).
+ *
+ * How to read:
+ * - Start at `useLeafPageData(leafId)` to understand the state shape: `content`, `title`, `tags`, `loadingLeaf`, etc.
+ * - Then read `useLeafAutosave(...)` to see how content saves are scheduled.
+ * - The callbacks (`handleTitleSave`, `handleDescriptionSave`, `handleTagsSave`, `handleIconSave`) call `*AndPrimeCache` helpers.
+ * - UI structure: `TopStrip` -> `PageIdentityHeader` -> `Editor` -> `StatusBar`.
+ *
+ * Update:
+ * - If you add a new metadata field, follow the pattern:
+ *   - keep the value in `useLeafPageData`
+ *   - update it locally
+ *   - persist via the appropriate `leafMutations` helper and `setUpdatedAt`.
+ * - If autosave behavior changes, update `useLeafAutosave` (not this page) first.
+ * - To change keyboard shortcuts, edit `handleKeyDown` (Cmd/Ctrl+S triggers `saveNow()`).
+ *
+ * Debug:
+ * - When saves don’t persist, check:
+ *   - `useLeafAutosave` schedule/status
+ *   - mutation helpers errors (`renameLeafAndPrimeCache` / `updateLeafAndPrimeCache`)
+ *   - `hasLoadedRef` guard (prevents rename before initial data load).
+ * - For UI inconsistencies, verify `contentWidth` comes from the workspace layout provider.
+ */
+
+
 'use client'
 
 import dynamic from 'next/dynamic'

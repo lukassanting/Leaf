@@ -1,3 +1,28 @@
+/**
+ * Leaf UI: icon picker (`frontend/src/components/page/IconPicker.tsx`).
+ *
+ * Purpose:
+ * - Allows choosing a leaf/database icon:
+ *   - emoji icons (from a fixed set)
+ *   - built-in SVG shape icons (geometric shapes)
+ *   - uploaded image icons (PNG/JPEG/SVG)
+ *
+ * How to read:
+ * - `currentIcon` is the initial selection.
+ * - `draftIcon` tracks the in-progress choice before pressing “Apply”.
+ * - UI is filtered via the `query` state and `ICON_SECTIONS` list.
+ *
+ * Update:
+ * - Extend `NATURE_ITEMS`/`WORK_ITEMS`/`SHAPE_ITEMS` by editing the option arrays.
+ * - To add new icon sources, add another section builder and update the file input handler.
+ *
+ * Debug:
+ * - If uploaded icons don’t apply, verify the `FileReader` `reader.result` becomes the expected
+ *   `draftIcon.value` string.
+ * - If Apply returns null unexpectedly, check `draftIcon` initialization and Remove handler.
+ */
+
+
 'use client'
 
 import { useMemo, useRef, useState } from 'react'

@@ -1,3 +1,28 @@
+"""
+Leaf CRUD & graph endpoints controller (`backend/app/api/routes/leaf/leaf_crud_controller.py`).
+
+Purpose:
+- Defines the HTTP API for leaf tree pages/projects:
+  - create/read/update/delete
+  - content autosave (`PATCH /leaves/{leaf_id}/content`)
+  - reorder children (`PUT /leaves/{leaf_id}/reorder-children`)
+  - lightweight tree (`GET /leaves/tree`)
+  - backlinks + explicit wikilink graph (`backlinks`, `graph`)
+
+How to read:
+- Each endpoint delegates to `LeafOperations` via FastAPI `Depends(LeafOperations)`.
+- DTO types in `app.dtos.leaf_dtos` define request/response schemas.
+- Path vs query params: `read_leaf_tree` uses optional filters (`type`, `parent_id`) plus `limit/offset`.
+
+Update:
+- To change the behavior of an endpoint, prefer editing `LeafOperations` in `app/database/operations/leaf_operations.py`.
+- To add a new leaf endpoint, add a new function here and route it into `LeafOperations`.
+
+Debug:
+- If you get validation errors, check the DTO types in `app/dtos/leaf_dtos.py`.
+- If operations throw DB errors, inspect the corresponding `LeafOperations.*` method called by the endpoint.
+"""
+
 from fastapi import APIRouter, Depends, Query, Response, status
 from uuid import UUID
 

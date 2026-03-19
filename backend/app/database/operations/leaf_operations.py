@@ -1,3 +1,36 @@
+"""
+Leaf business logic operations (`backend/app/database/operations/leaf_operations.py`).
+
+Purpose:
+- Implements the core server-side behavior for leaf/page/project nodes:
+  - create/read/update/delete leaves
+  - autosave content updates (with optional `updated_at` conflict detection)
+  - reorder children ordering
+  - build the lightweight leaf tree (`/leaves/tree`)
+  - backlinks and explicit link graph (`/leaves/{id}/backlinks`, `/leaves/graph`)
+
+How to read:
+- Start with the public methods on `LeafOperations` (e.g. `create_leaf`, `get_leaf`, `patch_leaf_content`, `delete_leaf`).
+- Follow the private helpers:
+  - `_serialize_content` / `_deserialize_content`: how rich editor content is stored/restored
+  - `_extract_link_targets` and `_resolve_link_target`: how `[[wikilinks]]` are parsed/resolved
+  - `_schedule_leaf_sync`: when/how page content is written out to `.md` files via `FileStorage`
+  - `_leaf_to_dto` and `_leaf_tree_item`: how DB rows are mapped into API DTOs
+
+Update:
+- When changing persistence semantics, update the serialization + DB update helpers first.
+- If you modify wikilink parsing rules, update `_extract_link_targets` and `_resolve_link_target`.
+- If you add new leaf fields, update:
+  - DTOs (`backend/app/dtos/leaf_dtos.py`)
+  - SQLAlchemy model (`backend/app/database/models/mysql_models.py`)
+  - mapping (`_leaf_to_dto`) and update logic (`_apply_leaf_update`)
+
+Debug:
+- Autosave/patch issues: check `patch_leaf_content()` conflict logic and serialization (`_serialize_content`).
+- Link/backlink issues: check `sync_page_links()` (deletes outgoing links then upserts from parsed targets).
+- File sync issues: look for exceptions around `_schedule_leaf_sync()` / `FileStorage.write_page()`.
+"""
+
 import asyncio
 import json
 import re

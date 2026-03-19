@@ -1,3 +1,31 @@
+/**
+ * Leaf UI: left navigation sidebar (`frontend/src/components/SidebarLeft.tsx`).
+ *
+ * Purpose:
+ * - Provides navigation UI including:
+ *   - “quick access” buttons (Graph view, Journal DB, Notes Dump, etc.)
+ *   - pinned items (persisted in localStorage)
+ *   - “new page” action
+ *   - workspace navigation actions (search/recent/settings placeholders)
+ *
+ * How to read:
+ * - On mount, it calls `ensureWorkspaceDefaults()` to create/bootstrap defaults
+ *   and then builds quick access items from returned `journalDatabase` + `notesDump`.
+ * - It persists pinned items based on `leaf-quick-access-pins` localStorage key.
+ *
+ * Update:
+ * - To change what appears in quick access:
+ *   - update `ensureWorkspaceDefaults` bootstrap logic (`frontend/src/lib/workspaceDefaults.ts`)
+ *   - then update the `setQuickAccess([...])` mapping in this file.
+ * - To change pin behavior, edit `togglePin`-related logic (also in this component).
+ *
+ * Debug:
+ * - If the sidebar doesn’t show Journal/Notes defaults:
+ *   - check API connectivity for `ensureWorkspaceDefaults()`
+ *   - inspect console errors in the `.catch(...)` section.
+ */
+
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'

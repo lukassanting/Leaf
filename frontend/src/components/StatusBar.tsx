@@ -1,3 +1,27 @@
+/**
+ * Leaf UI: save/status bar (`frontend/src/components/StatusBar.tsx`).
+ *
+ * Purpose:
+ * - Displays autosave state (`saving`/`saved`/`error`/`offline`) and word count summary.
+ * - Optionally shows a “mode label” (e.g., Rich vs Markdown or view name).
+ *
+ * How to read:
+ * - `Props` defines `saveStatus`, `wordCount`, and optional `modeLabel`.
+ * - Derived values:
+ *   - `saveLabel` maps status -> text
+ *   - `saveDotColor` maps status -> dot color
+ *   - `readingTime` shows a rough `wordCount`-based estimate
+ *
+ * Update:
+ * - To change wording/colors, adjust the ternaries in `saveLabel` and `saveDotColor`.
+ * - If word count rules change, update the `readingTime` calculation block.
+ *
+ * Debug:
+ * - If the bar doesn’t update, confirm the parent passes `saveStatus` and `wordCount`
+ *   consistently (typically coming from `useLeafAutosave` and editor status callbacks).
+ */
+
+
 'use client'
 
 type Props = {

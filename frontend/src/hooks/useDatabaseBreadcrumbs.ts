@@ -1,3 +1,25 @@
+/**
+ * Leaf hook: database breadcrumbs (`frontend/src/hooks/useDatabaseBreadcrumbs.ts`).
+ *
+ * Purpose:
+ * - Builds a breadcrumb chain for a database page based on the parent leaf id.
+ * - Uses the locally cached sidebar tree (`leafCache`).
+ *
+ * How to read:
+ * - `useDatabaseBreadcrumbs(parentLeafId)`:
+ *   - if `parentLeafId` is missing, returns `[]`
+ *   - loads `getCachedTree()` and walks `parent_id` links up to the root
+ *
+ * Update:
+ * - If tree nodes change shape, update how this hook reads `node.parent_id` and `node.title`.
+ *
+ * Debug:
+ * - If breadcrumbs are empty:
+ *   - verify the cache tree exists (`getCachedTree()`)
+ *   - verify `parentLeafId` is actually passed from the page (database route).
+ */
+
+
 'use client'
 
 import { useEffect, useState } from 'react'

@@ -186,6 +186,7 @@ Questions still open for the next milestone:
 - **Preserve backward compatibility.** Legacy HTML content should still load cleanly through migration into the structured document model.
 - **Prefer shared surfaces.** Standalone and embedded database experiences should keep using the same underlying components.
 - **Keep docs aligned with the v3 shell.** The centered header, right sidebar, and bottom status bar are the default product shape now.
+- **No nested `.claude/worktrees` in-repo.** A one-off worktree was merged into `frontend/src` and `backend/app` (preserving top-of-file `Purpose:` docs and all of `frontend/src/lib/**`), then `.claude/` was removed from the repo root.
 - **Stay local-first.** New features should respect cache-first loading and offline-safe save behavior where practical.
 - **Collaboration is not the next milestone.** Do not contort the current implementation for CRDTs yet, but do avoid blocking that future.
 
@@ -205,4 +206,4 @@ That means platform growth should focus first on:
 
 ---
 
-*Last updated: 2026-03-19. This roadmap reflects the three-pane shell redesign, list view addition, and the recommended follow-up phase.*
+*Last updated: 2026-03-19. This roadmap reflects the three-pane shell redesign, list view addition, worktree merge into the main tree, and the recommended follow-up phase.*

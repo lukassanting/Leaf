@@ -1,3 +1,32 @@
+/**
+ * Leaf hook: sidebar tree state/model (`frontend/src/hooks/useSidebarTreeModel.ts`).
+ *
+ * Purpose:
+ * - Owns the sidebar navigation tree data and UI interactions:
+ *   - fetching/merging leaves + databases into a single tree
+ *   - offline-first initial render via cached tree
+ *   - expansion/collapse state persisted to localStorage
+ *   - rename, delete, drag-and-drop reorder, and “create child” flows
+ *   - search-driven filtering (via helpers in `sidebarTreeUtils`)
+ *
+ * How to read:
+ * - `fetchTree()` loads cache first, then revalidates from `leavesApi.getTree()` and `databasesApi.list()`.
+ * - `useEffect` blocks register cross-component event listeners from `appEvents.ts`.
+ * - The bottom section returns a large object of handlers and derived values used by `SidebarTree`.
+ *
+ * Update:
+ * - If sidebar tree node shape changes, update:
+ *   - `SidebarNode` typing in `sidebarTreeUtils.ts`
+ *   - the merge/mapping logic (`mapLeafNodes`, `mapDbNodes`)
+ * - If you adjust drag/drop semantics, update `onDragOver`/`onDrop` and `handleReorder`.
+ *
+ * Debug:
+ * - If navigation/search doesn’t work, check `filteredFlat` derivation and expansion state.
+ * - If reorder fails, inspect `leavesApi.reorderChildren` and the optimistic state update.
+ * - If errors happen while fetching, see `networkError` set in `fetchTree()`.
+ */
+
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -50,7 +79,13 @@ export function useSidebarTreeModel(activeId?: string) {
     let hadCached = false
     if (cached?.length) {
       hadCached = true
-      const mapped = mapLeafNodes(cached.map((c) => ({ ...c, tags: c.tags ?? [] })))
+      const mapped = mapLeafNodes(
+        cached.map((c) => ({
+          ...c,
+          tags: c.tags ?? [],
+          path: c.path ?? '',
+        })),
+      )
       setNodes(mapped)
       setExpanded((prev) => Object.keys(prev).length > 0 ? prev : defaultExpanded(mapped))
       setLoading(false)

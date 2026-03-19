@@ -1,3 +1,32 @@
+/**
+ * Leaf UI: database surface router (`frontend/src/components/database/DatabaseSurface.tsx`).
+ *
+ * Purpose:
+ * - Provides the top-level UI for `/databases/[id]`:
+ *   - view toolbar + switching between views
+ *   - table/list/board/gallery renderers (via `DatabaseViews.tsx`)
+ *   - add-row flow and add-column modal toggling
+ *
+ * How to read:
+ * - Props are pure wiring into:
+ *   - `DatabaseToolbar`
+ *   - view components in `DatabaseViews.tsx`:
+ *     `TableView`, `BoardView`, `GalleryView`, `ListView`
+ * - `activeView` determines which view block renders.
+ *
+ * Update:
+ * - To add a new view type:
+ *   - extend `ViewType` types and backend support
+ *   - add a new renderer + branch here
+ *   - update the toolbar to offer the new option
+ *
+ * Debug:
+ * - If switching views doesn’t change UI:
+ *   - confirm `setViewType` updates hook state (`useDatabasePage`)
+ *   - ensure `activeView` matches the expected `ViewType` union values.
+ */
+
+
 'use client'
 
 import type { DatabaseRow, PropertyDefinition, ViewType } from '@/lib/api'

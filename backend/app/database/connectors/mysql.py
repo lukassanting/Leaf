@@ -1,3 +1,26 @@
+"""
+DB connector (`backend/app/database/connectors/mysql.py`).
+
+Purpose:
+- Creates the SQLAlchemy engine/session layer used by operations.
+- Ensures tables exist on startup (via `Base.metadata.create_all`).
+- Applies lightweight “missing column” migrations for dev upgrades.
+
+How to read:
+- `MySQLDatabaseConnector` is the primary class.
+  - `_get_engine()` reads `ConfigSettings.DATABASE_URL` and sets SQLite PRAGMAs when applicable.
+  - `_ensure_tables()` creates tables and then `_migrate_missing_columns()` backfills columns missing from existing DBs.
+- `get_db_connector()` is cached so multiple dependency injections reuse one connector.
+
+Update:
+- If you add new columns to models, update `_migrate_missing_columns()` to backfill ALTER TABLEs.
+- If you need different engine/session settings, adjust `_get_engine()` and `sessionmaker(...)`.
+
+Debug:
+- If requests fail with missing columns, check `_migrate_missing_columns()` and verify the column names.
+- If DB is slow/unreliable in dev, review the SQLite PRAGMAs in `_configure_sqlite()`.
+"""
+
 from functools import lru_cache
 from pathlib import Path
 from fastapi import Depends

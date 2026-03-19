@@ -1,3 +1,27 @@
+"""
+Leaf API configuration (`backend/app/config.py`).
+
+Purpose:
+- Provides `ConfigSettings` which loads environment variables (via `.env`) and exposes:
+  - CORS allowlist (`ALLOWED_ORIGINS`)
+  - data directory (`DATA_DIR`)
+  - database connection URL (`DATABASE_URL`)
+
+How to read:
+- `ConfigSettings.__init__` calls `load_dotenv()` then reads values from `starlette.config.Config`.
+- `ALLOWED_ORIGINS` is parsed as JSON list of strings.
+
+Update:
+- Add new config fields by:
+  1) adding a typed class attribute
+  2) reading it in `__init__` via `self.config(...)`
+  3) wiring it where needed (e.g. `backend/app/main.py`).
+
+Debug:
+- If CORS is wrong, check `ALLOWED_ORIGINS` parsing and confirm `.env` is present in the container/runtime.
+- If DB URL changes aren’t taking effect, verify `DATA_DIR` and the computed default sqlite path.
+"""
+
 from dotenv import load_dotenv
 from starlette.config import Config
 from pathlib import Path

@@ -1,3 +1,24 @@
+/**
+ * Leaf dev UI: performance panel (`frontend/src/components/PerfPanel.tsx`).
+ *
+ * Purpose:
+ * - Conditionally renders a small “Perf (dev)” widget that displays timing samples
+ *   captured during the mounting of editor-like routes/components.
+ *
+ * How to read:
+ * - The panel is disabled unless `process.env.NEXT_PUBLIC_LEAF_PERF_PANEL === 'true'`.
+ * - On mount/update, it measures a duration window for `mountLabel`.
+ *
+ * Update:
+ * - To track additional mounts, call this component with a different `mountLabel`.
+ * - To change sample list size, adjust the `prev.slice(0, 9)` trimming logic.
+ *
+ * Debug:
+ * - If the panel shows nothing, verify `NEXT_PUBLIC_LEAF_PERF_PANEL` is set to `'true'`
+ *   in your Next.js environment.
+ */
+
+
 'use client'
 
 import { useEffect, useState } from 'react'

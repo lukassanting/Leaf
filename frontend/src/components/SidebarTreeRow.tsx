@@ -1,3 +1,32 @@
+/**
+ * Leaf UI: sidebar tree row (`frontend/src/components/SidebarTreeRow.tsx`).
+ *
+ * Purpose:
+ * - Renders a single navigation node (page or database) in the sidebar tree.
+ * - Handles per-row UI behaviors:
+ *   - expand/collapse toggle when the node has children
+ *   - inline rename input (based on `renameId`)
+ *   - drag-and-drop support for page reorder
+ *   - context menu open on right-click
+ *   - “+” create-child affordance for non-database nodes
+ *
+ * How to read:
+ * - Props map directly to hook state/handlers from `useSidebarTreeModel`.
+ * - Key derived booleans:
+ *   - `isActive`, `isEditing`, `hasChildren`, `isDropTarget`, `isHovered`, `isDatabase`
+ *
+ * Update:
+ * - If you add new node actions, you’ll likely need to:
+ *   - extend props in this component
+ *   - update `SidebarTreeContextMenu` and `useSidebarTreeModel`
+ *
+ * Debug:
+ * - Drag/drop issues: verify row is marked `draggable={!isDatabase}` and
+ *   that the correct handler functions are passed from the parent.
+ * - Rename issues: confirm `onRename` fires on blur and Enter.
+ */
+
+
 'use client'
 
 import Link from 'next/link'

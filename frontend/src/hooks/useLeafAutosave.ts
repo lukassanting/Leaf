@@ -1,3 +1,30 @@
+/**
+ * Leaf hook: autosave scheduling (`frontend/src/hooks/useLeafAutosave.ts`).
+ *
+ * Purpose:
+ * - Coordinates leaf content persistence:
+ *   - debounced “online” saves (with cache priming + conflict handling)
+ *   - offline saves via a queued pending-save mechanism
+ * - Exposes save status for UI (`idle`/`saving`/`saved`/`error`/`offline`).
+ *
+ * How to read:
+ * - `scheduleSave(newContent)` sets `saveStatus='saving'` and debounces after ~800ms.
+ * - `saveNow()` forces immediate persistence.
+ * - `flushPending()` runs when the browser goes back online and flushes queued saves.
+ *
+ * Update:
+ * - If you change the backend conflict strategy, update both:
+ *   - this hook’s flush retry logic for `409`
+ *   - `saveLeafContentAndPrimeCache()` in `frontend/src/lib/leafMutations.ts`
+ *
+ * Debug:
+ * - If content stops saving, check:
+ *   - `isOnline()` / `window 'online'` events
+ *   - pending save queue population (`enqueuePendingSave`)
+ *   - whether `doSave()` hits the online path and successfully calls `saveLeafContentAndPrimeCache`.
+ */
+
+
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'

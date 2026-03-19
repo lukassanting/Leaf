@@ -1,4 +1,85 @@
 """
+File storage layer (`backend/app/storage/file_storage.py`).
+
+Purpose:
+- Implements the Leaf “hybrid storage” approach:
+  - Source of truth: human-readable Markdown files with YAML frontmatter
+  - Fast index: SQLite index (`.leaf.db`) for query/search/navigation
+
+How to read:
+- The public surface is the `FileStorage` class.
+- The `.md` structure is:
+  - `pages/{uuid}.md` for leaf pages
+  - `databases/{uuid}/meta.json` for database metadata
+  - `databases/{uuid}/rows/{uuid}.md` for database rows
+- `_html_to_md()` + `_LeafMdConverter` show how HTML-ish editor output is converted into wiki-style links.
+
+Update:
+- When changing the snapshot format, update:
+  - `write_page()` (frontmatter keys + body writing)
+  - `write_database()` and row writing behavior
+  - `_parse_md()` / rebuild helpers (`read_all_pages`, `read_all_databases`)
+- Keep reserved CRDT fields stable if you plan a future CRDT upgrade (see the existing diagram in this docstring).
+
+Debug:
+- If rebuild-index misses documents, inspect:
+  - `_parse_md()` (expects YAML frontmatter wrapped in `--- ... ---`)
+  - whether files exist in `pages_dir` or `databases_dir`
+- If storage sync is “one-way”, confirm operations call `FileStorage.write_*` methods after DB commits.
+
+Legacy note:
+The large architecture diagram below is kept because it documents rebuild/sync expectations.
+
+─────────────────────────────────────────────────────────────────────────────
+
+File storage layer — Leaf hybrid architecture.
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  SOURCE OF TRUTH: .md files with YAML frontmatter                          │
+│  FAST INDEX:      SQLite (.leaf.db) — derived, rebuild-able at any time    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Write path: API → SQLite (immediate, <1 ms) → .md file (immediate, local) │
+│  Read path:  Always SQLite. Files used for rebuild / sync / AI.             │
+│  Rebuild:    POST /admin/rebuild-index scans files → repopulates SQLite.   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Directory layout (DATA_DIR):
+  pages/
+    {uuid}.md          ← page: YAML frontmatter + Markdown body
+  databases/
+    {uuid}/
+      meta.json        ← database: title, schema, view_type, parent_leaf_id
+      rows/
+        {uuid}.md      ← row page: YAML frontmatter + Markdown body
+  .leaf.db             ← SQLite index (auto-created, safe to delete → rebuild)
+
+──────────────────────────────────────────────────────────────────────────────
+CRDT UPGRADE PATH (future — no data loss, no migration required)
+──────────────────────────────────────────────────────────────────────────────
+When adding CRDT support (Yjs / Automerge) for multi-device sync:
+
+  1. Add  data/ops/{uuid}.jsonl  — append-only operation log per document.
+     Each line is one op: { clock, site_id, op_type, payload }.
+
+  2. .md files become *snapshots* generated from the CRDT state.
+     They remain human- and AI-readable; AIs can still `find . -name "*.md"`.
+
+  3. SQLite index is rebuilt from CRDT state (not from .md snapshots).
+
+  4. Sync = exchange op logs. No full-file transfers. Last-write-wins per op.
+
+  5. Existing .md files at migration time become "initial snapshots" with a
+     single synthetic op (op_type: "init", payload: full content).
+     No data is lost or converted; the format just grows a new ops/ sibling.
+
+Reserved frontmatter fields (currently null, used by CRDT future):
+  crdt_checkpoint_id:  null   ← ID of the ops log entry this snapshot was
+                               generated from. null = file IS the source.
+  crdt_site_id:        null   ← device/site that wrote this snapshot.
+──────────────────────────────────────────────────────────────────────────────
+"""
+
+"""
 File storage layer — Leaf hybrid architecture.
 
 ┌─────────────────────────────────────────────────────────────────────────────┐

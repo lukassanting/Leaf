@@ -1,3 +1,26 @@
+/**
+ * Leaf UI: sidebar tree context menu (`frontend/src/components/SidebarTreeContextMenu.tsx`).
+ *
+ * Purpose:
+ * - Provides a right-click menu for sidebar nodes (rename/delete).
+ * - Renders at the clicked screen coordinates (`contextNode.x/y`).
+ *
+ * How to read:
+ * - It returns `null` when `contextNode` is null.
+ * - The “Rename” action calls `onStartRename(node)` then closes.
+ * - The “Delete” action calls `onDelete(id, kind)` then closes.
+ *
+ * Update:
+ * - To add more menu actions (e.g. create child), extend props and add more buttons.
+ * - Keep the `onClose` behavior consistent so the overlay disappears correctly.
+ *
+ * Debug:
+ * - If the menu doesn’t open, check:
+ *   - `SidebarTreeRow` passes `onContextMenu` with correct `{x,y,id,kind}`
+ *   - `contextNode` state in `useSidebarTreeModel` is updated.
+ */
+
+
 'use client'
 
 import type { SidebarNode } from './sidebarTreeUtils'

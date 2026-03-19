@@ -1,3 +1,31 @@
+/**
+ * Leaf UI: top strip / editor toolbar header (`frontend/src/components/TopStrip.tsx`).
+ *
+ * Purpose:
+ * - Shows breadcrumbs for the current page/database.
+ * - Provides quick controls:
+ *   - left/right sidebar toggles
+ *   - content width mode selector
+ *   - focus mode toggle
+ *   - “Ask AI” button (opens the AI assistant)
+ *
+ * How to read:
+ * - This component consumes multiple contexts from:
+ *   - `frontend/src/app/(workspace)/layout.tsx` (focus/content width/pane visibility/AI state)
+ *   - `frontend/src/components/NavigationProgress.tsx` (route warming/loading overlay)
+ * - It returns `null` when `focusMode` is enabled.
+ *
+ * Update:
+ * - To change keyboard shortcut hints, edit the `Ask AI` button hint (currently `Ctrl+K`).
+ * - To add more controls, extend the JSX inside the return block and ensure related
+ *   context hooks exist.
+ *
+ * Debug:
+ * - If breadcrumbs render wrong links, check the `crumb.kind` mapping to `/databases/[id]` vs `/editor/[id]`.
+ * - If width toggle doesn’t affect layout, verify `useContentWidth` is wired in workspace layout.
+ */
+
+
 'use client'
 
 import Link from 'next/link'
@@ -143,7 +171,7 @@ export function TopStrip({ breadcrumbs, currentTitle }: Props) {
             <path d="M6 1L7 4.5L10.5 5L7.5 7.5L8.5 11L6 9L3.5 11L4.5 7.5L1.5 5L5 4.5L6 1Z" fill="currentColor" />
           </svg>
           Ask AI
-          <span style={{ opacity: 0.7, fontSize: 10 }}>Ctrl+K</span>
+          <span style={{ opacity: 0.7, fontSize: 10 }}>⌘K</span>
         </button>
 
         {/* More menu placeholder */}

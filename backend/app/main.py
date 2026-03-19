@@ -1,3 +1,30 @@
+"""
+Leaf API Service (FastAPI) entrypoint (`backend/app/main.py`).
+
+Purpose:
+- Creates the FastAPI app instance and wires:
+  - CORS settings
+  - router mounting (`app.api.routes.api`)
+  - exception handler (`leaf_exception_handler`)
+  - startup/shutdown lifespan hooks
+  - request timing middleware for `/leaves` and `/databases`
+  - logging initialization
+
+How to read:
+- `lifespan()` is the main lifecycle entrypoint (calls `on_startup` and `on_cleanup`).
+- Middleware is registered via `@app.middleware("http")` and logs per-request timings.
+- `app.include_router(api_router)` mounts all leaf + database endpoints.
+
+Update:
+- To add a new top-level route group, modify `app/api/routes/api.py` (not this file).
+- To change what gets timed/logged, update `timing_middleware` path checks.
+- To adjust startup behavior (e.g., migrations), update `on_startup`.
+
+Debug:
+- If endpoints don’t work, check CORS + router mounting (`include_router`) and URL paths.
+- If startup is slow or DB-dependent, instrument `on_startup()` and confirm the DB connector initialization.
+"""
+
 from contextlib import asynccontextmanager
 import logging
 import time

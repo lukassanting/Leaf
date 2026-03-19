@@ -1,3 +1,25 @@
+/**
+ * Leaf frontend: Database detail/table view (`frontend/src/app/(workspace)/databases/[id]/page.tsx`).
+ *
+ * Purpose:
+ * - Loads a database and renders its rows/columns via `DatabaseSurface`.
+ * - Allows editing database metadata (title/description/tags/icon) and persists through hooks/mutations.
+ *
+ * How to read:
+ * - `useDatabasePage(id)` is the primary state owner (rows, columns, view type, drafts, and actions).
+ * - Local `saveMeta(...)` persists optional fields using `saveDatabase`.
+ * - `PageIdentityHeader` wires draft changes -> blur/enter handlers or explicit save meta calls.
+ *
+ * Update:
+ * - To add extra metadata fields, prefer extending `useDatabasePage` and then update `saveMeta` + `PageIdentityHeader` props.
+ * - To change the layout widths, adjust `contentMaxWidth`/`contentPadding` logic using `useContentWidth`.
+ *
+ * Debug:
+ * - If the page shows “Database not found”, check `useDatabasePage` loading/error semantics.
+ * - If saves don’t apply, inspect `saveDatabase(patch)` return handling and `saveStatus` transitions.
+ */
+
+
 'use client'
 
 import { useState } from 'react'
@@ -63,7 +85,7 @@ export default function DatabaseViewPage() {
 
   return (
     <>
-      <div className="flex min-h-screen flex-col" style={{ background: 'var(--leaf-bg-editor)' }}>
+      <div className="flex min-h-screen flex-col" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(248,251,247,0.95))' }}>
         {/* Top strip */}
         <TopStrip
           breadcrumbs={breadcrumbs.map((c) => ({ id: c.id, title: c.title, kind: 'page' as const }))}
@@ -121,6 +143,14 @@ export default function DatabaseViewPage() {
               padding: contentPadding || '0 24px',
             }}
           >
+            <div
+              className="rounded-[24px] border px-4 py-4 sm:px-6"
+              style={{
+                borderColor: 'rgba(0,0,0,0.05)',
+                background: 'rgba(255,255,255,0.82)',
+                boxShadow: 'var(--leaf-shadow-soft)',
+              }}
+            >
               <DatabaseSurface
                 activeView={activeView as ViewType}
                 rows={rows}
@@ -134,6 +164,7 @@ export default function DatabaseViewPage() {
                 setShowAddCol={setShowAddCol}
                 addColumn={addColumn}
               />
+            </div>
           </div>
         </div>
 

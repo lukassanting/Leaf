@@ -1,3 +1,43 @@
+/**
+ * Leaf UI: TipTap editor core (`frontend/src/components/editor/LeafEditor.tsx`).
+ *
+ * Purpose:
+ * - Implements the rich-text editor experience for a Leaf page:
+ *   - Rich mode (TipTap document)
+ *   - Markdown mode (HTML/Markdown conversion helpers)
+ *   - Block-level slash commands (via `SlashCommands.tsx`)
+ *   - Wiki link menus (inline `[[...]]` matching) and embeds (pages/databases)
+ *   - Emits editor updates upward (`onUpdate`, `onStatusChange`)
+ *   - Exposes imperative actions via `actionsRef` (export/import mode switching)
+ *
+ * How to read:
+ * - The top imports show the building blocks:
+ *   - TipTap + extensions (`@tiptap/react`, `StarterKit`, task list items)
+ *   - Conversion:
+ *     - `turndown` and `markdown-it` for Markdown<->HTML-ish transformations
+ *     - `lib/leafDocument.ts` for parsing/normalizing LeafDocument structures
+ *   - UI integrations:
+ *     - `EmbeddedDatabaseBlock`
+ *     - slash/wikilink match helpers + `SlashMenuPanel`
+ *
+ * Update:
+ * - To add a new slash command:
+ *   1) update `SLASH_ITEMS` in `frontend/src/components/SlashCommands.tsx`
+ *   2) update LeafEditor command handling for the new action key
+ * - To change editor block rendering/parsing:
+ *   - update TipTap node/extension configuration in this file
+ *   - update document parsing logic in `lib/leafDocument.ts`
+ *
+ * Debug:
+ * - If content is mangled between modes:
+ *   - inspect `htmlToMarkdown` / `markdownToHtml`
+ *   - verify `parseLeafContent` + normalization expectations
+ * - If wikilinks/embeds don’t appear:
+ *   - check the regex match helpers (`computeWikilinkMatch`)
+ *   - verify the selected menu result updates editor state.
+ */
+
+
 'use client'
 
 import { useRouter } from 'next/navigation'

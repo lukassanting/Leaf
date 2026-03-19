@@ -1,3 +1,34 @@
+/**
+ * Leaf UI: page/database identity header (`frontend/src/components/page/PageIdentityHeader.tsx`).
+ *
+ * Purpose:
+ * - Provides the editor/table header UI for:
+ *   - title input
+ *   - optional description input
+ *   - optional tags input
+ *   - icon display + icon picker slot
+ *   - optional extra content area
+ *
+ * How to read:
+ * - The component is highly controlled via props:
+ *   - `title`, `onTitleChange`, `onTitleBlur`, `onTitleEnter`
+ *   - `description` + change/blur handlers (presence indicates editability)
+ *   - `tags` + onTagsChange (presence indicates editability)
+ *   - `iconPicker` is injected by the route page when open.
+ * - There’s also a focus-bridge:
+ *   - listens to `window` events (`leaf-focus-header-field`) to focus icon/title/description inputs.
+ *
+ * Update:
+ * - To add fields, add new props + local refs and wire them similarly.
+ * - To change focus behavior, update the event listener and detail keys.
+ *
+ * Debug:
+ * - If title blur doesn’t save, confirm route passes correct `onTitleBlur` and that
+ *   input `onBlur` calls it with `event.target.value`.
+ * - If icon click doesn’t open picker, ensure `onIconClick` is provided.
+ */
+
+
 'use client'
 
 import type { ReactNode } from 'react'
@@ -119,8 +150,8 @@ export function PageIdentityHeader({
             width: 48,
             height: 48,
             borderRadius: 12,
-            background: 'transparent',
-            border: 'none',
+            background: 'var(--leaf-bg-tag)',
+            border: '1px solid var(--leaf-border-strong)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -131,6 +162,28 @@ export function PageIdentityHeader({
         >
           <HeaderIcon kind={kind} icon={icon} />
         </button>
+        {onIconClick && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: -4,
+              right: -4,
+              width: 16,
+              height: 16,
+              background: 'var(--leaf-green)',
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '2px solid #fff',
+              pointerEvents: 'none',
+            }}
+          >
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+              <path d="M4 1V7M1 4H7" stroke="white" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+          </div>
+        )}
       </div>
 
       {iconPicker ?? null}

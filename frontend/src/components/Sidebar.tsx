@@ -1,12 +1,42 @@
+/**
+ * Leaf UI: right sidebar (identity, backlinks, outline) (`frontend/src/components/Sidebar.tsx`).
+ *
+ * Purpose:
+ * - Displays contextual information about the currently active leaf/database:
+ *   - identity header (title/description/tags/icon)
+ *   - backlinks (pages that link to this leaf)
+ *   - outline (headings extracted from leaf content)
+ * - Provides a “pin”/quick-access style behavior for `activeId`.
+ *
+ * How to read:
+ * - `useEffect` reacts to `activeId` and route `pathname`:
+ *   - for `/databases/*`, it loads database identity via `databasesApi.get(...)`
+ *   - for `/editor/*`, it loads leaf identity + backlinks via `leavesApi.getBacklinks(...)` (and likely content for outline)
+ * - The render section uses `identity/backlinks/outline` state variables.
+ *
+ * Update:
+ * - To change what “outline” means, update the content parsing logic (uses `getLeafContentText` and `parseLeafContent`).
+ * - To add more context panels, extend the state + JSX in this component.
+ *
+ * Debug:
+ * - If backlinks are empty:
+ *   - check backend endpoint `/leaves/{leaf_id}/backlinks`
+ *   - confirm `activeId` type is a leaf id (not database id)
+ * - If outline headings are off, verify the extraction/parsing uses the same document schema
+ *   as the editor (`lib/leafDocument.ts`).
+ */
+
+
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useNavigationProgress } from '@/components/NavigationProgress'
 import { databasesApi, leavesApi } from '@/lib/api'
 import { getLeafContentText, parseLeafContent } from '@/lib/leafDocument'
-
+import { DatabaseIcon, LeafIcon, type LeafShapeIcon, ShapeIcon } from './Icons'
 
 type SidebarIdentityData = {
   kind: 'page' | 'database'
@@ -29,6 +59,28 @@ type OutlineItem = {
   id: string
   label: string
   level: 1 | 2 | 3
+}
+
+function SmallIdentityIcon({
+  kind,
+  icon,
+}: {
+  kind: 'page' | 'database'
+  icon?: SidebarIdentityData['icon']
+}) {
+  if (icon?.type === 'emoji' && icon.value) {
+    return <span style={{ fontSize: 16, lineHeight: 1 }}>{icon.value}</span>
+  }
+
+  if (icon?.type === 'image' && icon.value) {
+    return <Image src={icon.value} alt="" width={32} height={32} unoptimized style={{ width: '100%', height: '100%', borderRadius: 8, objectFit: 'cover' }} />
+  }
+
+  if (icon?.type === 'svg' && icon.value !== 'leaf') {
+    return <ShapeIcon shape={icon.value as LeafShapeIcon} size={16} />
+  }
+
+  return kind === 'database' ? <DatabaseIcon size={16} /> : <LeafIcon size={16} />
 }
 
 function SectionHeader({ children, icon }: { children: React.ReactNode; icon?: React.ReactNode }) {
@@ -222,6 +274,20 @@ export function Sidebar({ activeId }: { activeId?: string }) {
         <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--leaf-text-title)' }}>
           Page Info
         </div>
+        {identity ? (
+          <div
+            className="mt-2 flex items-center gap-2"
+            style={{ color: 'var(--leaf-text-title)' }}
+          >
+            <span
+              className="flex shrink-0 items-center justify-center overflow-hidden"
+              style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--leaf-bg-subtle)' }}
+            >
+              <SmallIdentityIcon kind={identity.kind} icon={identity.icon} />
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25 }}>{identity.title}</span>
+          </div>
+        ) : null}
       </div>
 
       {/* Pin to Quick Access */}

@@ -1,3 +1,26 @@
+"""
+Database DTOs (`backend/app/dtos/database_dtos.py`).
+
+Purpose:
+- Defines Pydantic schemas for database/table metadata and row properties.
+
+How to read:
+- `PropertyDefinition` and `DatabaseSchema` define column/property definitions (stored in `DatabaseModel.schema`).
+- `DatabaseCreate` / `DatabaseUpdate` define what the API accepts for database metadata.
+- `RowCreate` / `RowUpdate` define how row cell properties are submitted/updated.
+- `Database` and `Row` are the response models returned by the controllers.
+
+Update:
+- To support new property types, extend `PropertyDefinition.type` and ensure frontend + persistence uses the same meaning.
+- To change how row properties are stored, update the mapping in `DatabaseOperations`.
+
+Debug:
+- If you see rows not persisting, verify:
+  - DTO typing here
+  - `DatabaseOperations.update_row()` and `.properties` assignments
+  - the JSON storage in `DatabaseRowModel.properties`
+"""
+
 from datetime import datetime
 from typing import Any, Optional
 

@@ -1,8 +1,28 @@
 /**
- * Leaf Design System — SVG icon library.
- * Two primary icons: LeafIcon (pages) and DatabaseIcon (databases).
- * Plus small block-type tiles for the slash command menu.
+ * Leaf UI: SVG icon library (`frontend/src/components/Icons.tsx`).
+ *
+ * Purpose:
+ * - Centralizes reusable SVG/icon components so UI stays consistent.
+ * - Includes:
+ *   - `LeafIcon` (pages)
+ *   - `DatabaseIcon` (databases)
+ *   - `ShapeIcon` (small geometric icons for styling)
+ *   - `BlockIcon`/`BLOCK_ICONS` tiles used by the slash command menu
+ *
+ * How to read:
+ * - Each icon is a pure React component returning SVG/JSX.
+ * - `BLOCK_ICONS` maps editor block actions to icon tiles used in `SlashCommands`.
+ *
+ * Update:
+ * - To add a new slash-command icon tile, extend `BLOCK_ICONS` with the new action key.
+ * - To add a new geometric icon, update `LeafShapeIcon` and implement a case in `ShapeIcon`.
+ *
+ * Debug:
+ * - If an icon doesn’t render:
+ *   - check whether it’s exported and imported correctly
+ *   - verify the slash action key matches the `BLOCK_ICONS[...]` lookup.
  */
+
 
 type IconProps = { className?: string; size?: number }
 export type LeafShapeIcon =

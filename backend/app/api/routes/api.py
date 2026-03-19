@@ -1,3 +1,22 @@
+"""
+Top-level API router mount (`backend/app/api/routes/api.py`).
+
+Purpose:
+- Creates a single `router` and includes:
+  - leaf endpoints (`app.api.routes.leaf.leaf_crud_controller`)
+  - database endpoints (`app.api.routes.database.database_controller`)
+
+How to read:
+- `router.include_router(..., tags=[...])` groups endpoints in OpenAPI.
+- Prefix is `""` so the paths are defined inside each controller.
+
+Update:
+- To add new endpoint groups, create a new controller/router module and include it here.
+
+Debug:
+- If endpoints are missing from Swagger/OpenAPI, verify the controller is imported and included here.
+"""
+
 from fastapi import APIRouter
 
 # Local imports

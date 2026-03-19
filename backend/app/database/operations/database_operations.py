@@ -1,3 +1,31 @@
+"""
+Database operations (`backend/app/database/operations/database_operations.py`).
+
+Purpose:
+- Implements persistence and retrieval logic for:
+  - databases (table containers) and their metadata
+  - database rows and their JSON properties
+  - row-linked pages: when a row is created, a backing `LeafModel` page can be created/linked
+- Delegates the physical “.md snapshot + meta.json” writing to `FileStorage` (`app.storage`).
+
+How to read:
+- Start at the `DatabaseOperations` public methods:
+  - `create_database`, `get_database`, `get_all_databases`, `update_database`, `delete_database`
+  - `create_row`, `get_row`, `get_rows`, `update_row`, `delete_row`
+- Then inspect the DTO mapping helpers:
+  - `_database_to_dto`, `_row_to_dto`
+- Then inspect the schema composition helpers:
+  - `_split_database_schema`, `_compose_database_schema`
+
+Update:
+- To change how schema/meta is stored, update `_compose_database_schema` and `_split_database_schema`.
+- To change file sync behavior, update `_sync_database_file`, `_sync_row_leaf_file`, and the file deletion paths.
+
+Debug:
+- Missing/incorrect metadata: check meta keys stored in `database.schema` under `__leaf_meta__`.
+- Row leaf linkage: check where `leaf_id` is assigned/removed in `create_row` and `delete_row`.
+"""
+
 from uuid import UUID
 
 from fastapi import Depends

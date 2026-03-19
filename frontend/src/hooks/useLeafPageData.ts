@@ -1,3 +1,30 @@
+/**
+ * Leaf hook: leaf page data/loading (`frontend/src/hooks/useLeafPageData.ts`).
+ *
+ * Purpose:
+ * - Loads a leaf (page/project) into editor state:
+ *   - content parsed into `LeafDocument`
+ *   - title/description/parent/database/link structure
+ *   - tags/icon/properties metadata
+ * - Starts with cached data for responsiveness, then revalidates from the API.
+ *
+ * How to read:
+ * - The main `useEffect`:
+ *   1) `getCachedLeaf(leafId)` (if present)
+ *   2) `leavesApi.get(leafId)` from the backend
+ *   3) updates local state and calls `setCachedLeaf(...)`
+ * - `parseLeafContent` converts API content into the editor document schema.
+ *
+ * Update:
+ * - If editor content schema changes, update `parseLeafContent` / `leafDocument.ts`.
+ * - If new leaf metadata is added, add it to state and ensure it’s included in cache mapping.
+ *
+ * Debug:
+ * - If you see “Loading…” forever, check `leafId` and ensure the API call completes.
+ * - If editor renders wrong content, check `parseLeafContent` and cache contents.
+ */
+
+
 'use client'
 
 import { useEffect, useRef, useState } from 'react'

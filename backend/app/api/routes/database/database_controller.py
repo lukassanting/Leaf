@@ -1,3 +1,25 @@
+"""
+Database CRUD & row endpoints controller (`backend/app/api/routes/database/database_controller.py`).
+
+Purpose:
+- Defines the HTTP API for “database tables” and their rows:
+  - `POST/GET/PUT/DELETE /databases`
+  - `POST/GET/PATCH/DELETE /databases/{database_id}/rows`
+  - `GET /databases/{database_id}/rows/{row_id}`
+
+How to read:
+- Endpoints delegate to `DatabaseOperations` via `Depends(DatabaseOperations)`.
+- DTOs in `app.dtos.database_dtos` define schema for databases and row cell properties.
+
+Update:
+- To change persistence logic, edit `app/database/operations/database_operations.py` (not this controller).
+- To add a new row operation, add it here and implement the corresponding method on `DatabaseOperations`.
+
+Debug:
+- If a resource isn’t found, this controller raises `HTTPException(..., detail="... not found")`.
+- If requests validate but data is wrong, inspect the `DatabaseOperations` implementation and DTO mapping.
+"""
+
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 
