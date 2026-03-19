@@ -63,7 +63,7 @@ export default function DatabaseViewPage() {
 
   return (
     <>
-      <div className="flex min-h-screen flex-col" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(248,251,247,0.95))' }}>
+      <div className="flex min-h-screen flex-col" style={{ background: 'var(--leaf-bg-editor)' }}>
         {/* Top strip */}
         <TopStrip
           breadcrumbs={breadcrumbs.map((c) => ({ id: c.id, title: c.title, kind: 'page' as const }))}
@@ -121,14 +121,6 @@ export default function DatabaseViewPage() {
               padding: contentPadding || '0 24px',
             }}
           >
-            <div
-              className="rounded-[24px] border px-4 py-4 sm:px-6"
-              style={{
-                borderColor: 'rgba(0,0,0,0.05)',
-                background: 'rgba(255,255,255,0.82)',
-                boxShadow: 'var(--leaf-shadow-soft)',
-              }}
-            >
               <DatabaseSurface
                 activeView={activeView as ViewType}
                 rows={rows}
@@ -142,7 +134,6 @@ export default function DatabaseViewPage() {
                 setShowAddCol={setShowAddCol}
                 addColumn={addColumn}
               />
-            </div>
           </div>
         </div>
 

@@ -188,7 +188,7 @@ export function useDatabasePage(id: string) {
   }, [db, id])
 
   const breadcrumbs = useDatabaseBreadcrumbs(db?.parent_leaf_id)
-  const activeView = db?.view_type === 'list' ? 'board' : (db?.view_type || 'table')
+  const activeView = db?.view_type || 'table'
 
   return {
     db,

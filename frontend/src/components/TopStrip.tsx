@@ -143,7 +143,7 @@ export function TopStrip({ breadcrumbs, currentTitle }: Props) {
             <path d="M6 1L7 4.5L10.5 5L7.5 7.5L8.5 11L6 9L3.5 11L4.5 7.5L1.5 5L5 4.5L6 1Z" fill="currentColor" />
           </svg>
           Ask AI
-          <span style={{ opacity: 0.7, fontSize: 10 }}>⌘K</span>
+          <span style={{ opacity: 0.7, fontSize: 10 }}>Ctrl+K</span>
         </button>
 
         {/* More menu placeholder */}

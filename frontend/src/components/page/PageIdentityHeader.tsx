@@ -119,8 +119,8 @@ export function PageIdentityHeader({
             width: 48,
             height: 48,
             borderRadius: 12,
-            background: 'var(--leaf-bg-tag)',
-            border: '1px solid var(--leaf-border-strong)',
+            background: 'transparent',
+            border: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -131,28 +131,6 @@ export function PageIdentityHeader({
         >
           <HeaderIcon kind={kind} icon={icon} />
         </button>
-        {onIconClick && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: -4,
-              right: -4,
-              width: 16,
-              height: 16,
-              background: 'var(--leaf-green)',
-              borderRadius: 4,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '2px solid #fff',
-              pointerEvents: 'none',
-            }}
-          >
-            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-              <path d="M4 1V7M1 4H7" stroke="white" strokeWidth="1.3" strokeLinecap="round" />
-            </svg>
-          </div>
-        )}
       </div>
 
       {iconPicker ?? null}

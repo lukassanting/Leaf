@@ -89,7 +89,7 @@ export function AIAssistant({ onClose }: { onClose: () => void }) {
         </div>
 
         <form onSubmit={submit} className="flex items-center gap-2 px-3 py-3">
-          <div style={{ color: 'var(--leaf-text-muted)' }}>⌘K</div>
+          <div style={{ color: 'var(--leaf-text-muted)' }}>Ctrl+K</div>
           <input
             ref={inputRef}
             value={input}

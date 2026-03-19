@@ -1,13 +1,12 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useNavigationProgress } from '@/components/NavigationProgress'
 import { databasesApi, leavesApi } from '@/lib/api'
 import { getLeafContentText, parseLeafContent } from '@/lib/leafDocument'
-import { DatabaseIcon, LeafIcon, type LeafShapeIcon, ShapeIcon } from './Icons'
+
 
 type SidebarIdentityData = {
   kind: 'page' | 'database'
@@ -30,28 +29,6 @@ type OutlineItem = {
   id: string
   label: string
   level: 1 | 2 | 3
-}
-
-function SmallIdentityIcon({
-  kind,
-  icon,
-}: {
-  kind: 'page' | 'database'
-  icon?: SidebarIdentityData['icon']
-}) {
-  if (icon?.type === 'emoji' && icon.value) {
-    return <span style={{ fontSize: 16, lineHeight: 1 }}>{icon.value}</span>
-  }
-
-  if (icon?.type === 'image' && icon.value) {
-    return <Image src={icon.value} alt="" width={32} height={32} unoptimized style={{ width: '100%', height: '100%', borderRadius: 8, objectFit: 'cover' }} />
-  }
-
-  if (icon?.type === 'svg' && icon.value !== 'leaf') {
-    return <ShapeIcon shape={icon.value as LeafShapeIcon} size={16} />
-  }
-
-  return kind === 'database' ? <DatabaseIcon size={16} /> : <LeafIcon size={16} />
 }
 
 function SectionHeader({ children, icon }: { children: React.ReactNode; icon?: React.ReactNode }) {

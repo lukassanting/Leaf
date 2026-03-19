@@ -47,12 +47,12 @@ export function EmbeddedDatabaseBlock({ id }: { id: string }) {
 
   return (
     <div
-      className="overflow-hidden rounded-xl border"
-      style={{ borderColor: 'var(--leaf-border-strong)', background: 'var(--leaf-bg-editor)' }}
+      className="overflow-hidden rounded-xl"
+      style={{ background: 'var(--leaf-bg-editor)' }}
     >
       <div
-        className="flex items-center justify-between border-b px-4 py-3"
-        style={{ borderColor: 'var(--leaf-border-soft)', background: 'rgba(255,255,255,0.5)' }}
+        className="flex items-center justify-between px-1 py-2.5"
+        style={{ background: 'transparent' }}
       >
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -76,7 +76,7 @@ export function EmbeddedDatabaseBlock({ id }: { id: string }) {
         </Link>
       </div>
 
-      <div className="p-4">
+      <div className="px-1 pb-2">
         <DatabaseSurface
           activeView={activeView as ViewType}
           rows={rows}
