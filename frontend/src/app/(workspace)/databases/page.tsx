@@ -47,8 +47,8 @@ export default function DatabasesPage() {
 
   return (
     <main className="flex-1 p-8 max-w-3xl">
-      <h1 className="text-2xl font-bold text-leaf-900 mb-1">Databases</h1>
-      <p className="text-leaf-500 text-sm mb-6">
+      <h1 className="mb-1 text-2xl font-bold" style={{ color: 'var(--leaf-text-title)' }}>Databases</h1>
+      <p className="mb-6 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>
         Table views for structured data. Rows can link to pages.
       </p>
 
@@ -56,7 +56,8 @@ export default function DatabasesPage() {
         <input
           type="text"
           placeholder="Database name…"
-          className="border border-leaf-200 rounded-lg px-3 py-2 text-sm flex-1 max-w-xs focus:outline-none focus:ring-1 focus:ring-leaf-400"
+          className="max-w-xs flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none"
+          style={{ borderColor: 'var(--leaf-border-strong)' }}
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && createDb()}
@@ -65,28 +66,30 @@ export default function DatabasesPage() {
           type="button"
           onClick={createDb}
           disabled={creating}
-          className="bg-leaf-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-leaf-700 disabled:opacity-50 transition"
+          className="rounded-lg px-4 py-2 text-sm font-medium text-white transition disabled:opacity-50"
+          style={{ background: 'var(--leaf-green)' }}
         >
           {creating ? 'Creating…' : 'Create'}
         </button>
       </div>
 
       {loading ? (
-        <p className="text-leaf-400 text-sm">Loading…</p>
+        <p className="text-sm" style={{ color: 'var(--leaf-text-muted)' }}>Loading…</p>
       ) : list.length === 0 ? (
-        <p className="text-leaf-400 text-sm">No databases yet.</p>
+        <p className="text-sm" style={{ color: 'var(--leaf-text-muted)' }}>No databases yet.</p>
       ) : (
         <ul className="space-y-1">
           {list.map((db) => (
             <li key={db.id}>
               <Link
                 href={`/databases/${db.id}`}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-leaf-50 group"
+                className="group flex items-center gap-3 rounded-lg px-3 py-2.5"
+                style={{ transition: 'background-color 150ms ease' }}
                 onClick={() => startNavigation()}
                 onMouseEnter={() => { void warmDatabaseRoute() }}
               >
-                <span className="text-leaf-400 text-sm">⊞</span>
-                <span className="text-sm font-medium text-leaf-800 group-hover:text-leaf-900">
+                <span className="text-sm" style={{ color: 'var(--leaf-text-muted)' }}>⊞</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>
                   {db.title}
                 </span>
               </Link>

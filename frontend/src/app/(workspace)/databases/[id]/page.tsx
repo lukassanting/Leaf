@@ -63,7 +63,7 @@ export default function DatabaseViewPage() {
 
   return (
     <>
-      <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--leaf-bg-editor)' }}>
+      <div className="flex min-h-screen flex-col" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(248,251,247,0.95))' }}>
         {/* Top strip */}
         <TopStrip
           breadcrumbs={breadcrumbs.map((c) => ({ id: c.id, title: c.title, kind: 'page' as const }))}
@@ -94,6 +94,7 @@ export default function DatabaseViewPage() {
             setTagsDraft(nextTags)
             void saveMeta({ tags: nextTags })
           }}
+          showTags={false}
           extraContent={(
             <div className="flex items-center gap-2" style={{ fontSize: 11.5, color: 'var(--leaf-text-muted)' }}>
               <span
@@ -112,7 +113,7 @@ export default function DatabaseViewPage() {
         />
 
         {/* Database content */}
-        <div className="flex-1 overflow-y-auto" style={{ padding: '20px 0' }}>
+        <div className="flex-1 overflow-y-auto" style={{ padding: '22px 0 32px' }}>
           <div
             style={{
               maxWidth: contentMaxWidth || 960,
@@ -120,19 +121,28 @@ export default function DatabaseViewPage() {
               padding: contentPadding || '0 24px',
             }}
           >
-            <DatabaseSurface
-              activeView={activeView as ViewType}
-              rows={rows}
-              columns={columns}
-              addRow={addRow}
-              updateName={updateName}
-              updateCell={updateCell}
-              deleteRow={deleteRow}
-              setViewType={setViewType}
-              showAddCol={showAddCol}
-              setShowAddCol={setShowAddCol}
-              addColumn={addColumn}
-            />
+            <div
+              className="rounded-[24px] border px-4 py-4 sm:px-6"
+              style={{
+                borderColor: 'rgba(0,0,0,0.05)',
+                background: 'rgba(255,255,255,0.82)',
+                boxShadow: 'var(--leaf-shadow-soft)',
+              }}
+            >
+              <DatabaseSurface
+                activeView={activeView as ViewType}
+                rows={rows}
+                columns={columns}
+                addRow={addRow}
+                updateName={updateName}
+                updateCell={updateCell}
+                deleteRow={deleteRow}
+                setViewType={setViewType}
+                showAddCol={showAddCol}
+                setShowAddCol={setShowAddCol}
+                addColumn={addColumn}
+              />
+            </div>
           </div>
         </div>
 

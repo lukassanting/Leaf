@@ -9,7 +9,7 @@ import TaskList from '@tiptap/extension-task-list'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MarkdownIt from 'markdown-it'
 import TurndownService from 'turndown'
-import type { Database, LeafColumn, LeafDocument } from '@/lib/api'
+import { leavesApi, type Database, type LeafTreeItem, type LeafColumn, type LeafDocument } from '@/lib/api'
 import { DatabaseIcon, LeafIcon } from '@/components/Icons'
 import { EmbeddedDatabaseBlock } from '@/components/database/EmbeddedDatabaseBlock'
 import { useNavigationProgress } from '@/components/NavigationProgress'
@@ -46,6 +46,12 @@ type Props = {
 type SlashMatch = {
   range: { from: number; to: number }
   query: string
+  rect: SlashMenuState['rect']
+}
+
+type WikilinkMenuState = {
+  items: LeafTreeItem[]
+  selectedIndex: number
   rect: SlashMenuState['rect']
 }
 
@@ -88,16 +94,26 @@ function createTempId() {
 function createColumnData(layout: 2 | 3): LeafColumn[] {
   return Array.from({ length: layout }, () => ({
     id: createTempId(),
-    text: '',
+    content: createEmptyLeafDocument(),
   }))
 }
 
 function normalizeColumns(attrs: ColumnLayoutAttrs): ColumnLayoutAttrs {
   const columns = attrs.columns.slice(0, attrs.layout)
   while (columns.length < attrs.layout) {
-    columns.push({ id: createTempId(), text: '' })
+    columns.push({ id: createTempId(), content: createEmptyLeafDocument() })
   }
-  return { ...attrs, columns }
+  return {
+    ...attrs,
+    columns: columns.map((column) => ({
+      ...column,
+      content: column.content ?? normalizeLeafDocument({
+        type: 'doc',
+        version: 1,
+        content: [{ type: 'paragraph', content: column.text ? [{ type: 'text', text: column.text }] : [] }],
+      }),
+    })),
+  }
 }
 
 function computeSlashMatch(editor: NonNullable<ReturnType<typeof useEditor>>): SlashMatch | null {
@@ -129,6 +145,60 @@ function computeSlashMatch(editor: NonNullable<ReturnType<typeof useEditor>>): S
   }
 }
 
+function computeWikilinkMatch(editor: NonNullable<ReturnType<typeof useEditor>>): SlashMatch | null {
+  const { state, view } = editor
+  const { selection } = state
+
+  if (!selection.empty) return null
+
+  const $from = selection.$from
+  if (!$from.parent.isTextblock) return null
+
+  const textBefore = $from.parent.textBetween(0, $from.parentOffset, '\0', '\0')
+  const match = /(?:^|[\s(])\[\[([^\]]*)$/.exec(textBefore)
+
+  if (!match) return null
+
+  const token = `[[${match[1] ?? ''}`
+  const from = selection.from - token.length
+  const rect = view.coordsAtPos(selection.from)
+
+  return {
+    range: { from, to: selection.from },
+    query: match[1] ?? '',
+    rect: {
+      top: rect.top,
+      left: rect.left,
+      bottom: rect.bottom,
+    },
+  }
+}
+
+function rankWikilinkItems(items: LeafTreeItem[], query: string): LeafTreeItem[] {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) {
+    return items
+      .slice()
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .slice(0, 12)
+  }
+
+  return items
+    .map((item) => {
+      const title = item.title.toLowerCase()
+      const path = item.path.toLowerCase()
+      const exact = title === normalizedQuery || path === normalizedQuery
+      const starts = title.startsWith(normalizedQuery) || path.startsWith(normalizedQuery)
+      const includes = title.includes(normalizedQuery) || path.includes(normalizedQuery)
+      const score = exact ? 0 : starts ? 1 : includes ? 2 : 3
+      return { item, score }
+    })
+    .filter((entry) => entry.score < 3)
+    .sort((a, b) => a.score - b.score || a.item.title.localeCompare(b.item.title))
+    .map((entry) => entry.item)
+    .slice(0, 12)
+}
+
 function EmbeddedPageCard({
   node,
   deleteNode,
@@ -147,11 +217,12 @@ function EmbeddedPageCard({
     <NodeViewWrapper className="my-1.5">
       <div
         contentEditable={false}
-        className="group flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors duration-150"
+        className="group flex items-center gap-3 rounded-xl border px-3.5 py-3 transition-colors duration-150"
         style={{
-          borderColor: status === 'error' ? '#f2c4bc' : 'var(--leaf-border-strong)',
-          background: status === 'pending' ? 'var(--leaf-bg-tag)' : 'var(--leaf-bg-editor)',
+          borderColor: status === 'error' ? '#f2c4bc' : 'rgba(0,0,0,0.07)',
+          background: status === 'pending' ? '#f4f4f5' : '#fff',
           cursor: canNavigate ? 'pointer' : 'default',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
         }}
         onClick={() => {
           if (!canNavigate) return
@@ -162,7 +233,7 @@ function EmbeddedPageCard({
       >
         <span
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: 'var(--leaf-bg-tag)', color: 'var(--leaf-text-title)' }}
+          style={{ background: '#f4f4f5', color: 'var(--leaf-text-title)' }}
         >
           <LeafIcon size={16} />
         </span>
@@ -213,13 +284,14 @@ function EmbeddedDatabaseView({
           contentEditable={false}
           className="group flex items-center gap-3 rounded-xl border px-4 py-3"
           style={{
-            borderColor: status === 'error' ? '#f2c4bc' : 'var(--leaf-border-strong)',
-            background: status === 'pending' ? 'var(--leaf-bg-tag)' : 'var(--leaf-bg-editor)',
+            borderColor: status === 'error' ? '#f2c4bc' : 'rgba(0,0,0,0.07)',
+            background: status === 'pending' ? '#f4f4f5' : '#fff',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
           }}
         >
           <span
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-            style={{ background: 'var(--leaf-bg-tag)', color: 'var(--leaf-text-title)' }}
+            style={{ background: '#f4f4f5', color: 'var(--leaf-text-title)' }}
           >
             <DatabaseIcon size={16} />
           </span>
@@ -254,7 +326,7 @@ function EmbeddedDatabaseView({
             onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }}
             onClick={(event) => { event.stopPropagation(); deleteNode() }}
             className="rounded-md px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100"
-            style={{ color: 'var(--leaf-text-muted)', background: 'rgba(255,255,255,0.9)', border: '0.5px solid var(--leaf-border-strong)' }}
+            style={{ color: 'var(--leaf-text-muted)', background: 'rgba(255,255,255,0.94)', border: '1px solid rgba(0,0,0,0.06)' }}
           >
             Remove
           </button>
@@ -262,6 +334,73 @@ function EmbeddedDatabaseView({
         <EmbeddedDatabaseBlock id={id} />
       </div>
     </NodeViewWrapper>
+  )
+}
+
+function ColumnRichEditor({
+  content,
+  placeholder,
+  onChange,
+}: {
+  content: LeafDocument
+  placeholder: string
+  onChange: (content: LeafDocument) => void
+}) {
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const nestedEditor = useEditor({
+    extensions: [
+      StarterKit.configure({ gapcursor: false, dropcursor: false }),
+      WikilinkNode,
+      TaskList,
+      TaskItem.configure({ nested: true }),
+    ],
+    content,
+    immediatelyRender: false,
+    shouldRerenderOnTransaction: false,
+    editorProps: {
+      attributes: { class: 'leaf-prose max-w-none min-h-[120px] focus:outline-none' },
+    },
+    onUpdate: ({ editor }) => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+      }
+      saveTimerRef.current = setTimeout(() => {
+        onChange(normalizeLeafDocument(editor.getJSON() as LeafDocument))
+      }, 250)
+    },
+    onBlur: ({ editor }) => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+      onChange(normalizeLeafDocument(editor.getJSON() as LeafDocument))
+    },
+  }, [onChange])
+
+  useEffect(() => {
+    if (!nestedEditor) return
+    const next = normalizeLeafDocument(content)
+    const current = normalizeLeafDocument(nestedEditor.getJSON() as LeafDocument)
+    if (JSON.stringify(next) !== JSON.stringify(current)) {
+      nestedEditor.commands.setContent(next, false)
+    }
+  }, [content, nestedEditor])
+
+  useEffect(() => () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+    }
+  }, [])
+
+  return (
+    <div className="leaf-column-editor">
+      <EditorContent editor={nestedEditor} />
+      {!getLeafContentText(content).trim() ? (
+        <div className="pointer-events-none -mt-[118px] px-1 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>
+          {placeholder}
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -277,9 +416,9 @@ function ColumnLayoutView({
   const attrs = normalizeColumns(node.attrs)
   const dragIndexRef = useRef<number | null>(null)
 
-  const setColumnText = (index: number, text: string) => {
+  const setColumnContent = (index: number, content: LeafDocument) => {
     const nextColumns = attrs.columns.map((column, currentIndex) => (
-      currentIndex === index ? { ...column, text } : column
+      currentIndex === index ? { ...column, content, text: undefined } : column
     ))
     updateAttributes({ columns: nextColumns })
   }
@@ -296,8 +435,8 @@ function ColumnLayoutView({
     <NodeViewWrapper className="group my-2">
       <div
         contentEditable={false}
-        className="rounded-xl border p-4"
-        style={{ borderColor: 'var(--leaf-border-strong)', background: 'var(--leaf-bg-editor)' }}
+        className="rounded-2xl border p-4"
+        style={{ borderColor: 'rgba(0,0,0,0.07)', background: '#fafafa' }}
       >
         <div className="mb-3 flex items-center justify-between">
           <div>
@@ -305,7 +444,7 @@ function ColumnLayoutView({
               {attrs.layout === 2 ? 'Two-column layout' : 'Three-column layout'}
             </div>
             <div className="text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
-              Drag the handles to reorder columns.
+              Side-by-side blocks for notes, comparisons, and reference content.
             </div>
           </div>
           <button
@@ -313,7 +452,7 @@ function ColumnLayoutView({
             onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }}
             onClick={deleteNode}
             className="rounded-md px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100"
-            style={{ color: 'var(--leaf-text-muted)', border: '0.5px solid var(--leaf-border-strong)' }}
+            style={{ color: 'var(--leaf-text-muted)', border: '1px solid rgba(0,0,0,0.06)', background: 'rgba(255,255,255,0.86)' }}
           >
             Remove
           </button>
@@ -326,8 +465,8 @@ function ColumnLayoutView({
           {attrs.columns.map((column, index) => (
             <div
               key={column.id}
-              className="rounded-lg border px-3 py-3"
-              style={{ border: '0.5px dashed #d0e0ca', background: '#f8fbf6' }}
+              className="rounded-xl border px-3 py-3"
+              style={{ border: '1px dashed rgba(0,0,0,0.1)', background: 'rgba(255,255,255,0.9)' }}
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault()
@@ -338,7 +477,7 @@ function ColumnLayoutView({
               }}
             >
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-[0.07em]" style={{ color: '#b8d0be' }}>
+                <span className="text-[10px] uppercase tracking-[0.07em]" style={{ color: 'var(--leaf-text-muted)' }}>
                   Column {index + 1}
                 </span>
                 <button
@@ -346,18 +485,16 @@ function ColumnLayoutView({
                   draggable
                   onDragStart={() => { dragIndexRef.current = index }}
                   className="cursor-grab rounded px-1 text-xs"
-                  style={{ color: '#a8c4b0' }}
+                  style={{ color: 'var(--leaf-text-muted)' }}
                   title="Drag to reorder column"
                 >
                   ⋮⋮
                 </button>
               </div>
-              <textarea
-                value={column.text}
-                onChange={(event) => setColumnText(index, event.target.value)}
+              <ColumnRichEditor
+                content={column.content ?? createEmptyLeafDocument()}
                 placeholder={`Column ${index + 1}…`}
-                className="min-h-[120px] w-full resize-none bg-transparent text-sm leading-relaxed outline-none"
-                style={{ color: 'var(--leaf-text-body)' }}
+                onChange={(content) => setColumnContent(index, content)}
               />
             </div>
           ))}
@@ -401,6 +538,33 @@ function createEmbedNode(name: 'pageEmbed' | 'databaseEmbed', kind: 'page' | 'da
 
 const PageEmbed = createEmbedNode('pageEmbed', 'page')
 const DatabaseEmbed = createEmbedNode('databaseEmbed', 'database')
+const WikilinkNode = Node.create({
+  name: 'wikilink',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: false,
+  addAttributes() {
+    return {
+      id: { default: '' },
+      label: { default: 'Untitled' },
+      path: { default: '' },
+    }
+  },
+  parseHTML() {
+    return [{ tag: 'span[data-type="wikilink"]' }]
+  },
+  renderHTML({ HTMLAttributes, node }) {
+    const label = node.attrs.label || node.attrs.path || node.attrs.id || 'Untitled'
+    return ['span', mergeAttributes({
+      'data-type': 'wikilink',
+      'data-id': node.attrs.id,
+      'data-path': node.attrs.path,
+      'data-label': node.attrs.label,
+      class: 'leaf-wikilink',
+    }, HTMLAttributes), `[[${label}]]`]
+  },
+})
 const ColumnLayout = Node.create({
   name: 'columnLayout',
   group: 'block',
@@ -474,6 +638,73 @@ function BlockDropdown({ onSelect, onClose }: { onSelect: (action: string) => vo
   )
 }
 
+function WikilinkPanel({
+  menu,
+  onSelect,
+}: {
+  menu: WikilinkMenuState
+  onSelect: (item: LeafTreeItem) => void
+}) {
+  if (!menu) return null
+
+  const spaceBelow = window.innerHeight - menu.rect.bottom
+  const top = spaceBelow < 260 ? menu.rect.top - 6 - Math.min(260, window.innerHeight * 0.4) : menu.rect.bottom + 6
+  const left = Math.min(menu.rect.left, window.innerWidth - 320)
+
+  return (
+    <div
+      className="fixed z-[9999] overflow-hidden rounded-xl border"
+      style={{
+        top,
+        left,
+        width: 308,
+        background: '#fff',
+        borderColor: 'var(--leaf-border-strong)',
+        boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+      }}
+      onMouseDown={(event) => event.preventDefault()}
+    >
+      <div className="border-b px-3 py-2 text-[10px] font-medium uppercase tracking-[0.09em]" style={{ color: 'var(--leaf-text-muted)', borderColor: 'rgba(0,0,0,0.05)' }}>
+        Link a page
+      </div>
+      {menu.items.length === 0 ? (
+        <div className="px-3 py-3 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>
+          No pages match this query.
+        </div>
+      ) : menu.items.map((item, index) => {
+        const isSelected = index === menu.selectedIndex
+        return (
+          <button
+            key={item.id}
+            type="button"
+            className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors duration-100"
+            style={{ backgroundColor: isSelected ? 'var(--leaf-bg-hover)' : '#fff' }}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect(item)
+            }}
+          >
+            <span
+              className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+              style={{ background: 'var(--leaf-bg-tag)', color: 'var(--leaf-green)' }}
+            >
+              <LeafIcon size={14} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>
+                {item.title || 'Untitled'}
+              </span>
+              <span className="block truncate text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
+                {item.path}
+              </span>
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function LeafEditor({
   content,
   onUpdate,
@@ -488,6 +719,7 @@ export default function LeafEditor({
   const [blockMenu, setBlockMenu] = useState<BlockMenuState>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null)
+  const [wikilinkMenu, setWikilinkMenu] = useState<WikilinkMenuState | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const pendingInsertPos = useRef<number | null>(null)
@@ -503,6 +735,10 @@ export default function LeafEditor({
   const slashMatchRef = useRef<SlashMatch | null>(null)
   const slashMenuRef = useRef<SlashMenuState | null>(null)
   const slashSelectActionRef = useRef<(action: string) => void>(() => {})
+  const wikilinkMatchRef = useRef<SlashMatch | null>(null)
+  const wikilinkMenuRef = useRef<WikilinkMenuState | null>(null)
+  const wikilinkSelectRef = useRef<(item: LeafTreeItem) => void>(() => {})
+  const linkableLeavesRef = useRef<LeafTreeItem[]>([])
   const pendingEmbedPositionsRef = useRef<Record<string, number>>({})
 
   modeRef.current = mode
@@ -512,6 +748,7 @@ export default function LeafEditor({
   onCreateDatabaseRef.current = onCreateDatabase
   onModeChangeRef.current = onModeChange
   slashMenuRef.current = slashMenu
+  wikilinkMenuRef.current = wikilinkMenu
 
   const updateSlashMenu = useCallback((instance: NonNullable<ReturnType<typeof useEditor>>) => {
     if (modeRef.current !== 'rich') {
@@ -536,11 +773,35 @@ export default function LeafEditor({
     }))
   }, [])
 
+  const updateWikilinkMenu = useCallback((instance: NonNullable<ReturnType<typeof useEditor>>) => {
+    if (modeRef.current !== 'rich') {
+      wikilinkMatchRef.current = null
+      setWikilinkMenu(null)
+      return
+    }
+
+    const match = computeWikilinkMatch(instance)
+    wikilinkMatchRef.current = match
+
+    if (!match) {
+      setWikilinkMenu(null)
+      return
+    }
+
+    const items = rankWikilinkItems(linkableLeavesRef.current, match.query)
+    setWikilinkMenu((current) => ({
+      items,
+      selectedIndex: current?.items.length === items.length ? Math.min(current.selectedIndex, Math.max(0, items.length - 1)) : 0,
+      rect: match.rect,
+    }))
+  }, [])
+
   const extensions = useMemo(() => [
     StarterKit.configure({
       gapcursor: false,
       dropcursor: false,
     }),
+    WikilinkNode,
     ColumnLayout,
     PageEmbed,
     DatabaseEmbed,
@@ -559,7 +820,35 @@ export default function LeafEditor({
   const editorProps = useMemo(() => ({
     attributes: { class: 'leaf-prose max-w-none min-h-[50vh] focus:outline-none' },
     handleKeyDown: (_view: unknown, event: KeyboardEvent) => {
+      const activeWikilinkMenu = wikilinkMenuRef.current
       const activeSlashMenu = slashMenuRef.current
+
+      if (activeWikilinkMenu) {
+        if (event.key === 'ArrowUp') {
+          event.preventDefault()
+          setWikilinkMenu((current) => current ? { ...current, selectedIndex: (current.selectedIndex - 1 + current.items.length) % current.items.length } : current)
+          return true
+        }
+        if (event.key === 'ArrowDown') {
+          event.preventDefault()
+          setWikilinkMenu((current) => current ? { ...current, selectedIndex: (current.selectedIndex + 1) % current.items.length } : current)
+          return true
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          const item = activeWikilinkMenu.items[activeWikilinkMenu.selectedIndex]
+          if (item) {
+            wikilinkSelectRef.current(item)
+          }
+          return true
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          wikilinkMatchRef.current = null
+          setWikilinkMenu(null)
+          return true
+        }
+      }
 
       if (activeSlashMenu) {
         if (event.key === 'ArrowUp') {
@@ -600,6 +889,27 @@ export default function LeafEditor({
     editorProps,
     onUpdate: handleEditorUpdate,
   }, [extensions, editorProps, handleEditorUpdate])
+
+  useEffect(() => {
+    let cancelled = false
+
+    void leavesApi.getTree()
+      .then((items) => {
+        if (cancelled) return
+        linkableLeavesRef.current = items.filter((item) => item.type === 'page')
+        if (editor) {
+          updateWikilinkMenu(editor)
+        }
+      })
+      .catch(() => {
+        if (cancelled) return
+        linkableLeavesRef.current = []
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [editor, updateWikilinkMenu])
 
   const updateEmbedNode = useCallback((tempId: string, kind: 'page' | 'database', attrs: Partial<EmbedNodeAttrs>) => {
     if (!editor) return
@@ -683,6 +993,31 @@ export default function LeafEditor({
     }
   }, [editor, updateEmbedNode])
 
+  const insertWikilink = useCallback((item: LeafTreeItem) => {
+    if (!editor) return
+    const match = wikilinkMatchRef.current
+    if (!match) return
+
+    editor.chain()
+      .focus()
+      .deleteRange(match.range)
+      .insertContentAt(match.range.from, [
+        {
+          type: 'wikilink',
+          attrs: {
+            id: item.id,
+            label: item.title || 'Untitled',
+            path: item.path,
+          },
+        },
+        { type: 'text', text: ' ' },
+      ])
+      .run()
+
+    wikilinkMatchRef.current = null
+    setWikilinkMenu(null)
+  }, [editor])
+
   const applyAction = useCallback(async (
     action: string,
     options: { selectionPos: number; deleteRange?: { from: number; to: number } },
@@ -754,7 +1089,11 @@ export default function LeafEditor({
     if (!editor) return
 
     const syncSlashMenu = () => updateSlashMenu(editor)
-    const handleBlur = () => setTimeout(syncSlashMenu, 0)
+    const syncWikilinkMenu = () => updateWikilinkMenu(editor)
+    const handleBlur = () => setTimeout(() => {
+      syncSlashMenu()
+      syncWikilinkMenu()
+    }, 0)
     slashSelectActionRef.current = async (action: string) => {
       const match = slashMatchRef.current
       setSlashMenu(null)
@@ -762,21 +1101,31 @@ export default function LeafEditor({
       if (!match) return
       await applyAction(action, { selectionPos: match.range.from, deleteRange: match.range })
     }
+    wikilinkSelectRef.current = (item: LeafTreeItem) => {
+      insertWikilink(item)
+    }
 
     editor.on('selectionUpdate', syncSlashMenu)
+    editor.on('selectionUpdate', syncWikilinkMenu)
     editor.on('update', syncSlashMenu)
+    editor.on('update', syncWikilinkMenu)
     editor.on('focus', syncSlashMenu)
+    editor.on('focus', syncWikilinkMenu)
     editor.on('blur', handleBlur)
 
     syncSlashMenu()
+    syncWikilinkMenu()
 
     return () => {
       editor.off('selectionUpdate', syncSlashMenu)
+      editor.off('selectionUpdate', syncWikilinkMenu)
       editor.off('update', syncSlashMenu)
+      editor.off('update', syncWikilinkMenu)
       editor.off('focus', syncSlashMenu)
+      editor.off('focus', syncWikilinkMenu)
       editor.off('blur', handleBlur)
     }
-  }, [editor, applyAction, updateSlashMenu])
+  }, [editor, applyAction, insertWikilink, updateSlashMenu, updateWikilinkMenu])
 
   useEffect(() => {
     if (!editor) return
@@ -797,6 +1146,7 @@ export default function LeafEditor({
   useEffect(() => {
     if (mode !== 'rich') {
       setSlashMenu(null)
+      setWikilinkMenu(null)
     }
   }, [mode])
 
@@ -970,6 +1320,15 @@ export default function LeafEditor({
             slashMatchRef.current = null
             if (!match) return
             void applyAction(item.action, { selectionPos: match.range.from, deleteRange: match.range })
+          }}
+        />
+      )}
+
+      {wikilinkMenu && (
+        <WikilinkPanel
+          menu={wikilinkMenu}
+          onSelect={(item) => {
+            insertWikilink(item)
           }}
         />
       )}

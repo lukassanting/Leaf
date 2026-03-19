@@ -24,6 +24,7 @@ type Props = {
   onIconClick?: () => void
   iconPicker?: ReactNode
   extraContent?: ReactNode
+  showTags?: boolean
 }
 
 function DefaultHeaderIcon({ kind }: { kind: 'page' | 'database' }) {
@@ -78,6 +79,7 @@ export function PageIdentityHeader({
   onIconClick,
   iconPicker,
   extraContent,
+  showTags = true,
 }: Props) {
   const canEditDescription = typeof onDescriptionChange === 'function'
   const canEditTags = Array.isArray(tags) && typeof onTagsChange === 'function'
@@ -100,14 +102,27 @@ export function PageIdentityHeader({
   return (
     <div
       style={{
-        padding: '36px 0 24px',
+        padding: '24px 24px 18px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         textAlign: 'center',
-        borderBottom: '0.5px solid var(--leaf-border-soft)',
+        borderBottom: '1px solid var(--leaf-border-soft)',
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.86), rgba(250,250,250,0.64))',
       }}
     >
+      <div
+        style={{
+          fontSize: 9.5,
+          fontWeight: 600,
+          letterSpacing: '0.09em',
+          textTransform: 'uppercase',
+          color: 'var(--leaf-text-muted)',
+          marginBottom: 8,
+        }}
+      >
+        {kind === 'database' ? 'Database surface' : 'Page surface'}
+      </div>
       <div style={{ position: 'relative', display: 'inline-block', marginBottom: 12 }}>
         <button
           ref={iconButtonRef}
@@ -115,11 +130,11 @@ export function PageIdentityHeader({
           onClick={onIconClick}
           disabled={!onIconClick}
           style={{
-            width: 52,
-            height: 52,
+            width: 48,
+            height: 48,
             borderRadius: 12,
-            background: 'var(--leaf-bg-tag)',
-            border: '0.5px solid var(--leaf-border-strong)',
+            background: '#fff',
+            border: '1px solid var(--leaf-border-strong)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -143,7 +158,7 @@ export function PageIdentityHeader({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '2px solid var(--leaf-bg-editor)',
+              border: '2px solid #fff',
               pointerEvents: 'none',
             }}
           >
@@ -160,7 +175,7 @@ export function PageIdentityHeader({
         ref={titleInputRef}
         className="bg-transparent border-none outline-none font-medium leading-tight"
         style={{
-          fontSize: 28,
+          fontSize: 32,
           fontWeight: 500,
           color: 'var(--leaf-text-title)',
           letterSpacing: '-0.02em',
@@ -191,7 +206,7 @@ export function PageIdentityHeader({
             fontSize: 13.5,
             color: description ? 'var(--leaf-text-muted)' : 'var(--leaf-text-hint)',
             marginTop: 6,
-            maxWidth: 480,
+            maxWidth: 560,
             width: '100%',
             lineHeight: 1.6,
             textAlign: 'center',
@@ -214,7 +229,7 @@ export function PageIdentityHeader({
 
       {extraContent ? <div style={{ marginTop: 10 }}>{extraContent}</div> : null}
 
-      {canEditTags && (
+      {showTags && canEditTags && (
         <div style={{ marginTop: 10 }}>
           <TagsInput tags={tags} onChange={onTagsChange} />
         </div>

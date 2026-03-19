@@ -13,6 +13,9 @@ from app.dtos.leaf_dtos import (
     Leaf,
     LeafContentUpdate,
     LeafCreate,
+    LeafGraph,
+    LeafGraphEdge,
+    LeafGraphNode,
     LeafTreeItem,
     LeafType,
     LeafUpdate,
@@ -59,10 +62,9 @@ class LeafOperations:
                 attrs = node.get("attrs")
                 if isinstance(attrs, dict) and isinstance(attrs.get("title"), str):
                     chunks.append(attrs["title"])
-                content_list = node.get("content")
-                if isinstance(content_list, list):
-                    for child in content_list:
-                        walk(child)
+                for value in node.values():
+                    if isinstance(value, (dict, list)):
+                        walk(value)
             elif isinstance(node, list):
                 for child in node:
                     walk(child)
@@ -70,10 +72,11 @@ class LeafOperations:
         walk(content)
         return "\n".join(chunks)
 
-    def _leaf_to_dto(self, leaf: LeafModel) -> Leaf:
+    def _leaf_to_dto(self, leaf: LeafModel, path: str = "") -> Leaf:
         return Leaf(
             id=leaf.id,
             title=leaf.title,
+            path=path,
             type=leaf.type,
             description=leaf.description,
             content=self._deserialize_content(leaf.content),
@@ -87,16 +90,113 @@ class LeafOperations:
             updated_at=leaf.updated_at,
         )
 
-    def _leaf_tree_item(self, row) -> LeafTreeItem:
+    def _leaf_tree_item(self, row, path: str = "") -> LeafTreeItem:
         return LeafTreeItem(
             id=row[0],
             title=row[1],
+            path=path,
             type=row[2],
             parent_id=row[3],
             children_ids=list(row[4] or []),
             order=row[5] if row[5] is not None else 0,
             tags=list(row[6] or []),
         )
+
+    def _build_leaf_path_map(self, leaves: list[LeafModel]) -> dict[str, str]:
+        by_id = {leaf.id: leaf for leaf in leaves}
+        path_map: dict[str, str] = {}
+
+        def slugify(part: str) -> str:
+            slug = re.sub(r"\s+", "-", (part or "untitled").strip().lower())
+            slug = re.sub(r"[^a-z0-9\-_/]", "", slug)
+            return slug or "untitled"
+
+        def build_path(leaf: LeafModel) -> str:
+            if leaf.id in path_map:
+                return path_map[leaf.id]
+
+            segments = [slugify(leaf.title)]
+            seen: set[str] = {leaf.id}
+            current_parent = leaf.parent_id
+            while current_parent and current_parent not in seen:
+                seen.add(current_parent)
+                parent = by_id.get(current_parent)
+                if not parent:
+                    break
+                segments.append(slugify(parent.title))
+                current_parent = parent.parent_id
+
+            path = "/".join(reversed(segments))
+            path_map[leaf.id] = path
+            return path
+
+        for leaf in leaves:
+            build_path(leaf)
+
+        return path_map
+
+    def _extract_link_targets(self, content: dict | str | None) -> set[str]:
+        targets: set[str] = set()
+
+        def walk(node):
+            if isinstance(node, dict):
+                if node.get("type") == "wikilink":
+                    attrs = node.get("attrs") or {}
+                    if isinstance(attrs, dict):
+                        target = attrs.get("id") or attrs.get("path") or attrs.get("label")
+                        if isinstance(target, str) and target.strip():
+                            targets.add(target.strip())
+                for value in node.values():
+                    if isinstance(value, (dict, list)):
+                        walk(value)
+            elif isinstance(node, list):
+                for child in node:
+                    walk(child)
+
+        if isinstance(content, dict):
+            walk(content)
+
+        searchable_content = self._content_to_search_text(content)
+        if searchable_content:
+            pattern = r'\[\[([^\]]+)\]\]'
+            raw_targets = set(re.findall(pattern, searchable_content))
+            for raw in raw_targets:
+                target = raw.split("|", 1)[0].strip()
+                if target:
+                    targets.add(target)
+        return targets
+
+    def _resolve_link_target(self, db_session, target_name: str) -> LeafModel | None:
+        target_name = target_name.strip()
+        if not target_name:
+            return None
+
+        direct_id_match = (
+            db_session.query(LeafModel)
+            .filter(LeafModel.id == target_name)
+            .first()
+        )
+        if direct_id_match:
+            return direct_id_match
+
+        if "/" in target_name:
+            leaves = db_session.query(LeafModel).all()
+            path_map = self._build_leaf_path_map(leaves)
+            normalized_target = re.sub(r"\s+", "-", target_name.lower())
+            normalized_target = re.sub(r"[^a-z0-9\-_/]", "", normalized_target)
+            for leaf in leaves:
+                if path_map.get(leaf.id) == normalized_target:
+                    return leaf
+            return None
+
+        matches = (
+            db_session.query(LeafModel)
+            .filter(LeafModel.title == target_name)
+            .all()
+        )
+        if len(matches) == 1:
+            return matches[0]
+        return None
 
     def _leaf_storage_payload(self, leaf: LeafModel) -> dict:
         return {
@@ -195,7 +295,8 @@ class LeafOperations:
                 db_session.commit()
                 db_session.refresh(db_leaf)
                 payload = self._leaf_storage_payload(db_leaf)
-                result = self._leaf_to_dto(db_leaf)
+                path_map = self._build_leaf_path_map(db_session.query(LeafModel).all())
+                result = self._leaf_to_dto(db_leaf, path_map.get(db_leaf.id, ""))
 
             self._schedule_leaf_sync(payload)
             logger.info(f"Leaf created: {result.id}")
@@ -210,7 +311,8 @@ class LeafOperations:
         try:
             with self.db.get_db_session() as db_session:
                 leaf = self._get_leaf_or_404(db_session, leaf_id)
-                return self._leaf_to_dto(leaf)
+                path_map = self._build_leaf_path_map(db_session.query(LeafModel).all())
+                return self._leaf_to_dto(leaf, path_map.get(leaf.id, ""))
         except LeafException:
             raise
         except Exception as e:
@@ -221,7 +323,8 @@ class LeafOperations:
         try:
             with self.db.get_db_session() as db_session:
                 leaves = db_session.query(LeafModel).all()
-                return [self._leaf_to_dto(leaf) for leaf in leaves]
+                path_map = self._build_leaf_path_map(leaves)
+                return [self._leaf_to_dto(leaf, path_map.get(leaf.id, "")) for leaf in leaves]
         except Exception as e:
             logger.exception("get_all_leaves failed")
             raise LeafException(status_code=getattr(e, "status_code", 500), detail=str(e))
@@ -235,6 +338,8 @@ class LeafOperations:
     ) -> list[LeafTreeItem]:
         try:
             with self.db.get_db_session() as db_session:
+                all_leaves = db_session.query(LeafModel).all()
+                path_map = self._build_leaf_path_map(all_leaves)
                 q = db_session.query(LeafModel).with_entities(
                     LeafModel.id,
                     LeafModel.title,
@@ -254,7 +359,7 @@ class LeafOperations:
                     q = q.offset(offset)
                 if limit is not None:
                     q = q.limit(limit)
-                return [self._leaf_tree_item(row) for row in q.all()]
+                return [self._leaf_tree_item(row, path_map.get(row[0], "")) for row in q.all()]
         except Exception as e:
             logger.exception("get_leaf_tree failed")
             raise LeafException(status_code=500, detail=str(e))
@@ -271,7 +376,8 @@ class LeafOperations:
                 db_session.commit()
                 db_session.refresh(db_leaf)
                 payload = self._leaf_storage_payload(db_leaf)
-                result = self._leaf_to_dto(db_leaf)
+                path_map = self._build_leaf_path_map(db_session.query(LeafModel).all())
+                result = self._leaf_to_dto(db_leaf, path_map.get(db_leaf.id, ""))
             self._schedule_leaf_sync(payload)
             logger.info("Leaf content patched: %s", result.id)
             return result
@@ -292,7 +398,8 @@ class LeafOperations:
                         child.order = i
                 db_session.commit()
                 db_session.refresh(parent)
-                return self._leaf_to_dto(parent)
+                path_map = self._build_leaf_path_map(db_session.query(LeafModel).all())
+                return self._leaf_to_dto(parent, path_map.get(parent.id, ""))
         except LeafNotFound:
             raise
         except Exception as e:
@@ -308,7 +415,8 @@ class LeafOperations:
                 db_session.commit()
                 db_session.refresh(db_leaf)
                 payload = self._leaf_storage_payload(db_leaf)
-                result = self._leaf_to_dto(db_leaf)
+                path_map = self._build_leaf_path_map(db_session.query(LeafModel).all())
+                result = self._leaf_to_dto(db_leaf, path_map.get(db_leaf.id, ""))
             self._schedule_leaf_sync(payload)
             logger.info(f"Leaf updated: {result.id}")
             return result
@@ -341,9 +449,47 @@ class LeafOperations:
                     .filter(LeafModel.id.in_(ids))
                     .all()
                 )
-                return [self._leaf_tree_item(row) for row in rows]
+                path_map = self._build_leaf_path_map(db_session.query(LeafModel).all())
+                return [self._leaf_tree_item(row, path_map.get(row[0], "")) for row in rows]
         except Exception as e:
             logger.exception(f"get_backlinks failed for {leaf_id}")
+            raise LeafException(status_code=500, detail=str(e))
+
+    async def get_leaf_graph(self) -> LeafGraph:
+        try:
+            with self.db.get_db_session() as db_session:
+                leaves = (
+                    db_session.query(LeafModel)
+                    .filter(LeafModel.database_id.is_(None))
+                    .all()
+                )
+                path_map = self._build_leaf_path_map(leaves)
+                nodes = [
+                    LeafGraphNode(
+                        id=leaf.id,
+                        title=leaf.title,
+                        path=path_map.get(leaf.id, leaf.title),
+                        type=leaf.type,
+                        tags=list(leaf.tags or []),
+                    )
+                    for leaf in leaves
+                ]
+
+                valid_ids = {leaf.id for leaf in leaves}
+                links = (
+                    db_session.query(PageLinkModel)
+                    .filter(PageLinkModel.source_leaf_id.in_(valid_ids))
+                    .filter(PageLinkModel.target_leaf_id.in_(valid_ids))
+                    .all()
+                )
+                edges = [
+                    LeafGraphEdge(source=link.source_leaf_id, target=link.target_leaf_id)
+                    for link in links
+                    if link.source_leaf_id != link.target_leaf_id
+                ]
+                return LeafGraph(nodes=nodes, edges=edges)
+        except Exception as e:
+            logger.exception("get_leaf_graph failed")
             raise LeafException(status_code=500, detail=str(e))
 
     def sync_page_links(self, db_session, source_leaf_id: str, content: dict | str | None) -> None:
@@ -356,22 +502,12 @@ class LeafOperations:
         if not content:
             return
 
-        searchable_content = self._content_to_search_text(content)
-        if not searchable_content:
-            return
-
-        pattern = r'\[\[([^\]]+)\]\]'
-        link_names = set(re.findall(pattern, searchable_content))
+        link_names = self._extract_link_targets(content)
         if not link_names:
             return
 
-        # Resolve page names to leaf IDs
         for name in link_names:
-            target = (
-                db_session.query(LeafModel)
-                .filter(LeafModel.title == name.strip())
-                .first()
-            )
+            target = self._resolve_link_target(db_session, name)
             if target and target.id != source_leaf_id:
                 link = PageLinkModel(
                     source_leaf_id=source_leaf_id,

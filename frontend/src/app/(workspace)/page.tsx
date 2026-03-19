@@ -9,6 +9,14 @@ import { createLeafAndPrimeCache } from '@/lib/leafMutations'
 import { warmEditorRoute } from '@/lib/warmEditorRoute'
 import { useWarmWorkspaceRoutes } from '@/hooks/useWarmWorkspaceRoutes'
 import { LeafIcon } from '@/components/Icons'
+import { ensureWorkspaceDefaults } from '@/lib/workspaceDefaults'
+
+type InlinePage = {
+  id: string
+  title: string
+  icon: string
+  description: string
+}
 
 function greeting() {
   const h = new Date().getHours()
@@ -21,6 +29,7 @@ export default function HomePage() {
   const router = useRouter()
   const { startNavigation, stopNavigation } = useNavigationProgress()
   const [pages, setPages] = useState<{ id: string; title: string }[]>([])
+  const [inlinePages, setInlinePages] = useState<InlinePage[]>([])
   const [creating, setCreating] = useState(false)
 
   useWarmWorkspaceRoutes()
@@ -34,6 +43,25 @@ export default function HomePage() {
         .map((n) => ({ id: n.id, title: n.title || 'Untitled' }))
       setPages(roots)
     })
+
+    void ensureWorkspaceDefaults()
+      .then(({ dailyJournal, notesDump }) => {
+        setInlinePages([
+          {
+            id: dailyJournal.id,
+            title: dailyJournal.title,
+            icon: '🗓️',
+            description: 'Today\'s entry inside the Journal database.',
+          },
+          {
+            id: notesDump.id,
+            title: notesDump.title,
+            icon: '📝',
+            description: 'A single page for rough ideas, scraps, and quick notes.',
+          },
+        ])
+      })
+      .catch(() => setInlinePages([]))
   }, [])
 
   const handleNewPage = useCallback(async () => {
@@ -75,6 +103,42 @@ export default function HomePage() {
             Pick up where you left off, or start something new.
           </p>
         </div>
+
+        {/* Recent pages */}
+        {inlinePages.length > 0 && (
+          <div className="mb-8">
+            <p
+              className="mb-3 text-[10px] font-medium uppercase tracking-widest"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              Quick Access
+            </p>
+            <div className="space-y-2">
+              {inlinePages.map((page) => (
+                <Link
+                  key={page.id}
+                  href={`/editor/${page.id}`}
+                  className="flex items-center gap-3 rounded-2xl border px-4 py-3 transition-colors duration-150"
+                  style={{ borderColor: 'var(--leaf-border-strong)', background: '#fff' }}
+                  onClick={() => startNavigation()}
+                  onMouseEnter={() => { void warmEditorRoute() }}
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: 'rgba(16,185,129,0.08)' }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>{page.icon}</span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>
+                      {page.title}
+                    </span>
+                    <span className="block text-xs" style={{ color: 'var(--leaf-text-muted)' }}>
+                      {page.description}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Recent pages */}
         {pages.length > 0 && (

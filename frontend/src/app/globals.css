@@ -5,94 +5,109 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --background: #fefffe;
-  --foreground: #374f42;
+  --background: #fafafa;
+  --foreground: #27272a;
 
   /* Primary palette */
-  --color-sidebar-bg:  #f0f3ed;
-  --color-primary:     #3d8c52;
-  --color-primary-dk:  #2d7042;
-  --color-text-dark:   #1a3828;
-  --color-text-body:   #374f42;
-  --color-text-muted:  #8fa898;
-  --color-border:      #dce5d7;
+  --color-sidebar-bg:  #f4f4f5;
+  --color-primary:     #10b981;
+  --color-primary-dk:  #047857;
+  --color-text-dark:   #18181b;
+  --color-text-body:   #3f3f46;
+  --color-text-muted:  #71717a;
+  --color-border:      #e4e4e7;
 
   /* Tag pills */
-  --color-tag-bg:      #edf5e8;
-  --color-tag-border:  #c5ddb8;
-  --color-tag-text:    #3b6b4a;
+  --color-tag-bg:      #ecfdf5;
+  --color-tag-border:  #a7f3d0;
+  --color-tag-text:    #047857;
 
   /* Sidebar states */
-  --color-active:      rgba(61, 140, 82, 0.14);
-  --color-hover:       rgba(61, 140, 82, 0.08);
+  --color-active:      rgba(16, 185, 129, 0.14);
+  --color-hover:       rgba(24, 24, 27, 0.05);
 
   /* v3 tokens */
-  --leaf-bg-sidebar:   #f0f3ed;
-  --leaf-bg-editor:    #fefffe;
-  --leaf-bg-app:       #f5f7f3;
-  --leaf-bg-hover:     rgba(61, 140, 82, 0.08);
-  --leaf-bg-active:    rgba(61, 140, 82, 0.14);
-  --leaf-bg-tag:       #edf5e8;
-  --leaf-border-soft:  #e6ede2;
-  --leaf-border-strong:#d8e2d2;
-  --leaf-border-tag:   #c5ddb8;
-  --leaf-text-title:   #1a3828;
-  --leaf-text-sidebar: #2d5040;
-  --leaf-text-hint:    #b8d0be;
-  --leaf-text-muted:   #8fa898;
-  --leaf-green:        #3d8c52;
-  --leaf-green-light:  #8cbf94;
-  --leaf-tag-text:     #3b6b4a;
+  --leaf-bg-sidebar:   #f4f4f5;
+  --leaf-bg-editor:    #ffffff;
+  --leaf-bg-app:       #fafafa;
+  --leaf-bg-hover:     rgba(24, 24, 27, 0.04);
+  --leaf-bg-active:    rgba(16, 185, 129, 0.12);
+  --leaf-bg-tag:       #ecfdf5;
+  --leaf-border-soft:  #f0f0f1;
+  --leaf-border-strong:#e4e4e7;
+  --leaf-border-tag:   #a7f3d0;
+  --leaf-text-title:   #18181b;
+  --leaf-text-sidebar: #27272a;
+  --leaf-text-hint:    #a1a1aa;
+  --leaf-text-muted:   #71717a;
+  --leaf-green:        #10b981;
+  --leaf-green-light:  #34d399;
+  --leaf-tag-text:     #047857;
+  --leaf-shadow-soft:  0 10px 30px rgba(24, 24, 27, 0.06);
+  --leaf-glass:        rgba(255, 255, 255, 0.82);
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: Inter, system-ui, sans-serif;
-  font-size: 14px;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(16, 185, 129, 0.18);
+  color: #065f46;
+}
+
+html, body {
+  height: 100%;
 }
 
 /* ─── Thin scrollbars ────────────────────────────────────────────────────── */
 
-* { scrollbar-width: thin; scrollbar-color: var(--color-border) transparent; }
+* { scrollbar-width: thin; scrollbar-color: #d4d4d8 transparent; }
 *::-webkit-scrollbar { width: 4px; }
 *::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 2px; }
+*::-webkit-scrollbar-thumb { background-color: #d4d4d8; border-radius: 2px; }
 
 /* ─── ProseMirror — editor typography ───────────────────────────────────── */
 
 .ProseMirror {
   color: var(--color-text-body);
-  font-size: 14px;
-  line-height: 1.75;
+  font-size: 15px;
+  line-height: 1.85;
   outline: none;
+  letter-spacing: -0.003em;
 }
 
 /* Headings — 500 weight only, never bold */
 .ProseMirror h1 {
-  font-size: 20px;
-  font-weight: 500;
-  line-height: 1.3;
-  margin: 1.25em 0 0.4em;
+  font-size: 2.25rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin: 1.1em 0 0.48em;
   color: var(--color-text-dark);
 }
 .ProseMirror h2 {
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 1.4;
-  margin: 1em 0 0.35em;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  margin: 1.2em 0 0.42em;
   color: var(--color-text-dark);
 }
 .ProseMirror h3 {
-  font-size: 14px;
+  font-size: 1.2rem;
   font-weight: 500;
-  line-height: 1.5;
-  margin: 0.85em 0 0.3em;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  margin: 1em 0 0.34em;
   color: var(--color-text-dark);
 }
 
-.ProseMirror p  { margin: 0.3em 0; color: var(--color-text-body); }
+.ProseMirror p  { margin: 0.42em 0; color: var(--color-text-body); }
 
 /* Lists */
 .ProseMirror ul { list-style-type: disc;    padding-left: 1.5em; }
@@ -104,14 +119,15 @@ body {
   border-left: 2px solid var(--color-border);
   padding-left: 1em;
   color: var(--color-text-muted);
-  margin: 0.75em 0;
+  margin: 0.9em 0;
   font-style: italic;
 }
 
 /* Code */
 .ProseMirror pre {
-  background: #f4f8f5;
-  border-radius: 6px;
+  background: #fafafa;
+  border: 1px solid #e4e4e7;
+  border-radius: 10px;
   padding: 0.875em 1em;
   overflow-x: auto;
   margin: 0.75em 0;
@@ -119,10 +135,10 @@ body {
 .ProseMirror code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12.5px;
-  background: #eef6f0;
+  background: #f4f4f5;
   padding: 0.1em 0.35em;
   border-radius: 3px;
-  color: var(--color-primary-dk);
+  color: #3f3f46;
 }
 .ProseMirror pre code {
   background: none;
@@ -155,4 +171,15 @@ body {
   color: var(--color-text-muted);
   pointer-events: none;
   height: 0;
+}
+
+.leaf-wikilink {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.08rem 0.45rem;
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--leaf-green);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  white-space: nowrap;
 }

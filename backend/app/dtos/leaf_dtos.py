@@ -48,6 +48,7 @@ class LeafContentUpdate(BaseModel):
 class Leaf(BaseModel):
     id: str
     title: str
+    path: str = ""
     type: LeafType
     description: Optional[str] = None
     content: Optional[dict[str, Any] | str] = None
@@ -65,11 +66,30 @@ class LeafTreeItem(BaseModel):
     """Lightweight DTO for tree/navigation; no content."""
     id: str
     title: str
+    path: str = ""
     type: LeafType
     parent_id: Optional[str] = None
     children_ids: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     order: int = 0
+
+
+class LeafGraphNode(BaseModel):
+    id: str
+    title: str
+    path: str
+    type: LeafType
+    tags: list[str] = Field(default_factory=list)
+
+
+class LeafGraphEdge(BaseModel):
+    source: str
+    target: str
+
+
+class LeafGraph(BaseModel):
+    nodes: list[LeafGraphNode] = Field(default_factory=list)
+    edges: list[LeafGraphEdge] = Field(default_factory=list)
 
 
 class LeafReorderChildren(BaseModel):

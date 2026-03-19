@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { useNavigationProgress } from '@/components/NavigationProgress'
-import { useFocusMode, useContentWidth, type ContentWidth } from '@/app/(workspace)/layout'
+import { useFocusMode, useContentWidth, usePaneVis, type ContentWidth } from '@/app/(workspace)/layout'
 import { warmDatabaseRoute, warmEditorRoute } from '@/lib/warmEditorRoute'
+import { DatabaseIcon, LeafIcon } from '@/components/Icons'
 
 type Breadcrumb = {
   id: string
@@ -52,54 +53,76 @@ export function TopStrip({ breadcrumbs, currentTitle }: Props) {
   const { startNavigation } = useNavigationProgress()
   const { focusMode, setFocusMode } = useFocusMode()
   const { contentWidth, setContentWidth } = useContentWidth()
+  const { leftOpen, setLeftOpen, rightOpen, setRightOpen } = usePaneVis()
 
   if (focusMode) return null
 
   return (
     <div
-      className="flex items-center justify-between shrink-0"
+      className="sticky top-0 z-20 grid shrink-0 grid-cols-[auto,1fr,auto] items-center gap-3"
       style={{
-        height: 38,
-        padding: '0 20px',
-        background: 'var(--leaf-bg-editor)',
-        borderBottom: '0.5px solid var(--leaf-border-soft)',
+        height: 56,
+        padding: '0 18px',
+        background: 'rgba(255,255,255,0.88)',
+        backdropFilter: 'blur(18px)',
+        borderBottom: '1px solid var(--leaf-border-soft)',
       }}
     >
-      {/* Left — Breadcrumbs */}
-      <nav className="flex items-center gap-1 overflow-hidden" style={{ fontSize: 11.5, color: 'var(--leaf-text-muted)' }}>
-        {breadcrumbs.map((crumb, index) => (
-          <span key={crumb.id} className="flex items-center gap-1 min-w-0">
-            {index > 0 && <span style={{ color: 'var(--leaf-border-strong)' }} className="mx-0.5">/</span>}
-            <Link
-              href={crumb.kind === 'database' ? `/databases/${crumb.id}` : `/editor/${crumb.id}`}
-              className="truncate max-w-[120px] transition-colors duration-150"
-              style={{ color: 'var(--leaf-text-muted)' }}
-              onClick={() => startNavigation()}
-              onMouseEnter={() => {
-                if (crumb.kind === 'database') { void warmDatabaseRoute(); return }
-                void warmEditorRoute()
-              }}
-            >
-              {crumb.title}
-            </Link>
-          </span>
-        ))}
-        {breadcrumbs.length > 0 && <span style={{ color: 'var(--leaf-border-strong)' }} className="mx-0.5">/</span>}
-        <span
-          className="truncate max-w-[180px]"
-          style={{ color: 'var(--leaf-text-sidebar)', fontWeight: 500 }}
+      <div className="flex items-center gap-2.5">
+        <button
+          type="button"
+          title="Toggle left sidebar"
+          onClick={() => setLeftOpen(!leftOpen)}
+          className="flex h-8 w-8 items-center justify-center rounded-md border transition-colors duration-150"
+          style={{
+            color: leftOpen ? 'var(--leaf-green)' : 'var(--leaf-text-muted)',
+            borderColor: leftOpen ? 'rgba(16,185,129,0.18)' : 'var(--leaf-border-strong)',
+            background: leftOpen ? 'rgba(16,185,129,0.08)' : 'rgba(250,250,250,0.9)',
+          }}
         >
-          {currentTitle || 'Untitled'}
-        </span>
-      </nav>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="2.5" width="12" height="11" rx="2" stroke="currentColor" strokeWidth="1.2" />
+            <path d="M6 3V13" stroke="currentColor" strokeWidth="1.1" />
+          </svg>
+        </button>
+      </div>
 
-      {/* Right — Controls */}
-      <div className="flex items-center gap-1.5">
-        {/* Width toggle */}
+      <div className="flex min-w-0 justify-center">
+        <div className="min-w-0 text-center">
+          <div className="truncate text-[13px] font-medium" style={{ color: 'var(--leaf-text-title)' }}>
+            {currentTitle || 'Untitled'}
+          </div>
+          <nav className="flex items-center justify-center gap-1 overflow-hidden pt-0.5" style={{ fontSize: 11, color: 'var(--leaf-text-muted)' }}>
+            {breadcrumbs.map((crumb, index) => (
+              <span key={crumb.id} className="flex min-w-0 items-center gap-1">
+                {index > 0 ? <span style={{ color: 'var(--leaf-border-strong)' }}>/</span> : null}
+                <Link
+                  href={crumb.kind === 'database' ? `/databases/${crumb.id}` : `/editor/${crumb.id}`}
+                  className="truncate max-w-[120px] transition-colors duration-150"
+                  style={{ color: 'var(--leaf-text-muted)' }}
+                  onClick={() => startNavigation()}
+                  onMouseEnter={() => {
+                    if (crumb.kind === 'database') { void warmDatabaseRoute(); return }
+                    void warmEditorRoute()
+                  }}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    {crumb.kind === 'database' ? <DatabaseIcon size={11} /> : <LeafIcon size={11} />}
+                    <span className="truncate max-w-[96px]">{crumb.title}</span>
+                  </span>
+                </Link>
+              </span>
+            ))}
+          </nav>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
         <div
           className="flex items-center gap-0.5"
           style={{
-            background: '#eef3eb',
+            background: '#fafafa',
+            border: '1px solid var(--leaf-border-strong)',
             borderRadius: 6,
             padding: 2,
           }}
@@ -112,11 +135,11 @@ export function TopStrip({ breadcrumbs, currentTitle }: Props) {
               onClick={() => setContentWidth(opt.key)}
               className="flex items-center justify-center transition-colors duration-120"
               style={{
-                width: 26,
-                height: 22,
+                width: 28,
+                height: 24,
                 borderRadius: 4,
                 background: contentWidth === opt.key ? '#fff' : 'transparent',
-                color: contentWidth === opt.key ? 'var(--leaf-text-sidebar)' : '#7a9e87',
+                color: contentWidth === opt.key ? 'var(--leaf-text-sidebar)' : 'var(--leaf-text-muted)',
                 cursor: 'pointer',
               }}
             >
@@ -125,33 +148,34 @@ export function TopStrip({ breadcrumbs, currentTitle }: Props) {
           ))}
         </div>
 
-        {/* Focus mode */}
         <button
           type="button"
           title="Focus mode"
           onClick={() => setFocusMode(true)}
           className="flex items-center justify-center rounded-md transition-colors duration-150"
-          style={{ width: 28, height: 28, color: '#7a9e87', cursor: 'pointer' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(61,140,82,0.1)'; e.currentTarget.style.color = '#2d5040' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#7a9e87' }}
+          style={{ width: 30, height: 30, color: 'var(--leaf-text-muted)', cursor: 'pointer' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(24,24,27,0.05)'; e.currentTarget.style.color = 'var(--leaf-text-title)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = ''; e.currentTarget.style.color = 'var(--leaf-text-muted)' }}
         >
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
             <path d="M2 5V2H5M10 2H13V5M13 10V13H10M5 13H2V10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
 
-        {/* Quick search (placeholder) */}
         <button
           type="button"
-          title="Search (⌘K)"
-          className="flex items-center justify-center rounded-md transition-colors duration-150"
-          style={{ width: 28, height: 28, color: '#7a9e87', cursor: 'pointer' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(61,140,82,0.1)'; e.currentTarget.style.color = '#2d5040' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#7a9e87' }}
+          title="Toggle right sidebar"
+          onClick={() => setRightOpen(!rightOpen)}
+          className="flex h-8 w-8 items-center justify-center rounded-md border transition-colors duration-150"
+          style={{
+            color: rightOpen ? 'var(--leaf-green)' : 'var(--leaf-text-muted)',
+            borderColor: rightOpen ? 'rgba(16,185,129,0.18)' : 'var(--leaf-border-strong)',
+            background: rightOpen ? 'rgba(16,185,129,0.08)' : 'rgba(250,250,250,0.9)',
+          }}
         >
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-            <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.3"/>
-            <path d="M10 10L13 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="2.5" width="12" height="11" rx="2" stroke="currentColor" strokeWidth="1.2" />
+            <path d="M10 3V13" stroke="currentColor" strokeWidth="1.1" />
           </svg>
         </button>
       </div>

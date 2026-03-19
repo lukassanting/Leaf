@@ -151,6 +151,17 @@ The next recommended phase is:
 4. Expand database capabilities with sort/filter/group configuration and richer property types.
 5. Add conflict-resolution UI and broader CI/production hardening.
 
+## Framework direction
+
+Leaf should stay on React/Next for the web app.
+
+- A full React/Next to Vue/Nuxt rewrite is not recommended at the current stage.
+- The current product complexity is concentrated in editor/database behavior, not in the framework choice itself.
+- Desktop should be evaluated as packaging the current web experience.
+- Mobile should be treated as a separate client against the shared API and `LeafDocument` model.
+
+See `docs/FRAMEWORK_DIRECTION.md` for the full decision and cross-platform guidance.
+
 ## Production (placeholder)
 
 The root `docker-compose.yml` is aimed at development. For production you would typically:
@@ -167,6 +178,7 @@ Leaf/
 ├── README.md             # ← this file
 ├── LEAF_DESIGN_GUIDE.md  # visual design source of truth
 ├── docs/
+│   ├── FRAMEWORK_DIRECTION.md
 │   ├── EDITOR_DESIGN.md
 │   └── PLANS_AND_ROADMAP.md
 ├── docker-compose.yml    # Full stack: mysqldb, api, frontend (run from root)

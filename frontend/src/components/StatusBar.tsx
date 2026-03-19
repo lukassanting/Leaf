@@ -16,7 +16,7 @@ export function StatusBar({ saveStatus, wordCount, modeLabel }: Props) {
   const saveDotColor =
     saveStatus === 'error' ? '#dc2626' :
     saveStatus === 'saving' ? 'var(--leaf-text-muted)' :
-    saveStatus === 'offline' ? '#d97706' : '#6abf7a'
+    saveStatus === 'offline' ? '#d97706' : 'var(--leaf-green)'
 
   const readingTime = wordCount > 1000
     ? `~${Math.ceil(wordCount / 200)} min read`
@@ -29,11 +29,11 @@ export function StatusBar({ saveStatus, wordCount, modeLabel }: Props) {
         height: 28,
         padding: '0 20px',
         background: 'var(--leaf-bg-app)',
-        borderTop: '0.5px solid var(--leaf-border-soft)',
+        borderTop: '1px solid var(--leaf-border-soft)',
       }}
     >
       <div className="flex items-center gap-3" style={{ fontSize: 11, color: 'var(--leaf-text-muted)' }}>
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5" data-testid="status-save-label">
           <span
             className="rounded-full"
             style={{ width: 5, height: 5, backgroundColor: saveDotColor }}

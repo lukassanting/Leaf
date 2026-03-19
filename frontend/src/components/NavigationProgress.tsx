@@ -13,7 +13,8 @@ const NavigationProgressContext = createContext<NavigationProgressValue | null>(
 function Spinner() {
   return (
     <div
-      className="w-10 h-10 rounded-full border-2 border-white/30 border-t-white animate-spin"
+      className="w-10 h-10 rounded-full border-2 animate-spin"
+      style={{ borderColor: 'rgba(16,185,129,0.18)', borderTopColor: 'var(--leaf-green)' }}
       aria-hidden="true"
     />
   )
@@ -60,7 +61,7 @@ export function NavigationProgressProvider({ children }: { children: React.React
       {children}
       {visible && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/65 backdrop-blur-[2px]">
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-black/5 bg-white px-6 py-5 shadow-lg">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border bg-white px-6 py-5 shadow-lg" style={{ borderColor: 'var(--leaf-border-strong)', boxShadow: 'var(--leaf-shadow-soft)' }}>
             <Spinner />
             <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
               Loading…

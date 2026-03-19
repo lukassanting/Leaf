@@ -26,14 +26,21 @@ export function LeafIcon({ className, size = 16 }: IconProps) {
       className={className}
     >
       <path
-        d="M13 2C13 2 8.5 1.5 5.5 4.5C3 7 3 11 5 13.5L6.5 12C5 10 5.5 7.5 7 6C8.5 4.5 11.5 3.5 13 2Z"
-        fill="currentColor"
-        fillOpacity="0.85"
+        d="M4.5 2.75H9.1L11.75 5.38V13.25H4.5V2.75Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
       />
       <path
-        d="M5.5 12.5L3 15"
+        d="M8.9 2.75V5.55H11.75"
         stroke="currentColor"
-        strokeWidth="1.5"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6 8.1H10.1M6 10.35H9.1"
+        stroke="currentColor"
+        strokeWidth="1.1"
         strokeLinecap="round"
       />
     </svg>
@@ -52,9 +59,9 @@ export function DatabaseIcon({ className, size = 16 }: IconProps) {
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      <ellipse cx="8" cy="4.5" rx="5.5" ry="2" />
-      <path d="M2.5 4.5V8c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2V4.5" />
-      <path d="M2.5 8v3.5c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2V8" />
+      <ellipse cx="8" cy="4.25" rx="4.5" ry="1.75" />
+      <path d="M3.5 4.25V8.2C3.5 9.17 5.51 9.95 8 9.95C10.49 9.95 12.5 9.17 12.5 8.2V4.25" />
+      <path d="M3.5 8.2V11.75C3.5 12.72 5.51 13.5 8 13.5C10.49 13.5 12.5 12.72 12.5 11.75V8.2" />
     </svg>
   )
 }
@@ -110,9 +117,14 @@ export function BlockIcon({ label, className }: { label: string; className?: str
   return (
     <span
       className={[
-        'inline-flex items-center justify-center w-7 h-7 rounded-md text-[11px] font-medium text-leaf-500 bg-leaf-100 shrink-0 select-none',
+        'inline-flex items-center justify-center w-7 h-7 rounded-md text-[11px] font-medium shrink-0 select-none',
         className ?? '',
       ].join(' ')}
+      style={{
+        color: 'var(--leaf-text-sidebar)',
+        background: 'rgba(244,244,245,0.82)',
+        border: '1px solid rgba(0,0,0,0.06)',
+      }}
     >
       {label}
     </span>
@@ -135,13 +147,13 @@ export const BLOCK_ICONS: Record<string, React.ReactNode> = {
   columns2: <BlockIcon label="2C" />,
   columns3: <BlockIcon label="3C" />,
   subpage: (
-    <span className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-leaf-100 shrink-0">
-      <LeafIcon size={14} className="text-leaf-500" />
+    <span className="inline-flex items-center justify-center w-7 h-7 rounded-md shrink-0" style={{ background: 'rgba(244,244,245,0.82)', border: '1px solid rgba(0,0,0,0.06)' }}>
+      <LeafIcon size={14} className="text-[var(--leaf-text-body)]" />
     </span>
   ),
   database: (
-    <span className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-leaf-100 shrink-0">
-      <DatabaseIcon size={14} className="text-leaf-500" />
+    <span className="inline-flex items-center justify-center w-7 h-7 rounded-md shrink-0" style={{ background: 'rgba(244,244,245,0.82)', border: '1px solid rgba(0,0,0,0.06)' }}>
+      <DatabaseIcon size={14} className="text-[var(--leaf-text-body)]" />
     </span>
   ),
 }

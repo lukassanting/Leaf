@@ -252,6 +252,68 @@ The earlier “no emoji anywhere in the app” rule is superseded for the icon p
 - Slash menu width: `248px` to `260px`, instant open/close, grouped by `Text`, `Structure`, `Insert`
 - Block handles and drag affordances must stay subtle and only appear on hover.
 
+## 12. v4 direction
+
+### Three-pane shell
+
+The default shell for the next version is:
+
+```
+App
+├── Left sidebar (navigation)
+├── Center canvas
+│   ├── Sticky top navigation
+│   ├── Identity header
+│   ├── Page or database content
+│   └── Status bar
+└── Right sidebar (context)
+```
+
+- Left sidebar width target: `260px`
+- Right sidebar width target: `280px`
+- Center canvas remains the primary focus surface
+- Both sidebars can be toggled off for distraction-free writing
+
+### Left sidebar rules
+
+- Primary purpose: navigation and workspace structure
+- Includes graph entry, recent/system shortcuts, and the page tree
+- Section labels should be muted, uppercase, and tracked
+- Icons may use restrained accent color by archetype, but page/database rows still use Leaf design language
+
+### Right sidebar rules
+
+- Primary purpose: metadata and context, not chat
+- Sections should prioritize:
+  - metadata
+  - description
+  - page outline
+  - linked mentions
+  - lightweight AI/context placeholders
+
+### Top navigation
+
+- Sticky with glass-like translucency
+- Contains breadcrumb trail, sidebar toggles, width controls, focus mode, and an `Ask AI` trigger
+- Motion should feel springy and native, never abrupt
+
+### Floating AI companion
+
+- AI remains a floating bottom-centered surface, not a permanent chat column
+- It should feel discoverable and premium, with subtle glow/accent treatment
+- Suggested actions appear before typing and collapse once input begins
+
+### Graph view
+
+- The graph follows explicit `[[Page]]` wikilinks, Obsidian-style
+- Graph relationships should not be inferred from plain text mentions by default
+- Page identity must stay uniquely resolvable for graph linking
+
+### Better columns
+
+- The current lightweight column treatment is transitional
+- The next version should move toward real block-based columns while preserving the subtle visual shell already established
+
 ---
 
 *Last updated: 2026-03-18*

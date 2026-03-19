@@ -3,7 +3,7 @@ from uuid import UUID
 
 # Local imports
 from app.database.operations.leaf_operations import LeafOperations
-from app.dtos.leaf_dtos import Leaf, LeafContentUpdate, LeafCreate, LeafReorderChildren, LeafTreeItem, LeafType, LeafUpdate
+from app.dtos.leaf_dtos import Leaf, LeafContentUpdate, LeafCreate, LeafGraph, LeafReorderChildren, LeafTreeItem, LeafType, LeafUpdate
 
 router = APIRouter()
 
@@ -43,6 +43,12 @@ async def get_backlinks(
 ):
     """Return pages that link to this leaf via [[wikilinks]]."""
     return await leaf_ops.get_backlinks(leaf_id)
+
+@router.get("/leaves/graph", response_model=LeafGraph)
+async def get_leaf_graph(
+    leaf_ops: LeafOperations = Depends(LeafOperations),
+):
+    return await leaf_ops.get_leaf_graph()
 
 @router.get("/leaves/{leaf_id}", response_model=Leaf)
 async def read_leaf(leaf_id: UUID, leaf_ops: LeafOperations = Depends(LeafOperations)):

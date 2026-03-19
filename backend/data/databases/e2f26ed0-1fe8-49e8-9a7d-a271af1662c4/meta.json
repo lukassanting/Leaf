@@ -1,0 +1,17 @@
+{
+  "id": "e2f26ed0-1fe8-49e8-9a7d-a271af1662c4",
+  "title": "Untitled database",
+  "schema": {
+    "__leaf_meta__": {
+      "description": null,
+      "tags": [],
+      "icon": null
+    }
+  },
+  "view_type": "table",
+  "parent_leaf_id": "06e6396b-0722-411b-a46b-33dee7f69ce7",
+  "created_at": "2026-03-19T12:21:33.280562",
+  "updated_at": "2026-03-19T12:21:33.280565",
+  "crdt_checkpoint_id": null,
+  "crdt_site_id": null
+}

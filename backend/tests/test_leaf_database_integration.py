@@ -123,6 +123,47 @@ def test_schema_document_content_round_trips_and_indexes_links(operations):
     backlinks = run(leaf_ops.get_backlinks(target.id))
     assert [item.id for item in backlinks] == [source.id]
 
+    structured_document = {
+        "type": "doc",
+        "version": 1,
+        "content": [
+            {
+                "type": "paragraph",
+                "content": [{
+                    "type": "wikilink",
+                    "attrs": {
+                        "id": target.id,
+                        "label": target.title,
+                        "path": target.path,
+                    },
+                }],
+            }
+        ],
+    }
+
+    structured_updated = run(leaf_ops.patch_leaf_content(source.id, LeafContentUpdate(content=structured_document)))
+
+    assert isinstance(structured_updated.content, dict)
+    assert structured_updated.content["content"][0]["content"][0]["type"] == "wikilink"
+
+    backlinks = run(leaf_ops.get_backlinks(target.id))
+    assert [item.id for item in backlinks] == [source.id]
+
+
+def test_leaf_tree_and_leaf_dto_include_paths(operations):
+    leaf_ops: LeafOperations = operations["leaf_ops"]
+
+    root = run(leaf_ops.create_leaf(LeafCreate(title="Root page")))
+    child = run(leaf_ops.create_leaf(LeafCreate(title="Child page", parent_id=root.id)))
+
+    fetched_child = run(leaf_ops.get_leaf(child.id))
+    tree = run(leaf_ops.get_leaf_tree())
+    by_id = {item.id: item for item in tree}
+
+    assert fetched_child.path.endswith("root-page/child-page")
+    assert by_id[root.id].path.endswith("root-page")
+    assert by_id[child.id].path.endswith("root-page/child-page")
+
 
 def test_database_metadata_round_trips_via_schema(operations):
     database_ops: DatabaseOperations = operations["database_ops"]

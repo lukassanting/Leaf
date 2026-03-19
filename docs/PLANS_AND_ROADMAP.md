@@ -124,6 +124,14 @@ These are the next best steps after the completed redesign.
 
 These are the questions most likely to affect implementation shape in the next phase.
 
+Framework direction is now decided separately in `docs/FRAMEWORK_DIRECTION.md`:
+
+- stay on React/Next for the web app
+- treat desktop as packaging/runtime planning around the current web experience
+- treat mobile as a separate client against shared API/document contracts
+
+Questions still open for the next milestone:
+
 1. Should column blocks become full nested block containers or stay lightweight for one more iteration?
 2. Should document block drag use native ProseMirror drag, a custom overlay, or a hybrid handle-only approach?
 3. Should search be cache-first with API fallback, or fully API-backed once indexing exists?
@@ -154,6 +162,7 @@ These are the questions most likely to affect implementation shape in the next p
 | `frontend/src/lib/api/types.ts` | Shared page/database/document types |
 | `frontend/src/lib/leafDocument.ts` | Structured content parsing and normalization |
 | `frontend/e2e/workspace.spec.ts` | Browser regression coverage |
+| `docs/FRAMEWORK_DIRECTION.md` | Web framework decision and platform expansion guidance |
 
 ### Backend
 
@@ -177,6 +186,20 @@ These are the questions most likely to affect implementation shape in the next p
 - **Keep docs aligned with the v3 shell.** The centered header, right sidebar, and bottom status bar are the default product shape now.
 - **Stay local-first.** New features should respect cache-first loading and offline-safe save behavior where practical.
 - **Collaboration is not the next milestone.** Do not contort the current implementation for CRDTs yet, but do avoid blocking that future.
+
+## 8. Platform expansion posture
+
+This is the current default strategy for expanding beyond the web app:
+
+- **Web:** continue on React/Next.
+- **Desktop:** prefer packaging the current web experience and reusing the existing backend/content model.
+- **Mobile:** plan a separate client against the shared API and `LeafDocument` contract, rather than expecting direct UI reuse.
+
+That means platform growth should focus first on:
+
+1. preserving stable backend contracts
+2. keeping domain logic portable where practical
+3. avoiding framework rewrites unless product constraints clearly demand them
 
 ---
 

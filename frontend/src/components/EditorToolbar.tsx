@@ -89,7 +89,7 @@ export function EditorToolbar({ editor }: Props) {
     <div className="flex items-center gap-0.5 flex-wrap">
       {items.map((item, i) => {
         if ('type' in item) {
-          return <div key={i} className="w-px h-4 bg-leaf-200 mx-1" />
+          return <div key={i} className="mx-1 h-4 w-px" style={{ background: 'var(--leaf-border-strong)' }} />
         }
         const isActive = item.active?.() ?? false
         return (
@@ -101,9 +101,12 @@ export function EditorToolbar({ editor }: Props) {
             className={[
               'px-1.5 py-1 rounded text-xs font-mono transition',
               isActive
-                ? 'bg-leaf-100 text-leaf-800 font-semibold'
-                : 'text-leaf-400 hover:text-leaf-700 hover:bg-leaf-50',
+                ? 'font-semibold'
+                : '',
             ].join(' ')}
+            style={isActive
+              ? { background: 'rgba(16,185,129,0.08)', color: 'var(--leaf-green)' }
+              : { color: 'var(--leaf-text-muted)' }}
           >
             {item.label}
           </button>
