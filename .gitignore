@@ -176,5 +176,8 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Runtime data (SQLite + flat-file storage)
+backend/data/
+
 # Documentation
 docs/
