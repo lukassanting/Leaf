@@ -209,7 +209,7 @@ html, body {
   display: inline;
   border-radius: 4px;
   padding: 0.05rem 0.35rem;
-  background: var(--color-primary-dk, #047857);
+  background: var(--leaf-green, #10b981);
   color: #fff;
   font-size: 0.85em;
   font-weight: 500;
@@ -218,7 +218,7 @@ html, body {
   transition: background 0.15s;
 }
 .leaf-hashtag:hover {
-  background: #065f46;
+  background: var(--color-primary-dk, #047857);
 }
 
 /* ─── Block gutter ────────────────────────────────────────────────────

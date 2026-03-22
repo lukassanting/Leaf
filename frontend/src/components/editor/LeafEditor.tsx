@@ -82,6 +82,7 @@ type Props = {
   onCreateSubPage?: () => Promise<EmbedCreateResult>
   onCreateDatabase?: () => Promise<EmbedCreateResult>
   onStatusChange?: (mode: 'rich' | 'markdown', wordCount: number) => void
+  onTagAdd?: (tag: string) => void
   mode: 'rich' | 'markdown'
   onModeChange: (mode: 'rich' | 'markdown') => void
   actionsRef?: React.MutableRefObject<EditorActions | null>
@@ -842,6 +843,7 @@ export default function LeafEditor({
   onCreateSubPage,
   onCreateDatabase,
   onStatusChange,
+  onTagAdd,
   mode,
   onModeChange,
   actionsRef,
@@ -862,6 +864,7 @@ export default function LeafEditor({
   const onCreateSubPageRef = useRef(onCreateSubPage)
   const onCreateDatabaseRef = useRef(onCreateDatabase)
   const onModeChangeRef = useRef(onModeChange)
+  const onTagAddRef = useRef(onTagAdd)
   const initialContentRef = useRef(normalizeLeafDocument(content))
   const lastSyncedRef = useRef(JSON.stringify(normalizeLeafDocument(content)))
   const slashMatchRef = useRef<SlashMatch | null>(null)
@@ -880,6 +883,7 @@ export default function LeafEditor({
   onCreateSubPageRef.current = onCreateSubPage
   onCreateDatabaseRef.current = onCreateDatabase
   onModeChangeRef.current = onModeChange
+  onTagAddRef.current = onTagAdd
   slashMenuRef.current = slashMenu
   wikilinkMenuRef.current = wikilinkMenu
 
@@ -965,6 +969,9 @@ export default function LeafEditor({
     })
     const newTags = tags.filter((t) => !syncedTagsRef.current.has(t.toLowerCase()))
     if (newTags.length > 0) {
+      // Add to page-level tags metadata
+      for (const t of newTags) onTagAddRef.current?.(t)
+
       if (tagSyncTimerRef.current) clearTimeout(tagSyncTimerRef.current)
       tagSyncTimerRef.current = setTimeout(() => {
         for (const t of newTags) syncedTagsRef.current.add(t.toLowerCase())

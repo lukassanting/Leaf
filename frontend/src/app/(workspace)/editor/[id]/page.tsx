@@ -254,6 +254,11 @@ export default function EditorPage() {
               onCreateSubPage={handleCreateSubPage}
               onCreateDatabase={handleCreateDatabase}
               onStatusChange={(_, words) => setWordCount(words)}
+              onTagAdd={(tag) => {
+                if (!tags.includes(tag)) {
+                  void handleTagsSave([...tags, tag])
+                }
+              }}
               mode={editorMode}
               onModeChange={setEditorMode}
               actionsRef={editorActionsRef}
