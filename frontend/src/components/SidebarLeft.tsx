@@ -43,7 +43,7 @@ type QuickAccessItem = {
   id: string
   title: string
   href: string
-  icon: 'graph' | 'journal' | 'notes' | 'page' | 'database'
+  icon: 'graph' | 'tags' | 'journal' | 'notes' | 'page' | 'database'
 }
 
 function NavIcon({ children, active }: { children: React.ReactNode; active?: boolean }) {
@@ -82,10 +82,11 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
     let cancelled = false
 
     void ensureWorkspaceDefaults()
-      .then(({ journalDatabase, notesDump }) => {
+      .then(({ journalDatabase, notesDump, tagsDatabase }) => {
         if (cancelled) return
         setQuickAccess([
           { id: 'graph', title: 'Graph View', href: '/graph', icon: 'graph' },
+          { id: tagsDatabase.id, title: tagsDatabase.title, href: `/databases/${tagsDatabase.id}`, icon: 'tags' },
           { id: journalDatabase.id, title: journalDatabase.title, href: `/databases/${journalDatabase.id}`, icon: 'journal' },
           { id: notesDump.id, title: notesDump.title, href: `/editor/${notesDump.id}`, icon: 'notes' },
         ])
@@ -217,7 +218,7 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
       {/* KNOWLEDGE BASE section */}
       <div className="px-3 pb-2">
         <SectionLabel>Knowledge Base</SectionLabel>
-        {quickAccess.filter((item) => item.icon === 'graph').map((item) => (
+        {quickAccess.filter((item) => item.icon === 'graph' || item.icon === 'tags').map((item) => (
           <Link
             key={item.id}
             href={item.href}
@@ -230,12 +231,20 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
             onClick={() => startNavigation()}
           >
             <NavIcon active={activeQuickAccessId === item.id}>
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                <circle cx="4" cy="4" r="1.8" stroke="currentColor" strokeWidth="1.2" />
-                <circle cx="12" cy="5" r="1.8" stroke="currentColor" strokeWidth="1.2" />
-                <circle cx="8" cy="12" r="1.8" stroke="currentColor" strokeWidth="1.2" />
-                <path d="M5.6 4.8L10.3 4.6M5 5.5L7.1 10.3M10.9 6.4L8.9 10.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-              </svg>
+              {item.icon === 'graph' ? (
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                  <circle cx="4" cy="4" r="1.8" stroke="currentColor" strokeWidth="1.2" />
+                  <circle cx="12" cy="5" r="1.8" stroke="currentColor" strokeWidth="1.2" />
+                  <circle cx="8" cy="12" r="1.8" stroke="currentColor" strokeWidth="1.2" />
+                  <path d="M5.6 4.8L10.3 4.6M5 5.5L7.1 10.3M10.9 6.4L8.9 10.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                </svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                  <path d="M4.5 2.5L6.5 8.5L8 6L9.5 8.5L11.5 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M3 10.5H13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  <path d="M4 13H12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+              )}
             </NavIcon>
             <span style={{ fontSize: 13 }}>{item.title}</span>
           </Link>
@@ -247,7 +256,7 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
         <div className="flex items-center justify-between">
           <SectionLabel>Quick Access</SectionLabel>
         </div>
-        {[...quickAccess.filter((item) => item.icon !== 'graph'), ...pinnedItems].map((item) => (
+        {[...quickAccess.filter((item) => item.icon !== 'graph' && item.icon !== 'tags'), ...pinnedItems].map((item) => (
           <Link
             key={item.id}
             href={item.href}

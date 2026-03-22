@@ -26,16 +26,48 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { databasesApi } from '@/lib/api'
 
 export function TagsInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[]) => void }) {
   const [draft, setDraft] = useState('')
+  const router = useRouter()
+  const [tagLeafMap, setTagLeafMap] = useState<Record<string, string>>({})
+
+  // Build a map of tag name → leaf_id from the Tags database
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const databases = await databasesApi.list()
+        const tagsDb = databases.find((db) => db.title === 'Tags')
+        if (!tagsDb || cancelled) return
+        const rows = await databasesApi.listRows(tagsDb.id)
+        if (cancelled) return
+        const map: Record<string, string> = {}
+        for (const row of rows) {
+          const name = String(row.properties?.name ?? '')
+          if (name && row.leaf_id) map[name.toLowerCase()] = row.leaf_id
+        }
+        setTagLeafMap(map)
+      } catch { /* ignore */ }
+    })()
+    return () => { cancelled = true }
+  }, [tags])
 
   const addTag = (raw: string) => {
     const tag = raw.trim()
     if (tag && !tags.includes(tag)) onChange([...tags, tag])
     setDraft('')
   }
+
+  const handleTagClick = useCallback((tag: string) => {
+    const leafId = tagLeafMap[tag.toLowerCase()]
+    if (leafId) {
+      router.push(`/editor/${leafId}`)
+    }
+  }, [tagLeafMap, router])
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -45,7 +77,14 @@ export function TagsInput({ tags, onChange }: { tags: string[]; onChange: (tags:
           className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
           style={{ background: 'var(--color-tag-bg)', border: '1px solid var(--color-tag-border)', color: 'var(--color-tag-text)' }}
         >
-          {tag}
+          <button
+            type="button"
+            onClick={() => handleTagClick(tag)}
+            className="hover:underline"
+            style={{ cursor: tagLeafMap[tag.toLowerCase()] ? 'pointer' : 'default' }}
+          >
+            {tag}
+          </button>
           <button
             type="button"
             onClick={() => onChange(tags.filter((currentTag) => currentTag !== tag))}

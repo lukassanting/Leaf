@@ -44,6 +44,7 @@ import { useLeafAutosave } from '@/hooks/useLeafAutosave'
 import { useLeafBreadcrumbs } from '@/hooks/useLeafBreadcrumbs'
 import { useLeafPageData } from '@/hooks/useLeafPageData'
 import { warmDatabaseRoute } from '@/lib/warmEditorRoute'
+import { ensureTagEntries } from '@/lib/workspaceDefaults'
 import { useContentWidth } from '@/app/(workspace)/layout'
 import type { EditorActions } from '@/components/Editor'
 import type { LeafIcon } from '@/lib/api'
@@ -78,6 +79,7 @@ export default function EditorPage() {
     setIcon,
     loadingLeaf,
     savedTitleRef,
+    savedDescriptionRef,
     hasLoadedRef,
   } = useLeafPageData(leafId)
 
@@ -86,6 +88,7 @@ export default function EditorPage() {
     leafId,
     currentContent: content,
     title,
+    description,
     parentId,
     databaseId,
     childrenIds,
@@ -118,8 +121,9 @@ export default function EditorPage() {
 
   const handleDescriptionSave = useCallback(async (newDesc: string) => {
     const trimmed = newDesc.trim()
-    if (trimmed === description) return
+    if (trimmed === savedDescriptionRef.current) return
     setDescription(trimmed)
+    savedDescriptionRef.current = trimmed
     try {
       await updateLeafAndPrimeCache(leafId, {
         title,
@@ -132,7 +136,7 @@ export default function EditorPage() {
     } catch (error) {
       console.error('Failed to save description', error)
     }
-  }, [leafId, title, description, parentId, databaseId, childrenIds, tags, content, setDescription])
+  }, [leafId, title, parentId, databaseId, childrenIds, tags, content, savedDescriptionRef, setDescription])
 
   const handleTagsSave = useCallback(async (newTags: string[]) => {
     setTags(newTags)
@@ -144,6 +148,7 @@ export default function EditorPage() {
         children_ids: childrenIds,
         tags: newTags,
       }, content)
+      void ensureTagEntries(newTags)
     } catch (error) {
       console.error('Failed to save tags', error)
     }
@@ -225,7 +230,7 @@ export default function EditorPage() {
         onDescriptionBlur={(value) => { void handleDescriptionSave(value) }}
         tags={tags}
         onTagsChange={(nextTags) => { void handleTagsSave(nextTags) }}
-        showTags={false}
+        showTags
       />
       </div>
 
@@ -240,6 +245,7 @@ export default function EditorPage() {
         >
             <Editor
               content={content}
+              leafId={leafId}
               onUpdate={(document) => {
                 setContent(document)
                 latestContentRef.current = document

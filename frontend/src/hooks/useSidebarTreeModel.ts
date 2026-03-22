@@ -217,37 +217,60 @@ export function useSidebarTreeModel(activeId?: string) {
     event.dataTransfer.effectAllowed = 'move'
   }
 
+  const handleMove = useCallback(async (leafId: string, newParentId: string | null) => {
+    const draggedNode = nodes.find((n) => n.id === leafId)
+    if (!draggedNode || draggedNode.kind !== 'page') return
+    try {
+      await leavesApi.update(leafId, {
+        title: draggedNode.title,
+        parent_id: newParentId,
+      })
+      emitLeafTreeChanged()
+    } catch {
+      console.error('Move failed')
+    }
+    setDraggedId(null)
+    setDropTargetId(null)
+  }, [nodes])
+
   const onDragOver = (event: React.DragEvent, node: { id: string; parent_id: string | null; kind: 'page' | 'database' }) => {
     event.preventDefault()
-    if (draggedId && draggedId !== node.id && node.parent_id && node.kind === 'page') {
+    if (draggedId && draggedId !== node.id && node.kind === 'page') {
       setDropTargetId(node.id)
     }
   }
 
   const onDrop = (event: React.DragEvent, targetNode: { id: string; parent_id: string | null; kind: 'page' | 'database' }) => {
     event.preventDefault()
-    const parentId = targetNode.parent_id
-    if (!parentId || !draggedId || draggedId === targetNode.id || targetNode.kind !== 'page') {
+    if (!draggedId || draggedId === targetNode.id || targetNode.kind !== 'page') {
       setDraggedId(null)
       setDropTargetId(null)
       return
     }
-    const parent = nodes.find((node) => node.id === parentId)
-    if (!parent) {
+
+    const draggedNode = nodes.find((n) => n.id === draggedId)
+    if (!draggedNode) {
       setDraggedId(null)
       setDropTargetId(null)
       return
     }
-    const childIds = [...(parent.children_ids || [])]
-    const fromIdx = childIds.indexOf(draggedId)
-    if (fromIdx === -1) {
-      setDraggedId(null)
-      setDropTargetId(null)
+
+    // Same parent → reorder siblings
+    if (draggedNode.parent_id && draggedNode.parent_id === targetNode.parent_id) {
+      const parent = nodes.find((n) => n.id === draggedNode.parent_id)
+      if (!parent) { setDraggedId(null); setDropTargetId(null); return }
+      const childIds = [...(parent.children_ids || [])]
+      const fromIdx = childIds.indexOf(draggedId)
+      if (fromIdx === -1) { setDraggedId(null); setDropTargetId(null); return }
+      childIds.splice(fromIdx, 1)
+      childIds.splice(childIds.indexOf(targetNode.id) + 1, 0, draggedId)
+      void handleReorder(draggedNode.parent_id, childIds)
       return
     }
-    childIds.splice(fromIdx, 1)
-    childIds.splice(childIds.indexOf(targetNode.id) + 1, 0, draggedId)
-    void handleReorder(parentId, childIds)
+
+    // Different parent → move into target as child
+    void handleMove(draggedId, targetNode.id)
+    setExpanded((prev) => ({ ...prev, [targetNode.id]: true }))
   }
 
   return {

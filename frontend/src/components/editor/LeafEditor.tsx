@@ -74,6 +74,7 @@ export type EditorActions = {
 
 type Props = {
   content: LeafDocument
+  leafId?: string
   onUpdate: (document: LeafDocument) => void
   onCreateSubPage?: () => Promise<EmbedCreateResult>
   onCreateDatabase?: () => Promise<EmbedCreateResult>
@@ -91,6 +92,7 @@ type SlashMatch = {
 
 type WikilinkMenuState = {
   items: LeafTreeItem[]
+  query: string
   selectedIndex: number
   rect: SlashMenuState['rect']
 }
@@ -254,7 +256,7 @@ function EmbeddedPageCard({
   const canNavigate = status === 'ready' && Boolean(id)
 
   return (
-    <NodeViewWrapper className="my-1.5">
+    <NodeViewWrapper className="my-1.5" data-drag-handle="">
       <div
         contentEditable={false}
         className="group flex items-center gap-3 rounded-xl border px-3.5 py-3 transition-colors duration-150"
@@ -358,7 +360,7 @@ function EmbeddedDatabaseView({
   }
 
   return (
-    <NodeViewWrapper className="group my-2">
+    <NodeViewWrapper className="group my-2" data-drag-handle="">
       <div contentEditable={false} className="relative">
         <div className="absolute right-3 top-3 z-10">
           <button
@@ -578,6 +580,7 @@ function createEmbedNode(name: 'pageEmbed' | 'databaseEmbed', kind: 'page' | 'da
 
 const PageEmbed = createEmbedNode('pageEmbed', 'page')
 const DatabaseEmbed = createEmbedNode('databaseEmbed', 'database')
+
 const WikilinkNode = Node.create({
   name: 'wikilink',
   group: 'inline',
@@ -602,7 +605,7 @@ const WikilinkNode = Node.create({
       'data-path': node.attrs.path,
       'data-label': node.attrs.label,
       class: 'leaf-wikilink',
-    }, HTMLAttributes), `[[${label}]]`]
+    }, HTMLAttributes), label]
   },
 })
 const ColumnLayout = Node.create({
@@ -681,15 +684,21 @@ function BlockDropdown({ onSelect, onClose }: { onSelect: (action: string) => vo
 function WikilinkPanel({
   menu,
   onSelect,
+  onCreate,
 }: {
   menu: WikilinkMenuState
   onSelect: (item: LeafTreeItem) => void
+  onCreate: (title: string) => void
 }) {
   if (!menu) return null
 
   const spaceBelow = window.innerHeight - menu.rect.bottom
   const top = spaceBelow < 260 ? menu.rect.top - 6 - Math.min(260, window.innerHeight * 0.4) : menu.rect.bottom + 6
   const left = Math.min(menu.rect.left, window.innerWidth - 320)
+
+  const createIndex = menu.items.length
+  const isCreateSelected = menu.selectedIndex === createIndex
+  const showCreate = menu.query.trim().length > 0
 
   return (
     <div
@@ -707,11 +716,7 @@ function WikilinkPanel({
       <div className="border-b px-3 py-2 text-[10px] font-medium uppercase tracking-[0.09em]" style={{ color: 'var(--leaf-text-muted)', borderColor: 'rgba(0,0,0,0.05)' }}>
         Link a page
       </div>
-      {menu.items.length === 0 ? (
-        <div className="px-3 py-3 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>
-          No pages match this query.
-        </div>
-      ) : menu.items.map((item, index) => {
+      {menu.items.map((item, index) => {
         const isSelected = index === menu.selectedIndex
         return (
           <button
@@ -741,12 +746,49 @@ function WikilinkPanel({
           </button>
         )
       })}
+      {showCreate && (
+        <button
+          type="button"
+          className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100"
+          style={{
+            backgroundColor: isCreateSelected ? 'var(--leaf-bg-hover)' : '#fff',
+            borderTop: menu.items.length > 0 ? '1px solid rgba(0,0,0,0.05)' : undefined,
+          }}
+          onMouseDown={(event) => {
+            event.preventDefault()
+            onCreate(menu.query.trim())
+          }}
+        >
+          <span
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+            style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--leaf-green)' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M7 3v8M3 7h8" />
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>
+              Create &ldquo;{menu.query.trim()}&rdquo;
+            </span>
+            <span className="block text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
+              New page
+            </span>
+          </span>
+        </button>
+      )}
+      {!showCreate && menu.items.length === 0 && (
+        <div className="px-3 py-3 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>
+          Type a name to link or create a page.
+        </div>
+      )}
     </div>
   )
 }
 
 export default function LeafEditor({
   content,
+  leafId,
   onUpdate,
   onCreateSubPage,
   onCreateDatabase,
@@ -755,6 +797,7 @@ export default function LeafEditor({
   onModeChange,
   actionsRef,
 }: Props) {
+  const router = useRouter()
   const [markdownValue, setMarkdownValue] = useState('')
   const [blockMenu, setBlockMenu] = useState<BlockMenuState>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -778,6 +821,7 @@ export default function LeafEditor({
   const wikilinkMatchRef = useRef<SlashMatch | null>(null)
   const wikilinkMenuRef = useRef<WikilinkMenuState | null>(null)
   const wikilinkSelectRef = useRef<(item: LeafTreeItem) => void>(() => {})
+  const wikilinkCreateRef = useRef<(title: string) => void>(() => {})
   const linkableLeavesRef = useRef<LeafTreeItem[]>([])
   const pendingEmbedPositionsRef = useRef<Record<string, number>>({})
 
@@ -829,17 +873,22 @@ export default function LeafEditor({
     }
 
     const items = rankWikilinkItems(linkableLeavesRef.current, match.query)
+    const hasCreate = match.query.trim().length > 0
+    const totalCount = items.length + (hasCreate ? 1 : 0)
     setWikilinkMenu((current) => ({
       items,
-      selectedIndex: current?.items.length === items.length ? Math.min(current.selectedIndex, Math.max(0, items.length - 1)) : 0,
+      query: match.query,
+      selectedIndex: current?.items.length === items.length ? Math.min(current.selectedIndex, Math.max(0, totalCount - 1)) : 0,
       rect: match.rect,
     }))
   }, [])
 
   const extensions = useMemo(() => [
     StarterKit.configure({
-      gapcursor: false,
-      dropcursor: false,
+      dropcursor: {
+        color: 'var(--leaf-green)',
+        width: 2,
+      },
     }),
     WikilinkNode,
     ColumnLayout,
@@ -857,28 +906,50 @@ export default function LeafEditor({
     onStatusChangeRef.current?.(modeRef.current, words)
   }, [])
 
+  const routerRef = useRef(router)
+  routerRef.current = router
+
   const editorProps = useMemo(() => ({
     attributes: { class: 'leaf-prose max-w-none min-h-[50vh] focus:outline-none' },
+    handleClick: (_view: unknown, _pos: number, event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      const wikilink = target.closest('[data-type="wikilink"]') as HTMLElement | null
+      if (wikilink) {
+        const id = wikilink.getAttribute('data-id')
+        if (id) {
+          event.preventDefault()
+          routerRef.current.push(`/editor/${id}`)
+          return true
+        }
+      }
+      return false
+    },
     handleKeyDown: (_view: unknown, event: KeyboardEvent) => {
       const activeWikilinkMenu = wikilinkMenuRef.current
       const activeSlashMenu = slashMenuRef.current
 
       if (activeWikilinkMenu) {
+        const hasCreate = activeWikilinkMenu.query.trim().length > 0
+        const totalCount = activeWikilinkMenu.items.length + (hasCreate ? 1 : 0)
         if (event.key === 'ArrowUp') {
           event.preventDefault()
-          setWikilinkMenu((current) => current ? { ...current, selectedIndex: (current.selectedIndex - 1 + current.items.length) % current.items.length } : current)
+          setWikilinkMenu((current) => current ? { ...current, selectedIndex: (current.selectedIndex - 1 + totalCount) % totalCount } : current)
           return true
         }
         if (event.key === 'ArrowDown') {
           event.preventDefault()
-          setWikilinkMenu((current) => current ? { ...current, selectedIndex: (current.selectedIndex + 1) % current.items.length } : current)
+          setWikilinkMenu((current) => current ? { ...current, selectedIndex: (current.selectedIndex + 1) % totalCount } : current)
           return true
         }
         if (event.key === 'Enter') {
           event.preventDefault()
-          const item = activeWikilinkMenu.items[activeWikilinkMenu.selectedIndex]
-          if (item) {
-            wikilinkSelectRef.current(item)
+          if (hasCreate && activeWikilinkMenu.selectedIndex === activeWikilinkMenu.items.length) {
+            wikilinkCreateRef.current(activeWikilinkMenu.query.trim())
+          } else {
+            const item = activeWikilinkMenu.items[activeWikilinkMenu.selectedIndex]
+            if (item) {
+              wikilinkSelectRef.current(item)
+            }
           }
           return true
         }
@@ -1058,6 +1129,48 @@ export default function LeafEditor({
     setWikilinkMenu(null)
   }, [editor])
 
+  const createAndInsertWikilink = useCallback(async (title: string) => {
+    if (!editor) return
+    const match = wikilinkMatchRef.current
+    if (!match) return
+
+    try {
+      const leaf = await leavesApi.create({ title, parent_id: leafId ?? null })
+      editor.chain()
+        .focus()
+        .deleteRange(match.range)
+        .insertContentAt(match.range.from, [
+          {
+            type: 'wikilink',
+            attrs: {
+              id: leaf.id,
+              label: leaf.title || title,
+              path: leaf.title || title,
+            },
+          },
+          { type: 'text', text: ' ' },
+        ])
+        .run()
+
+      linkableLeavesRef.current = [...linkableLeavesRef.current, {
+        id: leaf.id,
+        title: leaf.title,
+        path: leaf.title,
+        type: leaf.type,
+        parent_id: leaf.parent_id,
+        children_ids: [],
+        tags: leaf.tags || [],
+        order: 0,
+      }]
+      window.dispatchEvent(new CustomEvent('leaf-tree-changed'))
+    } catch {
+      // silently fail — the user can retry
+    }
+
+    wikilinkMatchRef.current = null
+    setWikilinkMenu(null)
+  }, [editor, leafId])
+
   const applyAction = useCallback(async (
     action: string,
     options: { selectionPos: number; deleteRange?: { from: number; to: number } },
@@ -1143,6 +1256,9 @@ export default function LeafEditor({
     }
     wikilinkSelectRef.current = (item: LeafTreeItem) => {
       insertWikilink(item)
+    }
+    wikilinkCreateRef.current = (title: string) => {
+      void createAndInsertWikilink(title)
     }
 
     editor.on('selectionUpdate', syncSlashMenu)
@@ -1314,7 +1430,7 @@ export default function LeafEditor({
           <div ref={containerRef} className="relative">
             {blockMenu && (
               <div
-                style={{ position: 'absolute', top: blockMenu.top, left: -32 }}
+                style={{ position: 'absolute', top: blockMenu.top, left: -36, display: 'flex', alignItems: 'center', gap: 0 }}
                 onMouseEnter={() => {
                   if (hideTimer.current) {
                     clearTimeout(hideTimer.current)
@@ -1329,12 +1445,28 @@ export default function LeafEditor({
                     pendingInsertPos.current = blockMenu.endPos
                     setMenuOpen((current) => !current)
                   }}
-                  className="flex h-6 w-6 items-center justify-center rounded text-base leading-none transition-colors duration-150"
-                  style={{ color: 'var(--leaf-text-muted)' }}
+                  className="flex h-5 w-5 items-center justify-center rounded transition-colors duration-150"
+                  style={{ color: 'var(--leaf-text-hint)' }}
                   title="Insert block"
                 >
-                  +
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
                 </button>
+                <span
+                  className="flex h-5 w-5 items-center justify-center rounded cursor-grab"
+                  style={{ color: 'var(--leaf-text-hint)' }}
+                  title="Drag to move"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <circle cx="5" cy="3.5" r="1" fill="currentColor" />
+                    <circle cx="9" cy="3.5" r="1" fill="currentColor" />
+                    <circle cx="5" cy="7" r="1" fill="currentColor" />
+                    <circle cx="9" cy="7" r="1" fill="currentColor" />
+                    <circle cx="5" cy="10.5" r="1" fill="currentColor" />
+                    <circle cx="9" cy="10.5" r="1" fill="currentColor" />
+                  </svg>
+                </span>
                 {menuOpen && <BlockDropdown onSelect={handleBlockAction} onClose={() => setMenuOpen(false)} />}
               </div>
             )}
@@ -1369,6 +1501,9 @@ export default function LeafEditor({
           menu={wikilinkMenu}
           onSelect={(item) => {
             insertWikilink(item)
+          }}
+          onCreate={(title) => {
+            void createAndInsertWikilink(title)
           }}
         />
       )}

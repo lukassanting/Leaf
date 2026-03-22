@@ -38,6 +38,7 @@ type UseLeafAutosaveArgs = {
   leafId: string
   currentContent: LeafDocument
   title: string
+  description: string
   parentId: string | null
   databaseId: string | null
   childrenIds: string[]
@@ -99,6 +100,7 @@ export function useLeafAutosave(args: UseLeafAutosaveArgs) {
   const doSave = useCallback(async (content: LeafDocument) => {
     const snapshot = {
       title: args.title,
+      description: args.description || null,
       parent_id: args.parentId,
       database_id: args.databaseId,
       children_ids: args.childrenIds,

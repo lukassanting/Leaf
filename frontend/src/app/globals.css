@@ -85,26 +85,26 @@ html, body {
 
 /* Headings — 500 weight max, never 600/700 */
 .ProseMirror h1 {
-  font-size: 1.25rem;
-  font-weight: 500;
+  font-size: 1.75rem;
+  font-weight: 600;
   line-height: 1.25;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   margin: 1.2em 0 0.5em;
   color: var(--color-text-dark);
 }
 .ProseMirror h2 {
-  font-size: 1rem;
+  font-size: 1.35rem;
   font-weight: 500;
   line-height: 1.3;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   margin: 1.1em 0 0.4em;
   color: var(--color-text-dark);
 }
 .ProseMirror h3 {
-  font-size: 0.875rem;
+  font-size: 1.1rem;
   font-weight: 500;
   line-height: 1.4;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   margin: 1em 0 0.35em;
   color: var(--color-text-dark);
 }
@@ -197,6 +197,20 @@ html, body {
   color: var(--leaf-green);
   border: 1px solid rgba(16, 185, 129, 0.18);
   white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.leaf-wikilink:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+/* ─── Block gutter ────────────────────────────────────────────────────
+   The interactive "+" add-block button is rendered by React (LeafEditor).
+   CSS only provides the drag-handle dot grid (::before on each block).
+   ──────────────────────────────────────────────────────────────────── */
+.ProseMirror > * {
+  position: relative;
 }
 
 /* ─── Column layout blocks ─────────────────────────────────────────────── */

@@ -34,7 +34,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useNavigationProgress } from '@/components/NavigationProgress'
-import { databasesApi, leavesApi } from '@/lib/api'
+import { databasesApi, leavesApi, type PropertyDefinition } from '@/lib/api'
 import { getLeafContentText, parseLeafContent } from '@/lib/leafDocument'
 import { DatabaseIcon, LeafIcon, type LeafShapeIcon, ShapeIcon } from './Icons'
 
@@ -47,6 +47,12 @@ type SidebarIdentityData = {
   updatedAt?: string
   viewType?: string
   icon?: { type: 'emoji' | 'svg' | 'image'; value: string } | null
+  databaseId?: string | null
+}
+
+type DatabasePropertyInfo = {
+  columns: PropertyDefinition[]
+  values: Record<string, unknown>
 }
 
 type BacklinkItem = {
@@ -109,6 +115,7 @@ export function Sidebar({ activeId }: { activeId?: string }) {
   const [backlinks, setBacklinks] = useState<BacklinkItem[]>([])
   const [outline, setOutline] = useState<OutlineItem[]>([])
   const [isPinned, setIsPinned] = useState(false)
+  const [dbProperties, setDbProperties] = useState<DatabasePropertyInfo | null>(null)
 
   // Load pin state when activeId changes
   useEffect(() => {
@@ -146,6 +153,7 @@ export function Sidebar({ activeId }: { activeId?: string }) {
       if (!activeId) {
         setIdentity(null)
         setBacklinks([])
+        setDbProperties(null)
         return
       }
 
@@ -165,6 +173,7 @@ export function Sidebar({ activeId }: { activeId?: string }) {
           })
           setBacklinks([])
           setOutline([])
+          setDbProperties(null)
           return
         }
 
@@ -183,7 +192,28 @@ export function Sidebar({ activeId }: { activeId?: string }) {
           createdAt: leaf.created_at,
           updatedAt: leaf.updated_at,
           icon: leaf.icon ?? null,
+          databaseId: leaf.database_id ?? null,
         })
+
+        // Load database row properties if this leaf belongs to a database
+        if (leaf.database_id) {
+          try {
+            const [database, rows] = await Promise.all([
+              databasesApi.get(leaf.database_id),
+              databasesApi.listRows(leaf.database_id),
+            ])
+            if (cancelled) return
+            const row = rows.find((r) => r.leaf_id === activeId)
+            setDbProperties({
+              columns: database.schema?.properties ?? [],
+              values: row?.properties ?? {},
+            })
+          } catch {
+            setDbProperties(null)
+          }
+        } else {
+          setDbProperties(null)
+        }
         const document = parseLeafContent(leaf.content ?? null)
         const nextOutline: OutlineItem[] = []
         document.content.forEach((node, index) => {
@@ -389,6 +419,59 @@ export function Sidebar({ activeId }: { activeId?: string }) {
             </div>
           </div>
         ) : null}
+
+        {/* DATABASE PROPERTIES section */}
+        {dbProperties && dbProperties.columns.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <SectionHeader icon={
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <rect x="1.5" y="1.5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1" />
+                <path d="M1.5 5H10.5M5 1.5V10.5" stroke="currentColor" strokeWidth="1" />
+              </svg>
+            }>
+              Properties
+            </SectionHeader>
+            <div>
+              {dbProperties.columns.map((col) => {
+                const raw = dbProperties.values[col.key]
+                const display = raw == null || raw === ''
+                  ? '—'
+                  : col.type === 'tags' && Array.isArray(raw)
+                    ? raw.join(', ')
+                    : String(raw)
+
+                return (
+                  <div key={col.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '4px 2px', fontSize: 12 }}>
+                    <div style={{ width: 72, flexShrink: 0, color: 'var(--leaf-text-muted)', fontSize: 11.5 }}>{col.label}</div>
+                    <div style={{ color: display === '—' ? 'var(--leaf-text-muted)' : 'var(--leaf-text-body)', flex: 1 }}>
+                      {col.type === 'tags' && Array.isArray(raw) && raw.length > 0 ? (
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          {(raw as string[]).map((tag) => (
+                            <span
+                              key={tag}
+                              style={{
+                                fontSize: 11,
+                                background: 'var(--color-tag-bg)',
+                                color: 'var(--color-tag-text)',
+                                borderRadius: 4,
+                                padding: '2px 8px',
+                                border: '1px solid var(--color-tag-border)',
+                              }}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 12 }}>{display}</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* PAGE OUTLINE section */}
         <div style={{ marginBottom: 16 }}>

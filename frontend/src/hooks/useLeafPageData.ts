@@ -50,6 +50,7 @@ export function useLeafPageData(leafId: string) {
 
   const latestContentRef = useRef<LeafDocument>(createEmptyLeafDocument())
   const savedTitleRef = useRef('')
+  const savedDescriptionRef = useRef('')
   const hasLoadedRef = useRef(false)
 
   useEffect(() => {
@@ -60,6 +61,8 @@ export function useLeafPageData(leafId: string) {
       if (cached && !cancelled) {
         setTitle(cached.title)
         savedTitleRef.current = cached.title
+        setDescription(cached.description || '')
+        savedDescriptionRef.current = cached.description || ''
         setParentId(cached.parent_id ?? null)
         setDatabaseId(cached.database_id ?? null)
         setChildrenIds(cached.children_ids ?? [])
@@ -77,6 +80,7 @@ export function useLeafPageData(leafId: string) {
         setTitle(leaf.title)
         savedTitleRef.current = leaf.title
         setDescription(leaf.description || '')
+        savedDescriptionRef.current = leaf.description || ''
         setParentId(leaf.parent_id ?? null)
         setDatabaseId(leaf.database_id ?? null)
         setChildrenIds(leaf.children_ids ?? [])
@@ -127,6 +131,7 @@ export function useLeafPageData(leafId: string) {
     loadingLeaf,
     latestContentRef,
     savedTitleRef,
+    savedDescriptionRef,
     hasLoadedRef,
   }
 }

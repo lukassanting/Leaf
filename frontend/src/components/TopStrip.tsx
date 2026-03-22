@@ -167,11 +167,12 @@ export function TopStrip({ breadcrumbs, currentTitle }: Props) {
           onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-primary-dk, #047857)' }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--leaf-green)' }}
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1L7 4.5L10.5 5L7.5 7.5L8.5 11L6 9L3.5 11L4.5 7.5L1.5 5L5 4.5L6 1Z" fill="currentColor" />
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M8 1l.9 2.7L11.6 4.6l-2 2L10.4 9.4 8 7.8l-2.4 1.6.8-2.8-2-2 2.7-.9L8 1z" fill="currentColor" />
+            <path d="M3 11l.4 1.2 1.2.4-1.2.4L3 14.2l-.4-1.2L1.4 12.6l1.2-.4L3 11z" fill="currentColor" opacity="0.7" />
+            <path d="M13 2l.3.9.9.3-.9.3L13 4.4l-.3-.9-.9-.3.9-.3L13 2z" fill="currentColor" opacity="0.5" />
           </svg>
           Ask AI
-          <span style={{ opacity: 0.7, fontSize: 10 }}>⌘K</span>
         </button>
 
         {/* More menu placeholder */}

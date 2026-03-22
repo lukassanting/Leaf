@@ -75,13 +75,12 @@ export function DatabaseIcon({ className, size = 16 }: IconProps) {
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.25"
+      strokeWidth="1.2"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      <ellipse cx="8" cy="4.25" rx="4.5" ry="1.75" />
-      <path d="M3.5 4.25V8.2C3.5 9.17 5.51 9.95 8 9.95C10.49 9.95 12.5 9.17 12.5 8.2V4.25" />
-      <path d="M3.5 8.2V11.75C3.5 12.72 5.51 13.5 8 13.5C10.49 13.5 12.5 12.72 12.5 11.75V8.2" />
+      <rect x="2" y="2" width="12" height="12" rx="2" />
+      <path d="M2 6h12M2 10h12M6 2v12" />
     </svg>
   )
 }

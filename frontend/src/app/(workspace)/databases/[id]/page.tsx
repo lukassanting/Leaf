@@ -94,8 +94,8 @@ export default function DatabaseViewPage() {
 
         <div
           style={{
-            maxWidth: contentMaxWidth || 960,
-            margin: '0 auto',
+            maxWidth: contentMaxWidth,
+            margin: contentMaxWidth ? '0 auto' : undefined,
             padding: contentPadding || '0 24px',
             width: '100%',
           }}
@@ -147,8 +147,8 @@ export default function DatabaseViewPage() {
         <div className="flex-1 overflow-y-auto" style={{ padding: '22px 0 32px' }}>
           <div
             style={{
-              maxWidth: contentMaxWidth || 960,
-              margin: '0 auto',
+              maxWidth: contentMaxWidth,
+              margin: contentMaxWidth ? '0 auto' : undefined,
               padding: contentPadding || '0 24px',
             }}
           >
