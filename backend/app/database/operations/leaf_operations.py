@@ -179,6 +179,12 @@ class LeafOperations:
                         target = attrs.get("id") or attrs.get("path") or attrs.get("label")
                         if isinstance(target, str) and target.strip():
                             targets.add(target.strip())
+                elif node.get("type") == "hashtag":
+                    attrs = node.get("attrs") or {}
+                    if isinstance(attrs, dict):
+                        tag = attrs.get("tag")
+                        if isinstance(tag, str) and tag.strip():
+                            targets.add(tag.strip())
                 for value in node.values():
                     if isinstance(value, (dict, list)):
                         walk(value)

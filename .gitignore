@@ -181,3 +181,6 @@ backend/data/
 
 # Documentation
 docs/
+
+# AI
+.claude/
