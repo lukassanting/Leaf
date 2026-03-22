@@ -185,7 +185,7 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
     >
       {/* Branding */}
       <div className="px-4 pt-4 pb-2">
-        <div className="flex items-center gap-2 px-1" style={{ color: 'var(--leaf-text-title)' }}>
+        <Link href="/" className="flex items-center gap-2 px-1 no-underline" style={{ color: 'var(--leaf-text-title)' }}>
           <div
             className="flex h-7 w-7 items-center justify-center rounded-lg"
             style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--leaf-green)' }}
@@ -193,7 +193,7 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
             <LeafIcon size={16} />
           </div>
           <span style={{ fontSize: 16, fontWeight: 500, letterSpacing: '-0.01em' }}>Leaf</span>
-        </div>
+        </Link>
       </div>
 
       {/* Nav buttons */}
