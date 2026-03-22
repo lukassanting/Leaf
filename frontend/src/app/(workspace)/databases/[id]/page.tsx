@@ -92,47 +92,56 @@ export default function DatabaseViewPage() {
           currentTitle={titleDraft}
         />
 
-        <PageIdentityHeader
-          kind="database"
-          icon={iconDraft}
-          onIconClick={() => setIconPickerOpen((current) => !current)}
-          iconPicker={iconPickerOpen ? (
-            <IconPicker
-              currentIcon={iconDraft}
-              onApply={(nextIcon) => { void saveMeta({ icon: nextIcon }) }}
-              onClose={() => setIconPickerOpen(false)}
-            />
-          ) : null}
-          title={titleDraft}
-          onTitleChange={setTitleDraft}
-          onTitleBlur={() => flushTitleSave()}
-          onTitleEnter={() => flushTitleSave()}
-          titlePlaceholder="Untitled database"
-          description={descriptionDraft}
-          onDescriptionChange={setDescriptionDraft}
-          onDescriptionBlur={(value) => { void saveMeta({ description: value || null }) }}
-          tags={tagsDraft}
-          onTagsChange={(nextTags) => {
-            setTagsDraft(nextTags)
-            void saveMeta({ tags: nextTags })
+        <div
+          style={{
+            maxWidth: contentMaxWidth || 960,
+            margin: '0 auto',
+            padding: contentPadding || '0 24px',
+            width: '100%',
           }}
-          showTags={false}
-          extraContent={(
-            <div className="flex items-center gap-2" style={{ fontSize: 11.5, color: 'var(--leaf-text-muted)' }}>
-              <span
-                className="rounded-full"
-                style={{
-                  width: 6,
-                  height: 6,
-                  backgroundColor: saveStatus === 'error' ? '#dc2626' : saveStatus === 'saving' ? 'var(--leaf-text-muted)' : '#6abf7a',
-                }}
+        >
+          <PageIdentityHeader
+            kind="database"
+            icon={iconDraft}
+            onIconClick={() => setIconPickerOpen((current) => !current)}
+            iconPicker={iconPickerOpen ? (
+              <IconPicker
+                currentIcon={iconDraft}
+                onApply={(nextIcon) => { void saveMeta({ icon: nextIcon }) }}
+                onClose={() => setIconPickerOpen(false)}
               />
-              <span>{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Error' : 'Synced'}</span>
-              <span style={{ color: '#ccd9c4' }}>·</span>
-              <span>{rows.length} {rows.length === 1 ? 'entry' : 'entries'}</span>
-            </div>
-          )}
-        />
+            ) : null}
+            title={titleDraft}
+            onTitleChange={setTitleDraft}
+            onTitleBlur={() => flushTitleSave()}
+            onTitleEnter={() => flushTitleSave()}
+            titlePlaceholder="Untitled database"
+            description={descriptionDraft}
+            onDescriptionChange={setDescriptionDraft}
+            onDescriptionBlur={(value) => { void saveMeta({ description: value || null }) }}
+            tags={tagsDraft}
+            onTagsChange={(nextTags) => {
+              setTagsDraft(nextTags)
+              void saveMeta({ tags: nextTags })
+            }}
+            showTags={false}
+            extraContent={(
+              <div className="flex items-center gap-2" style={{ fontSize: 11.5, color: 'var(--leaf-text-muted)' }}>
+                <span
+                  className="rounded-full"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    backgroundColor: saveStatus === 'error' ? '#dc2626' : saveStatus === 'saving' ? 'var(--leaf-text-muted)' : '#6abf7a',
+                  }}
+                />
+                <span>{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Error' : 'Synced'}</span>
+                <span style={{ color: '#ccd9c4' }}>·</span>
+                <span>{rows.length} {rows.length === 1 ? 'entry' : 'entries'}</span>
+              </div>
+            )}
+          />
+        </div>
 
         {/* Database content */}
         <div className="flex-1 overflow-y-auto" style={{ padding: '22px 0 32px' }}>
