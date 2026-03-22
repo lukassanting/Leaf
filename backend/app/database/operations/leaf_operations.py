@@ -491,11 +491,7 @@ class LeafOperations:
     async def get_leaf_graph(self) -> LeafGraph:
         try:
             with self.db.get_db_session() as db_session:
-                leaves = (
-                    db_session.query(LeafModel)
-                    .filter(LeafModel.database_id.is_(None))
-                    .all()
-                )
+                leaves = db_session.query(LeafModel).all()
                 path_map = self._build_leaf_path_map(leaves)
                 nodes = [
                     LeafGraphNode(
