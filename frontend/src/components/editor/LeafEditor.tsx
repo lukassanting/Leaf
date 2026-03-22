@@ -42,7 +42,8 @@
 
 import { useRouter } from 'next/navigation'
 import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor } from '@tiptap/react'
-import { Node, mergeAttributes } from '@tiptap/core'
+import { Node, mergeAttributes, InputRule } from '@tiptap/core'
+import { DOMSerializer } from '@tiptap/pm/model'
 import StarterKit from '@tiptap/starter-kit'
 import TaskItem from '@tiptap/extension-task-item'
 import TaskList from '@tiptap/extension-task-list'
@@ -54,6 +55,8 @@ import { DatabaseIcon, LeafIcon } from '@/components/Icons'
 import { EmbeddedDatabaseBlock } from '@/components/database/EmbeddedDatabaseBlock'
 import { useNavigationProgress } from '@/components/NavigationProgress'
 import { warmEditorRoute } from '@/lib/warmEditorRoute'
+import { databasesApi } from '@/lib/api'
+import { ensureTagEntries } from '@/lib/workspaceDefaults'
 import { createEmptyLeafDocument, getLeafContentText, normalizeLeafDocument } from '@/lib/leafDocument'
 import { rankSlashItems, SLASH_ITEMS, type SlashMenuState, SlashMenuPanel } from '@/components/SlashCommands'
 
@@ -608,6 +611,52 @@ const WikilinkNode = Node.create({
     }, HTMLAttributes), label]
   },
 })
+const HashtagNode = Node.create({
+  name: 'hashtag',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: false,
+  addAttributes() {
+    return {
+      tag: { default: '' },
+      id: { default: '' },
+    }
+  },
+  parseHTML() {
+    return [{ tag: 'span[data-type="hashtag"]' }]
+  },
+  renderHTML({ HTMLAttributes, node }) {
+    const tag = node.attrs.tag || ''
+    return ['span', mergeAttributes({
+      'data-type': 'hashtag',
+      'data-tag': tag,
+      'data-id': node.attrs.id,
+      class: 'leaf-hashtag',
+    }, HTMLAttributes), `#${tag}`]
+  },
+  addInputRules() {
+    return [
+      new InputRule({
+        find: /#([\w\u00C0-\u024F][\w\u00C0-\u024F-]*)\s$/,
+        handler: ({ state, range, match }) => {
+          const tag = match[1]
+          if (!tag) return
+
+          // Don't convert if # is at the very start of the textblock (that's a heading)
+          const $from = state.doc.resolve(range.from)
+          if ($from.parentOffset === 0) return
+
+          const node = state.schema.nodes.hashtag.create({ tag })
+          const space = state.schema.text(' ')
+          state.tr
+            .delete(range.from, range.to)
+            .insert(range.from, [node, space])
+        },
+      }),
+    ]
+  },
+})
 const ColumnLayout = Node.create({
   name: 'columnLayout',
   group: 'block',
@@ -891,6 +940,7 @@ export default function LeafEditor({
       },
     }),
     WikilinkNode,
+    HashtagNode,
     ColumnLayout,
     PageEmbed,
     DatabaseEmbed,
@@ -898,21 +948,76 @@ export default function LeafEditor({
     TaskItem.configure({ nested: true }),
   ], [])
 
+  const syncedTagsRef = useRef<Set<string>>(new Set())
+  const tagSyncTimerRef = useRef<NodeJS.Timeout | null>(null)
+
   const handleEditorUpdate = useCallback(({ editor }: { editor: import('@tiptap/core').Editor }) => {
     const document = normalizeLeafDocument(editor.getJSON() as LeafDocument)
     lastSyncedRef.current = JSON.stringify(document)
     onUpdateRef.current(document)
     const words = getLeafContentText(document).trim().split(/\s+/).filter(Boolean).length
     onStatusChangeRef.current?.(modeRef.current, words)
+
+    // Collect hashtag names from the document and sync new ones to the Tags DB
+    const tags: string[] = []
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === 'hashtag' && node.attrs.tag) tags.push(node.attrs.tag)
+    })
+    const newTags = tags.filter((t) => !syncedTagsRef.current.has(t.toLowerCase()))
+    if (newTags.length > 0) {
+      if (tagSyncTimerRef.current) clearTimeout(tagSyncTimerRef.current)
+      tagSyncTimerRef.current = setTimeout(() => {
+        for (const t of newTags) syncedTagsRef.current.add(t.toLowerCase())
+        void ensureTagEntries(newTags).then(async () => {
+          // Refresh the tag→leafId map after creation
+          try {
+            const databases = await databasesApi.list()
+            const tagsDb = databases.find((db) => db.title === 'Tags')
+            if (!tagsDb) return
+            const rows = await databasesApi.listRows(tagsDb.id)
+            const map: Record<string, string> = { ...tagLeafMapRef.current }
+            for (const row of rows) {
+              const name = String(row.properties?.name ?? '')
+              if (name && row.leaf_id) map[name.toLowerCase()] = row.leaf_id
+            }
+            tagLeafMapRef.current = map
+          } catch { /* ignore */ }
+        })
+      }, 500)
+    }
   }, [])
 
   const routerRef = useRef(router)
   routerRef.current = router
 
+  // Tag name → leaf_id map for hashtag navigation
+  const tagLeafMapRef = useRef<Record<string, string>>({})
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const databases = await databasesApi.list()
+        const tagsDb = databases.find((db) => db.title === 'Tags')
+        if (!tagsDb || cancelled) return
+        const rows = await databasesApi.listRows(tagsDb.id)
+        if (cancelled) return
+        const map: Record<string, string> = {}
+        for (const row of rows) {
+          const name = String(row.properties?.name ?? '')
+          if (name && row.leaf_id) map[name.toLowerCase()] = row.leaf_id
+        }
+        tagLeafMapRef.current = map
+      } catch { /* ignore */ }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
   const editorProps = useMemo(() => ({
     attributes: { class: 'leaf-prose max-w-none min-h-[50vh] focus:outline-none' },
     handleClick: (_view: unknown, _pos: number, event: MouseEvent) => {
       const target = event.target as HTMLElement
+
+      // Wikilink click
       const wikilink = target.closest('[data-type="wikilink"]') as HTMLElement | null
       if (wikilink) {
         const id = wikilink.getAttribute('data-id')
@@ -922,6 +1027,34 @@ export default function LeafEditor({
           return true
         }
       }
+
+      // Hashtag click
+      const hashtag = target.closest('[data-type="hashtag"]') as HTMLElement | null
+      if (hashtag) {
+        const tag = hashtag.getAttribute('data-tag')
+        if (tag) {
+          event.preventDefault()
+          const leafId = tagLeafMapRef.current[tag.toLowerCase()]
+          if (leafId) {
+            routerRef.current.push(`/editor/${leafId}`)
+          } else {
+            // Create the tag entry then navigate
+            void ensureTagEntries([tag]).then(async () => {
+              const databases = await databasesApi.list()
+              const tagsDb = databases.find((db) => db.title === 'Tags')
+              if (!tagsDb) return
+              const rows = await databasesApi.listRows(tagsDb.id)
+              const row = rows.find((r) => String(r.properties?.name ?? '').toLowerCase() === tag.toLowerCase())
+              if (row?.leaf_id) {
+                tagLeafMapRef.current[tag.toLowerCase()] = row.leaf_id
+                routerRef.current.push(`/editor/${row.leaf_id}`)
+              }
+            })
+          }
+          return true
+        }
+      }
+
       return false
     },
     handleKeyDown: (_view: unknown, event: KeyboardEvent) => {
@@ -1414,7 +1547,7 @@ export default function LeafEditor({
       {mode === 'rich' ? (
         <div
           className="relative"
-          style={{ paddingLeft: 36 }}
+          style={{ paddingLeft: 52 }}
           onMouseMove={(event) => {
             if (hideTimer.current) {
               clearTimeout(hideTimer.current)
@@ -1430,7 +1563,7 @@ export default function LeafEditor({
           <div ref={containerRef} className="relative">
             {blockMenu && (
               <div
-                style={{ position: 'absolute', top: blockMenu.top, left: -36, display: 'flex', alignItems: 'center', gap: 0 }}
+                style={{ position: 'absolute', top: blockMenu.top - 2, left: -48, display: 'flex', alignItems: 'center', gap: 2 }}
                 onMouseEnter={() => {
                   if (hideTimer.current) {
                     clearTimeout(hideTimer.current)
@@ -1445,28 +1578,51 @@ export default function LeafEditor({
                     pendingInsertPos.current = blockMenu.endPos
                     setMenuOpen((current) => !current)
                   }}
-                  className="flex h-5 w-5 items-center justify-center rounded transition-colors duration-150"
-                  style={{ color: 'var(--leaf-text-hint)' }}
+                  className="flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-150 hover:bg-black/5"
+                  style={{ color: 'var(--leaf-text-muted)' }}
                   title="Insert block"
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
                     <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                   </svg>
                 </button>
-                <span
-                  className="flex h-5 w-5 items-center justify-center rounded cursor-grab"
-                  style={{ color: 'var(--leaf-text-hint)' }}
+                <button
+                  type="button"
+                  className="flex h-7 w-7 items-center justify-center rounded-md cursor-grab transition-colors duration-150 hover:bg-black/5 active:cursor-grabbing"
+                  style={{ color: 'var(--leaf-text-muted)' }}
                   title="Drag to move"
+                  draggable
+                  onDragStart={(event) => {
+                    if (!editor) return
+                    try {
+                      const $pos = editor.state.doc.resolve(Math.max(0, blockMenu.endPos - 1))
+                      const depth = $pos.depth > 0 ? 1 : 0
+                      const nodeStart = $pos.before(depth)
+                      const nodeEnd = $pos.after(depth)
+                      const slice = editor.state.doc.slice(nodeStart, nodeEnd)
+                      const serializer = DOMSerializer.fromSchema(editor.state.schema)
+                      const fragment = serializer.serializeFragment(slice.content)
+                      const wrapper = document.createElement('div')
+                      wrapper.appendChild(fragment)
+                      event.dataTransfer.clearData()
+                      event.dataTransfer.setData('text/html', wrapper.innerHTML)
+                      event.dataTransfer.setData('text/plain', wrapper.textContent || '')
+                      event.dataTransfer.effectAllowed = 'move'
+                      editor.view.dragging = { slice, move: true }
+                    } catch {
+                      // fallback: let browser handle
+                    }
+                  }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <circle cx="5" cy="3.5" r="1" fill="currentColor" />
-                    <circle cx="9" cy="3.5" r="1" fill="currentColor" />
-                    <circle cx="5" cy="7" r="1" fill="currentColor" />
-                    <circle cx="9" cy="7" r="1" fill="currentColor" />
-                    <circle cx="5" cy="10.5" r="1" fill="currentColor" />
-                    <circle cx="9" cy="10.5" r="1" fill="currentColor" />
+                  <svg width="18" height="18" viewBox="0 0 14 14" fill="none">
+                    <circle cx="5" cy="3" r="1.2" fill="currentColor" />
+                    <circle cx="9" cy="3" r="1.2" fill="currentColor" />
+                    <circle cx="5" cy="7" r="1.2" fill="currentColor" />
+                    <circle cx="9" cy="7" r="1.2" fill="currentColor" />
+                    <circle cx="5" cy="11" r="1.2" fill="currentColor" />
+                    <circle cx="9" cy="11" r="1.2" fill="currentColor" />
                   </svg>
-                </span>
+                </button>
                 {menuOpen && <BlockDropdown onSelect={handleBlockAction} onClose={() => setMenuOpen(false)} />}
               </div>
             )}

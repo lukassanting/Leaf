@@ -205,6 +205,22 @@ html, body {
   border-color: rgba(16, 185, 129, 0.35);
 }
 
+.leaf-hashtag {
+  display: inline;
+  border-radius: 4px;
+  padding: 0.05rem 0.35rem;
+  background: var(--color-primary-dk, #047857);
+  color: #fff;
+  font-size: 0.85em;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.leaf-hashtag:hover {
+  background: #065f46;
+}
+
 /* ─── Block gutter ────────────────────────────────────────────────────
    The interactive "+" add-block button is rendered by React (LeafEditor).
    CSS only provides the drag-handle dot grid (::before on each block).

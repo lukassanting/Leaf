@@ -74,21 +74,27 @@ export function TagsInput({ tags, onChange }: { tags: string[]; onChange: (tags:
       {tags.map((tag) => (
         <span
           key={tag}
-          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
-          style={{ background: 'var(--color-tag-bg)', border: '1px solid var(--color-tag-border)', color: 'var(--color-tag-text)' }}
+          className="flex items-center gap-1 rounded-md text-xs font-medium"
+          style={{
+            background: 'var(--color-primary-dk, #047857)',
+            color: '#fff',
+            padding: '3px 8px 3px 6px',
+          }}
         >
           <button
             type="button"
             onClick={() => handleTagClick(tag)}
-            className="hover:underline"
-            style={{ cursor: tagLeafMap[tag.toLowerCase()] ? 'pointer' : 'default' }}
+            className="flex items-center gap-0.5 hover:opacity-80 transition-opacity"
+            style={{ cursor: tagLeafMap[tag.toLowerCase()] ? 'pointer' : 'default', color: 'inherit' }}
           >
+            <span style={{ opacity: 0.7 }}>#</span>
             {tag}
           </button>
           <button
             type="button"
             onClick={() => onChange(tags.filter((currentTag) => currentTag !== tag))}
             className="leading-none transition-opacity opacity-60 hover:opacity-100"
+            style={{ color: 'inherit' }}
           >
             ×
           </button>
