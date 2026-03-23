@@ -1,6 +1,6 @@
 # Leaf
 
-A fast, Notion-inspired workspace with rich pages, inline databases, a local-first cache, and a schema-first editor model. **FastAPI** backend, **Next.js 15** frontend, **MySQL**.
+A fast, Notion-inspired workspace with rich pages, inline databases, a local-first cache, and a schema-first editor model. **FastAPI** backend, **Next.js 15** frontend, and default **SQLite** runtime storage (with Alembic/MySQL migration tooling still present for legacy workflows).
 
 ## Quick start (Docker + Make)
 
@@ -8,7 +8,7 @@ A fast, Notion-inspired workspace with rich pages, inline databases, a local-fir
 
 All commands below are from the **repo root** (`Leaf/`).
 
-1. **Start the full stack** (MySQL + API + frontend):
+1. **Start the full stack** (API + frontend):
 
    ```bash
    make up
@@ -42,7 +42,7 @@ All commands below are from the **repo root** (`Leaf/`).
    make test
    ```
 
-   Runs the frontend linter and backend checks. To run tests inside Docker:
+   Runs the frontend linter and backend checks. If Poetry is not installed on your host, backend checks are skipped with a warning. To run tests inside Docker:
 
    ```bash
    make test-in-docker
@@ -55,6 +55,11 @@ All commands below are from the **repo root** (`Leaf/`).
    ```
 
    To also remove the database volume: `make down-volumes`.
+
+## Debugging workflow
+
+- Use `docs/DEBUGGING_PLAYBOOK.md` for a repeatable cross-stack workflow (route -> hook -> API client -> backend controller -> operations).
+- The playbook includes a worked Windows-shell example for diagnosing/fixing `make test` command issues.
 
 ## Makefile targets
 
@@ -72,7 +77,7 @@ All commands below are from the **repo root** (`Leaf/`).
 
 ## Development without Docker
 
-1. **Backend:** In `backend/` run `poetry install`. Copy `backend/.env.example` to `backend/.env` and set `MYSQL_HOST=127.0.0.1`, `MYSQL_PORT=3306` (or `3307` if MySQL is only in Docker). Start the API:
+1. **Backend:** In `backend/` run `poetry install`. Copy `backend/.env.example` to `backend/.env` and set `DATA_DIR` and/or `DATABASE_URL` (default is SQLite at `<DATA_DIR>/.leaf.db`). Start the API:
 
    ```bash
    cd backend && poetry run uvicorn app.main:app --reload
@@ -84,14 +89,14 @@ All commands below are from the **repo root** (`Leaf/`).
    cd frontend && npm run dev
    ```
 
-3. **MySQL only in Docker:** From repo root, `docker compose up mysqldb -d` to run just the database.
+3. **Optional DB override:** If you want to point runtime to another DB, set `DATABASE_URL` to a valid SQLAlchemy connection URL.
 
 ## Database migrations
 
-The project uses **Alembic**. Migrations run automatically on API startup unless `RUN_MIGRATIONS_ON_STARTUP=false` is set in `backend/.env` (useful for production where you run migrations separately).
+The app runtime currently initializes schema on startup via SQLAlchemy `create_all` using `DATABASE_URL` (default SQLite in `DATA_DIR`). Alembic files remain available for explicit migration workflows.
 
-- **App runtime:** Sync driver `mysql+pymysql`.
-- **Alembic:** Use the sync driver in `alembic.ini` / `env.py` (`pymysql`). If you see `MissingGreenlet` or async-related errors, ensure Alembic is not using an async URL.
+- **App runtime (default):** SQLite (`sqlite:///<DATA_DIR>/.leaf.db`).
+- **Alembic (legacy path):** currently configured for MySQL env vars in `backend/migrations/env.py`.
 
 ### Running Alembic inside Docker
 
@@ -111,12 +116,12 @@ alembic upgrade head
 
 ### Inspecting or removing the DB volume
 
-With the root `docker-compose.yml`, the MySQL volume is named `leaf_mysql_data`:
+With the root `docker-compose.yml`, the default data volume is named `leaf_data`:
 
 ```bash
-docker volume inspect leaf_mysql_data
+docker volume inspect leaf_data
 # remove when containers are stopped:
-docker volume rm leaf_mysql_data
+docker volume rm leaf_data
 ```
 
 ## Current status
@@ -135,11 +140,12 @@ Leaf is now on the v3 shell and editor architecture:
 - **Pages & tree:** Notion-like hierarchy (projects/pages), shared sidebar with search, collapse-all, expand/collapse per node, inline rename, delete, drag-and-drop reorder, and inline child-page creation.
 - **Editor:** TipTap rich text with slash insertion, block menu, page/database embeds, resizable column layouts (2–5), drag-to-create columns, optional Markdown source mode, and Markdown import/export.
 - **Autosave:** Debounced PATCH to `/leaves/{id}/content` (~800 ms idle); Ctrl+S / Cmd+S to save immediately; optional conflict detection via `updated_at`.
+- **Leaf metadata diagnostics:** Leaf responses now include `content_text_length` so frontend surfaces can display/search-index text-size context.
 - **Local-first cache:** IndexedDB (with localStorage fallback) for instant page load and offline edits; pending saves sync when back online.
 - **Databases:** Notion-style collections of pages. Each entry is a real page. Views: Table, Board, Gallery, List. Schema-driven columns (text, number, tags, select). "Name" always links to the entry page. Inline cell editing and add-column flows are shared between standalone and embedded databases.
 - **Metadata parity:** Pages and databases both support title, description, tags, and icons.
 - **Testing:** Backend integration coverage for leaves/databases and Playwright coverage for editor persistence, slash embeds, todo interaction, inline databases, and column layouts.
-- **Stack:** Next.js 15 (App Router), FastAPI, MySQL, Tailwind CSS v4, TipTap, Docker Compose.
+- **Stack:** Next.js 15 (App Router), FastAPI, SQLite-default runtime, Tailwind CSS v4, TipTap, Docker Compose.
 
 ## Next steps
 
@@ -165,7 +171,7 @@ See `docs/FRAMEWORK_DIRECTION.md` for the full decision and cross-platform guida
 The root `docker-compose.yml` is aimed at development. For production you would typically:
 
 - Use a separate `docker-compose.prod.yml` or CI step that builds production images (e.g. multi-stage backend, `next build` + `next start` for frontend).
-- Set `RUN_MIGRATIONS_ON_STARTUP=false` and run `alembic upgrade head` in a dedicated step or init job.
+- Prefer explicit migration/init steps instead of relying on startup schema creation for production.
 - Configure env (secrets, `ALLOWED_ORIGINS`, DB URL) for production.
 
 ## Project layout
@@ -178,14 +184,15 @@ Leaf/
 ├── docs/
 │   ├── FRAMEWORK_DIRECTION.md
 │   ├── EDITOR_DESIGN.md
+│   ├── DEBUGGING_PLAYBOOK.md
 │   └── PLANS_AND_ROADMAP.md
-├── docker-compose.yml    # Full stack: mysqldb, api, frontend (run from root)
+├── docker-compose.yml    # Full stack: api + frontend (run from root)
 ├── Makefile              # up, down, test, logs, etc.
 ├── backend/              # FastAPI, Poetry, Alembic
 │   ├── app/
 │   ├── migrations/
 │   ├── Dockerfile.dev
-│   ├── docker-compose.dev.yml   # Backend + MySQL only
+│   ├── docker-compose.dev.yml   # Legacy backend + MySQL setup
 │   └── .env.example
 └── frontend/             # Next.js 15 App Router, Tailwind v4, TipTap
     └── src/

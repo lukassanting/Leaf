@@ -16,7 +16,7 @@ A single reference for where Leaf stands after the v3 redesign, what is verified
 ## 2. Current architecture
 
 - **Frontend:** Next.js 15 App Router, React, TipTap, Tailwind CSS v4.
-- **Backend:** FastAPI, SQLAlchemy, MySQL.
+- **Backend:** FastAPI, SQLAlchemy, default SQLite runtime (`DATABASE_URL`) with legacy MySQL-oriented Alembic config still present.
 - **Persistence:** page content is stored as `LeafDocument` JSON with a legacy HTML migration path; database metadata is stored alongside schema payloads.
 - **Caching:** IndexedDB-first cache with localStorage fallback and pending-save queueing.
 - **Data flow:** UI loads from cache first, revalidates from the API, then writes back through debounced PATCH/PUT calls.
@@ -24,7 +24,7 @@ A single reference for where Leaf stands after the v3 redesign, what is verified
 ```text
 User → Next.js workspace shell ⇄ IndexedDB/local cache
                 ↓
-         FastAPI REST API ⇄ MySQL
+         FastAPI REST API ⇄ SQLite (default)
 ```
 
 ---
@@ -76,6 +76,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] CRUD for leaves, tree loading, child reorder, databases, and rows.
 - [x] Structured content round-tripping on the backend.
 - [x] Backlink indexing for structured content text extraction.
+- [x] Leaf DTO now exposes `content_text_length` to help frontend diagnostics and search-oriented UI context.
 
 ### Verification completed
 
@@ -87,6 +88,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
   - inline database embeds rendering the shared database surface
   - column layout insert + reload persistence
 - [x] Frontend lint and production build passing after the redesign.
+- [x] `make test` backend fallback now works on Windows shells without Unix-only tokens.
 
 ---
 
@@ -171,6 +173,7 @@ Questions still open for the next milestone:
 | `frontend/src/lib/leafDocument.ts` | Structured content parsing and normalization |
 | `frontend/e2e/workspace.spec.ts` | Browser regression coverage |
 | `docs/FRAMEWORK_DIRECTION.md` | Web framework decision and platform expansion guidance |
+| `docs/DEBUGGING_PLAYBOOK.md` | Cross-stack debugging flow and worked root-cause example |
 
 ### Backend
 
@@ -183,6 +186,7 @@ Questions still open for the next milestone:
 | `backend/app/dtos/leaf_dtos.py` | Structured or legacy content DTOs |
 | `backend/app/dtos/database_dtos.py` | Database metadata and schema DTOs |
 | `backend/tests/test_leaf_database_integration.py` | Integration coverage for current backend behavior |
+| `Makefile` | Local developer workflow (`up`, `test`, logs, shell helpers) |
 
 ---
 
@@ -212,4 +216,4 @@ That means platform growth should focus first on:
 
 ---
 
-*Last updated: 2026-03-23. This roadmap reflects the column overhaul (nested node architecture, resize handles, 2–5 columns, responsive stacking), and the recommended follow-up phase.*
+*Last updated: 2026-03-23. This roadmap reflects the column overhaul (nested node architecture, resize handles, 2–5 columns, responsive stacking), plus runtime/docs alignment updates (SQLite-default runtime, Windows-safe test target, and debug playbook).*

@@ -79,6 +79,7 @@ class Leaf(BaseModel):
     tags: list[str] = Field(default_factory=list)
     icon: Optional[dict] = None
     properties: Optional[dict] = None
+    content_text_length: int = 0
     created_at: datetime
     updated_at: datetime
 

@@ -37,7 +37,7 @@ test:
 	@echo "--- Frontend (lint) ---"
 	cd $(FRONTEND_DIR) && npm run test
 	@echo "--- Backend (lint / tests) ---"
-	@cd $(BACKEND_DIR) && (poetry run flake8 app 2>/dev/null || poetry run python -m py_compile app/main.py 2>/dev/null || true)
+	@cd $(BACKEND_DIR) && (poetry run flake8 app || poetry run python -m py_compile app/main.py || echo "Backend checks skipped (install Poetry to enable).")
 	@echo "Done."
 
 # Follow logs for all services

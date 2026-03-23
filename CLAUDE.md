@@ -2,7 +2,7 @@
 
 ## Role
 
-You are helping build **Leaf**, a Notion-inspired personal knowledge manager. Stack: **Next.js 15** (App Router) + **FastAPI** + **MySQL**, all run via Docker Compose from the repo root.
+You are helping build **Leaf**, a Notion-inspired personal knowledge manager. Stack: **Next.js 15** (App Router) + **FastAPI** + default **SQLite** runtime storage (with legacy MySQL/Alembic files still in-repo), run via Docker Compose from the repo root.
 
 ## Key rules
 
@@ -44,7 +44,7 @@ Leaf/
 ├── docs/PLANS_AND_ROADMAP.md   # vision, implemented, future
 ├── docker-compose.yml          # full stack
 ├── Makefile
-├── backend/                    # FastAPI + Alembic + MySQL
+├── backend/                    # FastAPI + Alembic + SQLAlchemy runtime
 │   ├── app/
 │   │   ├── api/routes/         # leaf_crud_controller, database_controller
 │   │   ├── database/

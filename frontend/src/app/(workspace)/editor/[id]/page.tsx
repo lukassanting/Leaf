@@ -77,6 +77,7 @@ export default function EditorPage() {
     setTags,
     icon,
     setIcon,
+    contentTextLength,
     loadingLeaf,
     savedTitleRef,
     savedDescriptionRef,
@@ -232,6 +233,9 @@ export default function EditorPage() {
         onTagsChange={(nextTags) => { void handleTagsSave(nextTags) }}
         showTags
       />
+      <div style={{ marginTop: 6, fontSize: 11, color: 'var(--leaf-text-muted)' }}>
+        Indexed content length: {contentTextLength} chars
+      </div>
       </div>
 
       {/* Editor canvas */}

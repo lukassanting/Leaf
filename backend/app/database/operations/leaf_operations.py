@@ -106,19 +106,22 @@ class LeafOperations:
         return "\n".join(chunks)
 
     def _leaf_to_dto(self, leaf: LeafModel, path: str = "") -> Leaf:
+        deserialized_content = self._deserialize_content(leaf.content)
+        content_text = self._content_to_search_text(deserialized_content)
         return Leaf(
             id=leaf.id,
             title=leaf.title,
             path=path,
             type=leaf.type,
             description=leaf.description,
-            content=self._deserialize_content(leaf.content),
+            content=deserialized_content,
             parent_id=leaf.parent_id if leaf.parent_id else None,
             database_id=leaf.database_id if leaf.database_id else None,
             children_ids=list(leaf.children_ids or []),
             tags=list(leaf.tags or []),
             icon=leaf.icon,
             properties=leaf.properties,
+            content_text_length=len(content_text),
             created_at=leaf.created_at,
             updated_at=leaf.updated_at,
         )
