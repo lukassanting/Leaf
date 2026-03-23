@@ -231,15 +231,16 @@ html, body {
 
 /* ─── Column layout blocks ─────────────────────────────────────────────── */
 
-.column-list-inner {
-  display: flex;
-  gap: 16px;
+[data-node-view-content].column-list-inner {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 16px !important;
+  flex-wrap: nowrap !important;
 }
 
-.ProseMirror [data-type="column"] {
-  flex: 1 1 0%;
-  min-width: 100px;
-  position: relative;
+[data-node-view-content].column-list-inner > [data-type="column"] {
+  flex: 1 1 0% !important;
+  min-width: 100px !important;
 }
 
 /* Resize handle — invisible by default, visible on hover */

@@ -88,7 +88,8 @@ export function SidebarTreeRow({
   const isDropTarget = dropTargetId === node.id
   const isHovered = hoverNodeId === node.id
   const isDatabase = node.kind === 'database'
-  const href = isDatabase ? `/databases/${node.id}` : `/editor/${node.id}`
+  const isDbRow = node.isDbRow === true
+  const href = isDatabase ? `/databases/${node.id}` : isDbRow ? `/databases/${node.database_id}?row=${node.id.replace('dbrow:', '')}` : `/editor/${node.id}`
 
   return (
     <div
@@ -110,12 +111,13 @@ export function SidebarTreeRow({
         onHoverChange(null)
         if (!isActive) event.currentTarget.style.backgroundColor = ''
       }}
-      draggable={!isDatabase}
+      draggable={!isDatabase && !isDbRow}
       onDragStart={(event) => onDragStart(event, node)}
       onDragOver={(event) => onDragOver(event, node)}
       onDragLeave={onDragLeave}
       onDrop={(event) => onDrop(event, node)}
       onContextMenu={(event) => {
+        if (isDbRow) return
         event.preventDefault()
         onContextMenu({ id: node.id, kind: node.kind, x: event.clientX, y: event.clientY })
       }}
@@ -137,7 +139,12 @@ export function SidebarTreeRow({
       </button>
 
       <span className="shrink-0" style={{ color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
-        {isDatabase ? <DatabaseIcon size={13} /> : <LeafIcon size={13} />}
+        {isDatabase ? <DatabaseIcon size={13} /> : isDbRow ? (
+          <svg width={13} height={13} viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.2">
+            <rect x="1.5" y="2.5" width="10" height="8" rx="1" />
+            <path d="M1.5 5h10M4 2.5v8" />
+          </svg>
+        ) : <LeafIcon size={13} />}
       </span>
 
       {isEditing ? (
@@ -164,13 +171,13 @@ export function SidebarTreeRow({
             }
             onNavigate()
           }}
-          onMouseEnter={() => onWarmRoute(node.kind)}
+          onMouseEnter={() => onWarmRoute(isDbRow ? 'database' : node.kind)}
         >
           {node.title || 'Untitled'}
         </Link>
       )}
 
-      {isHovered && !isEditing && !isDatabase && (
+      {isHovered && !isEditing && !isDatabase && !isDbRow && (
         <button
           type="button"
           title="Add sub-page"

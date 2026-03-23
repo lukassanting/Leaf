@@ -454,7 +454,7 @@ export function DatabaseToolbar({
 }
 
 export function TableView({
-  rows, columns, onUpdateName, onUpdateCell, onDeleteRow, onAddRow, onAddColumn,
+  rows, columns, onUpdateName, onUpdateCell, onDeleteRow, onAddRow, onAddColumn, highlightedRowId,
 }: {
   rows: DatabaseRow[]
   columns: PropertyDefinition[]
@@ -463,6 +463,7 @@ export function TableView({
   onDeleteRow: (rowId: string) => void
   onAddRow: () => void
   onAddColumn: () => void
+  highlightedRowId?: string | null
 }) {
   return (
     <div className="overflow-hidden rounded-xl border bg-white" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
@@ -488,8 +489,10 @@ export function TableView({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="group" style={{ borderBottom: '1px solid var(--leaf-border-soft)' }}>
+          {rows.map((row) => {
+            const isHighlighted = highlightedRowId && row.leaf_id === highlightedRowId.replace('dbrow:', '')
+            return (
+            <tr key={row.id} className="group" style={{ borderBottom: '1px solid var(--leaf-border-soft)', background: isHighlighted ? 'var(--leaf-bg-active)' : undefined }}>
               <td className="px-3.5 py-2.5 align-middle" style={{ borderRight: '1px solid var(--leaf-border-soft)' }}>
                 <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
               </td>
@@ -504,7 +507,8 @@ export function TableView({
                 </button>
               </td>
             </tr>
-          ))}
+            )
+          })}
         </tbody>
         <tfoot>
           <tr>

@@ -23,7 +23,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { TopStrip } from '@/components/TopStrip'
 import { StatusBar } from '@/components/StatusBar'
 import { LoadingShell } from '@/components/LoadingShell'
@@ -36,7 +36,9 @@ import type { LeafIcon, ViewType } from '@/lib/api'
 
 export default function DatabaseViewPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const id = params?.id as string
+  const highlightedRowId = searchParams.get('row')
   const { contentWidth } = useContentWidth()
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
@@ -172,6 +174,7 @@ export default function DatabaseViewPage() {
                 showAddCol={showAddCol}
                 setShowAddCol={setShowAddCol}
                 addColumn={addColumn}
+                highlightedRowId={highlightedRowId}
               />
             </div>
           </div>

@@ -489,14 +489,20 @@ export function Sidebar({ activeId }: { activeId?: string }) {
             </div>
           ) : (
             <div style={{ marginLeft: 4 }}>
-              {outline.map((item, index) => {
-                const prefix = item.level === 1
-                  ? `${index + 1}.`
-                  : item.level === 2
-                    ? `${index + 1}.1`
-                    : `${index + 1}.1`
+              {(() => {
+                const counters = { 1: 0, 2: 0, 3: 0 }
+                let isFirst = true
+                return outline.map((item) => {
+                  counters[item.level]++
+                  for (let l = item.level + 1; l <= 3; l++) counters[l] = 0
+                  const parts = [counters[1]]
+                  if (counters[2] > 0 || item.level >= 2) parts.push(counters[2])
+                  if (counters[3] > 0 || item.level >= 3) parts.push(counters[3])
+                  const prefix = parts.join('.') + '.'
+                  const first = isFirst
+                  isFirst = false
 
-                return (
+                  return (
                   <div
                     key={item.id}
                     className="flex items-start gap-2 rounded-md px-1.5 py-1 transition-colors duration-150"
@@ -507,7 +513,7 @@ export function Sidebar({ activeId }: { activeId?: string }) {
                     onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-hover)' }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
                   >
-                    {index === 0 ? (
+                    {first ? (
                       <span
                         className="mt-1.5 shrink-0 rounded-full"
                         style={{ width: 6, height: 6, background: 'var(--leaf-green)' }}
@@ -518,7 +524,7 @@ export function Sidebar({ activeId }: { activeId?: string }) {
                     <span
                       style={{
                         fontSize: item.level === 1 ? 12.5 : 12,
-                        color: index === 0 ? 'var(--leaf-green)' : item.level === 1 ? 'var(--leaf-text-title)' : 'var(--leaf-text-body)',
+                        color: first ? 'var(--leaf-green)' : item.level === 1 ? 'var(--leaf-text-title)' : 'var(--leaf-text-body)',
                         fontWeight: item.level === 1 ? 500 : 400,
                         lineHeight: 1.5,
                       }}
@@ -527,7 +533,8 @@ export function Sidebar({ activeId }: { activeId?: string }) {
                     </span>
                   </div>
                 )
-              })}
+              })
+              })()}
             </div>
           )}
         </div>

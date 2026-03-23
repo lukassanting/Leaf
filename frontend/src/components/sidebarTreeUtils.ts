@@ -37,6 +37,8 @@ export type SidebarNode = {
   parent_id: string | null
   children_ids: string[]
   order: number
+  isDbRow?: boolean
+  database_id?: string
 }
 
 export type TreeNode = SidebarNode & { children: TreeNode[] }

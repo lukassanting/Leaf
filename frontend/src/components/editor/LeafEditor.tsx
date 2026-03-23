@@ -519,7 +519,7 @@ function ColumnListView({
           Remove columns
         </button>
       </div>
-      <NodeViewContent className="column-list-inner" />
+      <NodeViewContent className="column-list-inner" style={{ display: 'flex', flexDirection: 'row', gap: 16 }} />
       {handles.map((h, i) => (
         <div
           key={i}

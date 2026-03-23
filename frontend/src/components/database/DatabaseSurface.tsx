@@ -44,6 +44,7 @@ type Props = {
   showAddCol: boolean
   setShowAddCol: (value: boolean) => void
   addColumn: (definition: PropertyDefinition) => void | Promise<void>
+  highlightedRowId?: string | null
 }
 
 export function DatabaseSurface({
@@ -58,6 +59,7 @@ export function DatabaseSurface({
   showAddCol,
   setShowAddCol,
   addColumn,
+  highlightedRowId,
 }: Props) {
   return (
     <>
@@ -74,6 +76,7 @@ export function DatabaseSurface({
           onDeleteRow={(rowId) => { void deleteRow(rowId) }}
           onAddRow={() => { void addRow() }}
           onAddColumn={() => setShowAddCol(true)}
+          highlightedRowId={highlightedRowId}
         />
       )}
       {activeView === 'board' && (

@@ -95,7 +95,44 @@ export function useSidebarTreeModel(activeId?: string) {
       const [rawLeaves, rawDatabases] = await Promise.all([leavesApi.getTree(), databasesApi.list()])
       const leafNodes = mapLeafNodes(rawLeaves)
       const databaseNodes = mapDbNodes(rawDatabases)
-      const merged = [...leafNodes, ...databaseNodes]
+
+      const dbRowNodes: SidebarNode[] = []
+      const dbRowsMap: Record<string, string[]> = {}
+
+      const rowsResults = await Promise.allSettled(
+        rawDatabases.map((db) => databasesApi.listRows(db.id))
+      )
+      rowsResults.forEach((result, i) => {
+        if (result.status === 'fulfilled') {
+          const dbId = rawDatabases[i].id
+          dbRowsMap[dbId] = []
+          result.value.forEach((row) => {
+            if (row.leaf_id) {
+              const nodeId = `dbrow:${row.leaf_id}`
+              dbRowNodes.push({
+                id: nodeId,
+                title: row.leaf_title || 'Untitled',
+                kind: 'page',
+                parent_id: dbId,
+                children_ids: [],
+                order: 0,
+                isDbRow: true,
+                database_id: dbId,
+              })
+              dbRowsMap[dbId].push(nodeId)
+            }
+          })
+        }
+      })
+
+      const merged = [
+        ...leafNodes,
+        ...databaseNodes.map((db) => ({
+          ...db,
+          children_ids: dbRowsMap[db.id] ?? [],
+        })),
+        ...dbRowNodes,
+      ]
       setNodes(merged)
       await setCachedTree(leafNodes.map((node) => ({ ...node, type: 'page' as const })))
       setExpanded((prev) => Object.keys(prev).length === 0 ? defaultExpanded(merged) : prev)
