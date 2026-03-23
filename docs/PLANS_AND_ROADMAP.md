@@ -59,11 +59,15 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 
 ### Layout blocks
 
-- [x] Persisted 2-column and 3-column block types in the document schema.
-- [x] Inline text editing inside column blocks.
-- [x] In-block drag reordering for column positions.
+- [x] Persisted 2–5 column block types in the document schema (`columnList > column` nested architecture).
+- [x] Real nested content inside columns — cursor navigation, undo/redo, and text selection work natively across column boundaries.
+- [x] Resizable column widths via drag handles between columns.
 - [x] Drag-to-create columns: drag any block to the left or right edge of another to create side-by-side columns.
-- [x] Minimal column rendering (no decorative wrappers — just blocks side by side).
+- [x] "Remove columns" unwraps content back into the main document (no content is ever deleted).
+- [x] Notion-style invisible design — no borders/dividers, just whitespace gaps.
+- [x] Responsive stacking on narrow screens (< 640px).
+- [x] Nesting prevention — slash commands block column insertion inside existing columns.
+- [x] Automatic migration from legacy `columnLayout` (JSON blob) format to new nested node format.
 
 ### Local-first and backend
 
@@ -136,8 +140,8 @@ Framework direction is now decided separately in `docs/FRAMEWORK_DIRECTION.md`:
 
 Questions still open for the next milestone:
 
-1. Should column blocks become full nested block containers or stay lightweight for one more iteration?
-2. Should document block drag use native ProseMirror drag, a custom overlay, or a hybrid handle-only approach?
+1. ~~Should column blocks become full nested block containers or stay lightweight for one more iteration?~~ **Resolved:** columns are now real nested ProseMirror nodes (`columnList > column > block+`).
+2. ~~Should document block drag use native ProseMirror drag, a custom overlay, or a hybrid handle-only approach?~~ **Resolved:** hybrid — custom gutter drag handle feeds `editor.view.dragging` for native ProseMirror drop behavior, with column-drop zone overlay for drag-to-create columns.
 3. Should search be cache-first with API fallback, or fully API-backed once indexing exists?
 4. Which database property types matter most immediately after `text/number/tags/select`?
 5. Is real-time collaboration still out of scope for the next milestone, or do we need to preserve a path for it now?
@@ -208,4 +212,4 @@ That means platform growth should focus first on:
 
 ---
 
-*Last updated: 2026-03-19. This roadmap reflects the three-pane shell redesign, list view addition, worktree merge into the main tree, and the recommended follow-up phase.*
+*Last updated: 2026-03-23. This roadmap reflects the column overhaul (nested node architecture, resize handles, 2–5 columns, responsive stacking), and the recommended follow-up phase.*

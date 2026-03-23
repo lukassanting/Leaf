@@ -40,6 +40,9 @@ export function EmbeddedDatabaseBlock({ id }: { id: string }) {
     loading,
     showAddCol,
     setShowAddCol,
+    titleDraft,
+    setTitleDraft,
+    flushTitleSave,
     columns,
     activeView,
     addRow,
@@ -86,9 +89,16 @@ export function EmbeddedDatabaseBlock({ id }: { id: string }) {
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg" style={{ background: 'var(--leaf-bg-tag)', color: 'var(--leaf-text-title)' }}>
               <DatabaseIcon size={15} />
             </span>
-            <div className="truncate text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>
-              {db.title}
-            </div>
+            <input
+              type="text"
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={flushTitleSave}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+              className="w-full truncate bg-transparent text-sm font-medium outline-none"
+              style={{ color: 'var(--leaf-text-title)' }}
+              placeholder="Untitled database"
+            />
           </div>
           <div className="mt-1 text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
             {rows.length} {rows.length === 1 ? 'entry' : 'entries'} · Inline database

@@ -231,6 +231,54 @@ html, body {
 
 /* ─── Column layout blocks ─────────────────────────────────────────────── */
 
+.column-list-inner {
+  display: flex;
+  gap: 16px;
+}
+
+.ProseMirror [data-type="column"] {
+  flex: 1 1 0%;
+  min-width: 100px;
+  position: relative;
+}
+
+/* Resize handle — invisible by default, visible on hover */
+.column-resize-handle {
+  position: absolute;
+  top: 0;
+  width: 12px;
+  cursor: col-resize;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.column-resize-handle::after {
+  content: '';
+  display: block;
+  width: 2px;
+  height: 100%;
+  min-height: 24px;
+  border-radius: 1px;
+  background: transparent;
+  transition: background 0.15s;
+}
+.column-resize-handle:hover::after,
+.column-resize-handle:active::after {
+  background: var(--leaf-green);
+}
+
+/* Stack columns on narrow screens */
+@media (max-width: 640px) {
+  .column-list-inner {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .column-resize-handle {
+    display: none;
+  }
+}
+
 /* ─── Inline database embed ────────────────────────────────────────────── */
 .embedded-database-block {
   border: 1px solid var(--leaf-border-strong);

@@ -41,16 +41,17 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor } from '@tiptap/react'
+import { EditorContent, NodeViewWrapper, NodeViewContent, ReactNodeViewRenderer, useEditor } from '@tiptap/react'
 import { Node, mergeAttributes, InputRule } from '@tiptap/core'
 import { DOMSerializer } from '@tiptap/pm/model'
+import { TextSelection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import TaskItem from '@tiptap/extension-task-item'
 import TaskList from '@tiptap/extension-task-list'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MarkdownIt from 'markdown-it'
 import TurndownService from 'turndown'
-import { leavesApi, type Database, type LeafTreeItem, type LeafColumn, type LeafDocument } from '@/lib/api'
+import { leavesApi, type Database, type LeafTreeItem, type LeafDocument } from '@/lib/api'
 import { DatabaseIcon, LeafIcon } from '@/components/Icons'
 import { EmbeddedDatabaseBlock } from '@/components/database/EmbeddedDatabaseBlock'
 import { useNavigationProgress } from '@/components/NavigationProgress'
@@ -116,11 +117,6 @@ type EmbedNodeAttrs = {
   view?: Database['view_type']
 }
 
-type ColumnLayoutAttrs = {
-  layout: 2 | 3
-  columns: LeafColumn[]
-}
-
 function htmlToMarkdown(html: string): string {
   if (!html || html === '<p></p>') return ''
   return turndown.turndown(html)
@@ -138,30 +134,6 @@ function createTempId() {
   return `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-function createColumnData(layout: 2 | 3): LeafColumn[] {
-  return Array.from({ length: layout }, () => ({
-    id: createTempId(),
-    content: createEmptyLeafDocument(),
-  }))
-}
-
-function normalizeColumns(attrs: ColumnLayoutAttrs): ColumnLayoutAttrs {
-  const columns = attrs.columns.slice(0, attrs.layout)
-  while (columns.length < attrs.layout) {
-    columns.push({ id: createTempId(), content: createEmptyLeafDocument() })
-  }
-  return {
-    ...attrs,
-    columns: columns.map((column) => ({
-      ...column,
-      content: column.content ?? normalizeLeafDocument({
-        type: 'doc',
-        version: 1,
-        content: [{ type: 'paragraph', content: column.text ? [{ type: 'text', text: column.text }] : [] }],
-      }),
-    })),
-  }
-}
 
 function computeSlashMatch(editor: NonNullable<ReturnType<typeof useEditor>>): SlashMatch | null {
   const { state, view } = editor
@@ -384,138 +356,170 @@ function EmbeddedDatabaseView({
   )
 }
 
-function ColumnRichEditor({
-  content,
-  placeholder,
-  onChange,
-}: {
-  content: LeafDocument
-  placeholder: string
-  onChange: (content: LeafDocument) => void
-}) {
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const nestedEditor = useEditor({
-    extensions: [
-      StarterKit.configure({ gapcursor: false, dropcursor: false }),
-      WikilinkNode,
-      TaskList,
-      TaskItem.configure({ nested: true }),
-    ],
-    content,
-    immediatelyRender: false,
-    shouldRerenderOnTransaction: false,
-    editorProps: {
-      attributes: { class: 'leaf-prose max-w-none min-h-[120px] focus:outline-none' },
-    },
-    onUpdate: ({ editor }) => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current)
-      }
-      saveTimerRef.current = setTimeout(() => {
-        onChange(normalizeLeafDocument(editor.getJSON() as LeafDocument))
-      }, 250)
-    },
-    onBlur: ({ editor }) => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = null
-      }
-      onChange(normalizeLeafDocument(editor.getJSON() as LeafDocument))
-    },
-  }, [onChange])
-
-  useEffect(() => {
-    if (!nestedEditor) return
-    const next = normalizeLeafDocument(content)
-    const current = normalizeLeafDocument(nestedEditor.getJSON() as LeafDocument)
-    if (JSON.stringify(next) !== JSON.stringify(current)) {
-      nestedEditor.commands.setContent(next, false)
-    }
-  }, [content, nestedEditor])
-
-  useEffect(() => () => {
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current)
-    }
-  }, [])
-
-  return (
-    <div className="leaf-column-editor">
-      <EditorContent editor={nestedEditor} />
-      {!getLeafContentText(content).trim() ? (
-        <div className="pointer-events-none -mt-[118px] px-1 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>
-          {placeholder}
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function ColumnLayoutView({
+function ColumnListView({
   node,
-  updateAttributes,
-  deleteNode,
+  editor,
+  getPos,
 }: {
-  node: { attrs: ColumnLayoutAttrs }
-  updateAttributes: (attrs: Partial<ColumnLayoutAttrs>) => void
+  node: import('@tiptap/pm/model').Node
+  editor: import('@tiptap/core').Editor
+  getPos: () => number | undefined
   deleteNode: () => void
 }) {
-  const attrs = normalizeColumns(node.attrs)
-  const dragIndexRef = useRef<number | null>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const [handles, setHandles] = useState<{ left: number; height: number }[]>([])
+  const resizingRef = useRef(false)
 
-  const setColumnContent = (index: number, content: LeafDocument) => {
-    const nextColumns = attrs.columns.map((column, currentIndex) => (
-      currentIndex === index ? { ...column, content, text: undefined } : column
-    ))
-    updateAttributes({ columns: nextColumns })
-  }
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
 
-  const moveColumn = (fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex) return
-    const nextColumns = [...attrs.columns]
-    const [moved] = nextColumns.splice(fromIndex, 1)
-    nextColumns.splice(toIndex, 0, moved)
-    updateAttributes({ columns: nextColumns })
-  }
+    const measure = () => {
+      if (resizingRef.current) return
+      const contentEl = el.querySelector('[data-node-view-content]') as HTMLElement | null
+      if (!contentEl) return
+
+      const cols = Array.from(contentEl.children).filter(
+        (c) => c instanceof HTMLElement && c.getAttribute('data-type') === 'column',
+      ) as HTMLElement[]
+
+      if (cols.length < 2) { setHandles([]); return }
+
+      const wrapperRect = el.getBoundingClientRect()
+      const next: { left: number; height: number }[] = []
+      for (let i = 0; i < cols.length - 1; i++) {
+        const leftRect = cols[i].getBoundingClientRect()
+        const rightRect = cols[i + 1].getBoundingClientRect()
+        next.push({
+          left: leftRect.right - wrapperRect.left + 2,
+          height: Math.max(leftRect.height, rightRect.height, 40),
+        })
+      }
+      setHandles(next)
+    }
+
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    const onUpdate = () => requestAnimationFrame(measure)
+    editor.on('update', onUpdate)
+    return () => { ro.disconnect(); editor.off('update', onUpdate) }
+  }, [editor, node.childCount])
+
+  const startResize = useCallback((event: React.MouseEvent, handleIndex: number) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const pos = getPos()
+    if (typeof pos !== 'number') return
+    const el = wrapperRef.current
+    if (!el) return
+    const contentEl = el.querySelector('[data-node-view-content]') as HTMLElement | null
+    if (!contentEl) return
+
+    const colEls = Array.from(contentEl.children).filter(
+      (c) => c instanceof HTMLElement && c.getAttribute('data-type') === 'column',
+    ) as HTMLElement[]
+    const gapPx = 16
+    const containerWidth = el.getBoundingClientRect().width - (colEls.length - 1) * gapPx
+
+    const numCols = node.childCount
+    const startX = event.clientX
+    const leftCol = node.child(handleIndex)
+    const rightCol = node.child(handleIndex + 1)
+    const lw = (leftCol.attrs.width as number | null) || (1 / numCols)
+    const rw = (rightCol.attrs.width as number | null) || (1 / numCols)
+    const total = lw + rw
+
+    resizingRef.current = true
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    const onMove = (e: MouseEvent) => {
+      const dx = e.clientX - startX
+      const dFrac = dx / containerWidth
+      const newLW = Math.max(0.15, Math.min(total - 0.15, lw + dFrac))
+      const newRW = total - newLW
+      if (colEls[handleIndex]) colEls[handleIndex].style.flex = `0 0 ${(newLW * 100).toFixed(1)}%`
+      if (colEls[handleIndex + 1]) colEls[handleIndex + 1].style.flex = `0 0 ${(newRW * 100).toFixed(1)}%`
+    }
+
+    const onUp = (e: MouseEvent) => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      resizingRef.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+
+      const dx = e.clientX - startX
+      const dFrac = dx / containerWidth
+      const newLW = Math.max(0.15, Math.min(total - 0.15, lw + dFrac))
+      const newRW = total - newLW
+
+      const currentPos = getPos()
+      if (typeof currentPos !== 'number') return
+      const columnListNode = editor.state.doc.nodeAt(currentPos)
+      if (!columnListNode || columnListNode.type.name !== 'columnList') return
+
+      const { tr } = editor.state
+      let childPos = currentPos + 1
+      for (let i = 0; i < numCols; i++) {
+        const child = columnListNode.child(i)
+        if (i === handleIndex) {
+          tr.setNodeMarkup(childPos, undefined, { ...child.attrs, width: parseFloat(newLW.toFixed(4)) })
+        } else if (i === handleIndex + 1) {
+          tr.setNodeMarkup(childPos, undefined, { ...child.attrs, width: parseFloat(newRW.toFixed(4)) })
+        }
+        childPos += child.nodeSize
+      }
+      editor.view.dispatch(tr)
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [node, editor, getPos])
+
+  /* Unwrap the column list: move all column children into the parent doc as
+     sequential blocks, then delete the now-empty columnList shell. */
+  const unwrapColumns = useCallback(() => {
+    const pos = getPos()
+    if (typeof pos !== 'number') return
+    const colList = editor.state.doc.nodeAt(pos)
+    if (!colList) return
+
+    const blocks: import('@tiptap/pm/model').Node[] = []
+    colList.forEach((col) => {
+      col.forEach((block) => blocks.push(block))
+    })
+
+    const { tr } = editor.state
+    tr.replaceWith(pos, pos + colList.nodeSize, blocks)
+    editor.view.dispatch(tr)
+  }, [editor, getPos])
 
   return (
-    <NodeViewWrapper className="group my-2">
-      <div contentEditable={false} className="relative">
+    <NodeViewWrapper ref={wrapperRef} className="column-list-wrapper group/cols my-2 relative" data-type="column-list">
+      <div contentEditable={false} className="absolute -top-3 right-0 z-10">
         <button
           type="button"
-          onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }}
-          onClick={(event) => { event.stopPropagation(); deleteNode() }}
-          className="absolute -top-3 right-0 z-10 rounded-md px-2 py-0.5 text-[11px] opacity-0 transition-opacity group-hover:opacity-100"
+          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation() }}
+          onClick={(e) => { e.stopPropagation(); unwrapColumns() }}
+          className="rounded-md px-2 py-0.5 text-[11px] opacity-0 transition-opacity group-hover/cols:opacity-100"
           style={{ color: 'var(--leaf-text-muted)', background: 'var(--leaf-bg-editor, #fff)', border: '1px solid rgba(0,0,0,0.08)' }}
         >
           Remove columns
         </button>
-        <div
-          className="grid gap-4"
-          style={{ gridTemplateColumns: `repeat(${attrs.layout}, minmax(0, 1fr))` }}
-        >
-          {attrs.columns.map((column, index) => (
-            <div
-              key={column.id}
-              className="min-w-0"
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault()
-                const fromIndex = dragIndexRef.current
-                if (fromIndex === null) return
-                moveColumn(fromIndex, index)
-                dragIndexRef.current = null
-              }}
-            >
-              <ColumnRichEditor
-                content={column.content ?? createEmptyLeafDocument()}
-                placeholder={`Column ${index + 1}…`}
-                onChange={(content) => setColumnContent(index, content)}
-              />
-            </div>
-          ))}
-        </div>
       </div>
+      <NodeViewContent className="column-list-inner" />
+      {handles.map((h, i) => (
+        <div
+          key={i}
+          contentEditable={false}
+          className="column-resize-handle"
+          style={{ left: h.left, top: 0, height: h.height }}
+          onMouseDown={(e) => startResize(e, i)}
+        />
+      ))}
     </NodeViewWrapper>
   )
 }
@@ -628,29 +632,52 @@ const HashtagNode = Node.create({
     ]
   },
 })
-const ColumnLayout = Node.create({
-  name: 'columnLayout',
-  group: 'block',
-  atom: true,
-  draggable: true,
-  selectable: true,
-  defining: true,
+const Column = Node.create({
+  name: 'column',
+  content: 'block+',
   isolating: true,
-  allowGapCursor: false,
+  defining: true,
   addAttributes() {
     return {
-      layout: { default: 2 },
-      columns: { default: createColumnData(2) },
+      width: {
+        default: null,
+        renderHTML: (attributes: Record<string, unknown>) => {
+          if (!attributes.width) return {}
+          return {
+            'data-col-width': String(attributes.width),
+            style: `flex: 0 0 ${((attributes.width as number) * 100).toFixed(1)}%; min-width: 100px;`,
+          }
+        },
+        parseHTML: (element: HTMLElement) => {
+          const w = element.getAttribute('data-col-width')
+          return w ? parseFloat(w) : null
+        },
+      },
     }
   },
   parseHTML() {
-    return [{ tag: 'div[data-type="column-layout"]' }]
+    return [{ tag: 'div[data-type="column"]' }]
   },
-  renderHTML({ node }) {
-    return ['div', { 'data-type': 'column-layout', 'data-layout': String(node.attrs.layout) }]
+  renderHTML({ HTMLAttributes }) {
+    return ['div', mergeAttributes({ 'data-type': 'column' }, HTMLAttributes), 0]
+  },
+})
+
+const ColumnList = Node.create({
+  name: 'columnList',
+  group: 'block',
+  content: 'column{2,6}',
+  defining: true,
+  isolating: true,
+  draggable: true,
+  parseHTML() {
+    return [{ tag: 'div[data-type="column-list"]' }]
+  },
+  renderHTML() {
+    return ['div', { 'data-type': 'column-list' }, 0]
   },
   addNodeView() {
-    return ReactNodeViewRenderer(ColumnLayoutView as never)
+    return ReactNodeViewRenderer(ColumnListView as never)
   },
 })
 
@@ -918,7 +945,8 @@ export default function LeafEditor({
     }),
     WikilinkNode,
     HashtagNode,
-    ColumnLayout,
+    Column,
+    ColumnList,
     PageEmbed,
     DatabaseEmbed,
     TaskList,
@@ -1102,6 +1130,53 @@ export default function LeafEditor({
       }
 
       return false
+    },
+    handleDrop: (view: import('@tiptap/pm/view').EditorView, event: DragEvent) => {
+      const dropInfo = columnDropRef.current
+      const source = dragSourceRef.current
+      if (!dropInfo || !source || !view.dragging) return false
+
+      // Column-zone drop — handle it here so ProseMirror doesn't process it
+      event.preventDefault()
+      setColumnDropZone(null)
+      columnDropRef.current = null
+      dragSourceRef.current = null
+
+      const { targetNodePos, targetNodeEnd, side } = dropInfo
+      const { pos: sourcePos, end: sourceEnd } = source
+
+      if (sourcePos === targetNodePos) {
+        view.dragging = null
+        return true
+      }
+
+      const targetNode = view.state.doc.nodeAt(targetNodePos)
+      const sourceNode = view.state.doc.nodeAt(sourcePos)
+      if (!targetNode || !sourceNode) {
+        view.dragging = null
+        return true
+      }
+
+      view.dragging = null
+
+      const schema = view.state.schema
+      const leftContent = side === 'left' ? sourceNode : targetNode
+      const rightContent = side === 'left' ? targetNode : sourceNode
+      const leftColumn = schema.nodes.column.create(null, [leftContent.copy(leftContent.content)])
+      const rightColumn = schema.nodes.column.create(null, [rightContent.copy(rightContent.content)])
+      const columnListNode = schema.nodes.columnList.create(null, [leftColumn, rightColumn])
+
+      const { tr } = view.state
+      if (sourcePos > targetNodePos) {
+        tr.delete(sourcePos, sourceEnd)
+        tr.replaceWith(targetNodePos, targetNodeEnd, columnListNode)
+      } else {
+        tr.replaceWith(targetNodePos, targetNodeEnd, columnListNode)
+        tr.delete(sourcePos, sourceEnd)
+      }
+
+      view.dispatch(tr)
+      return true
     },
   }), [])
 
@@ -1331,17 +1406,25 @@ export default function LeafEditor({
         editor.chain().focus().setTextSelection(selectionPos).toggleBlockquote().run()
         return
       case 'columns2':
-        editor.chain().focus().insertContentAt(selectionPos, [
-          { type: 'columnLayout', attrs: { layout: 2, columns: createColumnData(2) } },
-          { type: 'paragraph' },
-        ]).run()
-        return
       case 'columns3':
+      case 'columns4':
+      case 'columns5': {
+        // Prevent nesting columns inside columns
+        const $pos = editor.state.doc.resolve(selectionPos)
+        for (let d = $pos.depth; d > 0; d--) {
+          if ($pos.node(d).type.name === 'column') return
+        }
+        const count = parseInt(action.replace('columns', ''))
+        const columns = Array.from({ length: count }, () => ({
+          type: 'column',
+          content: [{ type: 'paragraph' }],
+        }))
         editor.chain().focus().insertContentAt(selectionPos, [
-          { type: 'columnLayout', attrs: { layout: 3, columns: createColumnData(3) } },
+          { type: 'columnList', content: columns },
           { type: 'paragraph' },
         ]).run()
         return
+      }
       case 'subpage':
         await insertEmbedPlaceholder('page', selectionPos)
         return
@@ -1519,10 +1602,10 @@ export default function LeafEditor({
         return
       }
 
-      // Don't allow dropping on columnLayout or embed nodes
+      // Don't allow dropping on columnList or embed nodes
       const targetNode = editor.state.doc.nodeAt(nodeStart)
       if (targetNode && (
-        targetNode.type.name === 'columnLayout' ||
+        targetNode.type.name === 'columnList' ||
         targetNode.type.name === 'databaseEmbed' ||
         targetNode.type.name === 'pageEmbed'
       )) {
@@ -1548,67 +1631,6 @@ export default function LeafEditor({
     }
   }, [editor])
 
-  const handleEditorDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    const dropInfo = columnDropRef.current
-    const source = dragSourceRef.current
-    if (!dropInfo || !source || !editor || !editor.view.dragging) return
-
-    event.preventDefault()
-    event.stopPropagation()
-    setColumnDropZone(null)
-    columnDropRef.current = null
-    dragSourceRef.current = null
-
-    const { targetNodePos, targetNodeEnd, side } = dropInfo
-    const { pos: sourcePos, end: sourceEnd } = source
-
-    // Don't drop a block onto itself
-    if (sourcePos === targetNodePos) {
-      editor.view.dragging = null
-      return
-    }
-
-    const targetNode = editor.state.doc.nodeAt(targetNodePos)
-    const sourceNode = editor.state.doc.nodeAt(sourcePos)
-    if (!targetNode || !sourceNode) {
-      editor.view.dragging = null
-      return
-    }
-
-    // Serialize both nodes as LeafDocument content for columns
-    const serializeNodeToDoc = (node: import('@tiptap/pm/model').Node): LeafDocument => {
-      return normalizeLeafDocument({ type: 'doc', version: 1, content: [node.toJSON()] } as LeafDocument)
-    }
-
-    const targetDoc = serializeNodeToDoc(targetNode)
-    const sourceDoc = serializeNodeToDoc(sourceNode)
-
-    // Determine column order based on drop side
-    const leftDoc = side === 'left' ? sourceDoc : targetDoc
-    const rightDoc = side === 'left' ? targetDoc : sourceDoc
-
-    const columns: LeafColumn[] = [
-      { id: createTempId(), content: leftDoc },
-      { id: createTempId(), content: rightDoc },
-    ]
-
-    // Clear TipTap's dragging state to prevent default drop
-    editor.view.dragging = null
-
-    const { tr } = editor.state
-    const columnNode = editor.state.schema.nodes.columnLayout.create({ layout: 2, columns })
-
-    // Process the later position first so earlier positions remain valid
-    if (sourcePos > targetNodePos) {
-      tr.delete(sourcePos, sourceEnd)
-      tr.replaceWith(targetNodePos, targetNodeEnd, columnNode)
-    } else {
-      tr.replaceWith(targetNodePos, targetNodeEnd, columnNode)
-      tr.delete(sourcePos, sourceEnd)
-    }
-
-    editor.view.dispatch(tr)
-  }, [editor])
 
   const handleEditorDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     // Only clear if actually leaving the container, not entering a child
@@ -1709,7 +1731,6 @@ export default function LeafEditor({
             className="relative"
             onDragOver={handleEditorDragOver}
             onDragLeave={handleEditorDragLeave}
-            onDrop={handleEditorDrop}
           >
             {columnDropZone && (
               <div
@@ -1765,6 +1786,12 @@ export default function LeafEditor({
                       const depth = $pos.depth > 0 ? 1 : 0
                       const nodeStart = $pos.before(depth)
                       const nodeEnd = $pos.after(depth)
+
+                      // Select the block so ProseMirror knows what to delete on move-drop
+                      editor.view.dispatch(
+                        editor.state.tr.setSelection(TextSelection.create(editor.state.doc, nodeStart, nodeEnd)),
+                      )
+
                       const slice = editor.state.doc.slice(nodeStart, nodeEnd)
                       const serializer = DOMSerializer.fromSchema(editor.state.schema)
                       const fragment = serializer.serializeFragment(slice.content)

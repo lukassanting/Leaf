@@ -31,6 +31,8 @@ You are helping build **Leaf**, a Notion-inspired personal knowledge manager. St
 
 - **`src/lib/api.ts` vs `src/lib/api/index.ts`.** TypeScript prefers the file over the directory. Keep only the directory (`src/lib/api/`) with an `index.ts`; delete any top-level `api.ts` that might shadow it.
 
+- **Column layout is nested nodes, not atom blobs.** Columns use two TipTap node types: `columnList` (container, `content: 'column{2,6}'`) and `column` (child, `content: 'block+'`). Column content is real ProseMirror content — no nested `useEditor` instances. The old `columnLayout` atom node with `columns` JSON attribute is auto-migrated in `normalizeLeafDocument`. Do not nest `columnList` inside `column` (slash commands prevent this at runtime). Resize handles are overlay elements positioned via DOM measurement in `ColumnListView`.
+
 - **Windows CRLF in shell scripts.** Add `RUN sed -i 's/\r//' wait-for-it.sh && chmod +x wait-for-it.sh` in `backend/Dockerfile.dev`.
 
 ## Project layout (top-level)

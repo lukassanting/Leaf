@@ -127,13 +127,13 @@ Leaf is now on the v3 shell and editor architecture:
 - **Stable editor core:** custom TipTap-based editor with slash commands, block insertion, page embeds, inline database embeds, Markdown import/export, and rich/Markdown mode switching.
 - **Workspace shell:** centered identity header, icon picker, content width modes, focus mode, bottom status bar, and a live right sidebar for metadata, tree navigation, and backlinks.
 - **Database parity:** standalone and inline databases share the same table, board, gallery, and list surfaces plus shared metadata handling.
-- **Column layouts:** drag any block to the left or right edge of another block to create side-by-side columns; also available via slash commands.
+- **Column layouts:** real nested column architecture (2–5 columns) with drag-to-create, resizable widths, Notion-style invisible design, and responsive stacking on mobile. Available via `/columns` slash commands or by dragging blocks side by side.
 - **Local-first sync:** IndexedDB cache, offline queueing, debounced autosave, and conflict-aware content patching.
 
 ## Features
 
 - **Pages & tree:** Notion-like hierarchy (projects/pages), shared sidebar with search, collapse-all, expand/collapse per node, inline rename, delete, drag-and-drop reorder, and inline child-page creation.
-- **Editor:** TipTap rich text with slash insertion, block menu, page/database embeds, drag-to-create column layouts, optional Markdown source mode, and Markdown import/export.
+- **Editor:** TipTap rich text with slash insertion, block menu, page/database embeds, resizable column layouts (2–5), drag-to-create columns, optional Markdown source mode, and Markdown import/export.
 - **Autosave:** Debounced PATCH to `/leaves/{id}/content` (~800 ms idle); Ctrl+S / Cmd+S to save immediately; optional conflict detection via `updated_at`.
 - **Local-first cache:** IndexedDB (with localStorage fallback) for instant page load and offline edits; pending saves sync when back online.
 - **Databases:** Notion-style collections of pages. Each entry is a real page. Views: Table, Board, Gallery, List. Schema-driven columns (text, number, tags, select). "Name" always links to the entry page. Inline cell editing and add-column flows are shared between standalone and embedded databases.
