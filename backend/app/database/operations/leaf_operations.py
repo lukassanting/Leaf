@@ -374,6 +374,7 @@ class LeafOperations:
         parent_id: str | None = None,
         limit: int | None = None,
         offset: int | None = None,
+        include_db_rows: bool = False,
     ) -> list[LeafTreeItem]:
         try:
             with self.db.get_db_session() as db_session:
@@ -392,7 +393,8 @@ class LeafOperations:
                     q = q.filter(LeafModel.type == type_filter)
                 if parent_id is not None:
                     q = q.filter(LeafModel.parent_id == parent_id)
-                q = q.filter(LeafModel.database_id.is_(None))
+                if not include_db_rows:
+                    q = q.filter(LeafModel.database_id.is_(None))
                 q = q.order_by(LeafModel.order.asc(), LeafModel.updated_at.desc())
                 if offset is not None:
                     q = q.offset(offset)

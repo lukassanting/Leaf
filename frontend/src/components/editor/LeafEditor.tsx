@@ -296,6 +296,15 @@ function EmbeddedDatabaseView({
 }) {
   const { id, title, status, view } = node.attrs
 
+  const handleDelete = useCallback(() => {
+    deleteNode()
+    if (id) {
+      void databasesApi.delete(id).then(() => {
+        window.dispatchEvent(new CustomEvent('leaf-tree-changed'))
+      }).catch(console.error)
+    }
+  }, [deleteNode, id])
+
   if (status !== 'ready' || !id) {
     return (
       <NodeViewWrapper className="my-2">
@@ -325,7 +334,7 @@ function EmbeddedDatabaseView({
           <button
             type="button"
             onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }}
-            onClick={(event) => { event.stopPropagation(); deleteNode() }}
+            onClick={(event) => { event.stopPropagation(); handleDelete() }}
             className="text-xs opacity-0 transition-opacity group-hover:opacity-100"
             style={{ color: 'var(--leaf-text-muted)' }}
           >
@@ -343,7 +352,7 @@ function EmbeddedDatabaseView({
           <button
             type="button"
             onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }}
-            onClick={(event) => { event.stopPropagation(); deleteNode() }}
+            onClick={(event) => { event.stopPropagation(); handleDelete() }}
             className="rounded-md px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100"
             style={{ color: 'var(--leaf-text-muted)', background: 'rgba(255,255,255,0.94)', border: '1px solid rgba(0,0,0,0.06)' }}
           >
@@ -1132,9 +1141,11 @@ export default function LeafEditor({
       return false
     },
     handleDrop: (view: import('@tiptap/pm/view').EditorView, event: DragEvent) => {
+      // ProseMirror sets view.dragging = null BEFORE calling this handler,
+      // so we rely on our own refs to detect column-zone drops.
       const dropInfo = columnDropRef.current
       const source = dragSourceRef.current
-      if (!dropInfo || !source || !view.dragging) return false
+      if (!dropInfo || !source) return false
 
       // Column-zone drop — handle it here so ProseMirror doesn't process it
       event.preventDefault()
@@ -1146,18 +1157,14 @@ export default function LeafEditor({
       const { pos: sourcePos, end: sourceEnd } = source
 
       if (sourcePos === targetNodePos) {
-        view.dragging = null
         return true
       }
 
       const targetNode = view.state.doc.nodeAt(targetNodePos)
       const sourceNode = view.state.doc.nodeAt(sourcePos)
       if (!targetNode || !sourceNode) {
-        view.dragging = null
         return true
       }
-
-      view.dragging = null
 
       const schema = view.state.schema
       const leftContent = side === 'left' ? sourceNode : targetNode
@@ -1192,7 +1199,7 @@ export default function LeafEditor({
   useEffect(() => {
     let cancelled = false
 
-    void leavesApi.getTree()
+    void leavesApi.getTree({ includeDbRows: true })
       .then((items) => {
         if (cancelled) return
         linkableLeavesRef.current = items.filter((item) => item.type === 'page')
@@ -1546,14 +1553,14 @@ export default function LeafEditor({
   // ─── Drag-to-create-columns ────────────────────────────────────────────────
   const handleEditorDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     if (!editor || !containerRef.current) return
-    // Only handle when TipTap is dragging a block
-    if (!editor.view.dragging) return
+    // Only handle when a block drag is in progress (our ref or ProseMirror's tracker)
+    if (!dragSourceRef.current && !editor.view.dragging) return
 
     const container = containerRef.current
     const proseMirror = container.querySelector('.ProseMirror')
     if (!proseMirror) return
 
-    const EDGE_ZONE = 40 // px from left/right edge of block to trigger column drop
+    const EDGE_ZONE = 60 // px from left/right edge of block to trigger column drop
 
     // Find the top-level block element under the cursor
     let targetEl: HTMLElement | null = null

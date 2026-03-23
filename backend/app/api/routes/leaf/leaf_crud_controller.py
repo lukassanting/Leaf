@@ -50,15 +50,18 @@ async def read_leaf_tree(
     parent_id: str | None = Query(None),
     limit: int | None = Query(None, ge=1, le=500),
     offset: int | None = Query(None, ge=0),
+    include_db_rows: bool = Query(False),
 ):
     """
     Returns lightweight tree items (no content). Optional: type, parent_id, limit, offset.
+    Pass include_db_rows=true to also return database row pages (for wikilink search).
     """
     return await leaf_ops.get_leaf_tree(
         type_filter=type,
         parent_id=parent_id,
         limit=limit,
         offset=offset,
+        include_db_rows=include_db_rows,
     )
 
 @router.get("/leaves/{leaf_id}/backlinks", response_model=list[LeafTreeItem])
