@@ -180,7 +180,18 @@ cython_debug/
 backend/data/
 
 # Documentation
-docs/
+docs/*
+!docs/PLANS_AND_ROADMAP.md
+!docs/DEBUGGING_PLAYBOOK.md
+
+# Keep selected frontend lib files versioned
+!frontend/src/lib/
+frontend/src/lib/*
+!frontend/src/lib/api/
+frontend/src/lib/api/*
+!frontend/src/lib/api/types.ts
+!frontend/src/lib/cacheMappers.ts
+!frontend/src/lib/leafCache.ts
 
 # AI
 .claude/

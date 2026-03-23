@@ -494,7 +494,8 @@ export function Sidebar({ activeId }: { activeId?: string }) {
                 let isFirst = true
                 return outline.map((item) => {
                   counters[item.level]++
-                  for (let l = item.level + 1; l <= 3; l++) counters[l] = 0
+                  if (item.level < 3) counters[3] = 0
+                  if (item.level < 2) counters[2] = 0
                   const parts = [counters[1]]
                   if (counters[2] > 0 || item.level >= 2) parts.push(counters[2])
                   if (counters[3] > 0 || item.level >= 3) parts.push(counters[3])
