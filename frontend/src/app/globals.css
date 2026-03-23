@@ -230,12 +230,6 @@ html, body {
 }
 
 /* ─── Column layout blocks ─────────────────────────────────────────────── */
-.column-layout-cell {
-  background: rgba(236, 253, 245, 0.5);
-  border: 1px dashed rgba(16, 185, 129, 0.2);
-  border-radius: 8px;
-  padding: 12px 14px;
-}
 
 /* ─── Inline database embed ────────────────────────────────────────────── */
 .embedded-database-block {

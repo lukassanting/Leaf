@@ -96,10 +96,14 @@ export function EmbeddedDatabaseBlock({ id }: { id: string }) {
         </div>
         <Link
           href={`/databases/${db.id}`}
-          className="shrink-0 text-xs"
+          className="flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-black/5"
           style={{ color: 'var(--leaf-text-muted)' }}
         >
-          Open ↗
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H9.5M14 2v4.5M14 2L8 8" />
+            <path d="M13 9.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h3.5" />
+          </svg>
+          Open as full page
         </Link>
       </div>
 

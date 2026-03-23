@@ -127,13 +127,13 @@ Leaf is now on the v3 shell and editor architecture:
 - **Stable editor core:** custom TipTap-based editor with slash commands, block insertion, page embeds, inline database embeds, Markdown import/export, and rich/Markdown mode switching.
 - **Workspace shell:** centered identity header, icon picker, content width modes, focus mode, bottom status bar, and a live right sidebar for metadata, tree navigation, and backlinks.
 - **Database parity:** standalone and inline databases share the same table, board, gallery, and list surfaces plus shared metadata handling.
-- **Column layouts:** persisted 2-column and 3-column layout blocks with inline editing and in-block drag reordering.
+- **Column layouts:** drag any block to the left or right edge of another block to create side-by-side columns; also available via slash commands.
 - **Local-first sync:** IndexedDB cache, offline queueing, debounced autosave, and conflict-aware content patching.
 
 ## Features
 
 - **Pages & tree:** Notion-like hierarchy (projects/pages), shared sidebar with search, collapse-all, expand/collapse per node, inline rename, delete, drag-and-drop reorder, and inline child-page creation.
-- **Editor:** TipTap rich text with slash insertion, block menu, page/database embeds, 2-column and 3-column layout blocks, optional Markdown source mode, and Markdown import/export.
+- **Editor:** TipTap rich text with slash insertion, block menu, page/database embeds, drag-to-create column layouts, optional Markdown source mode, and Markdown import/export.
 - **Autosave:** Debounced PATCH to `/leaves/{id}/content` (~800 ms idle); Ctrl+S / Cmd+S to save immediately; optional conflict detection via `updated_at`.
 - **Local-first cache:** IndexedDB (with localStorage fallback) for instant page load and offline edits; pending saves sync when back online.
 - **Databases:** Notion-style collections of pages. Each entry is a real page. Views: Table, Board, Gallery, List. Schema-driven columns (text, number, tags, select). "Name" always links to the entry page. Inline cell editing and add-column flows are shared between standalone and embedded databases.
@@ -145,11 +145,9 @@ Leaf is now on the v3 shell and editor architecture:
 
 The next recommended phase is:
 
-1. Upgrade column layouts from lightweight text columns to true nested block columns.
-2. Add a real block drag handle for document-level reordering, not just column-internal drag.
-3. Build search and a quick switcher (`Cmd+K`) on top of the structured content model.
-4. Expand database capabilities with sort/filter/group configuration and richer property types.
-5. Add conflict-resolution UI and broader CI/production hardening.
+1. Build search and a quick switcher (`Cmd+K`) on top of the structured content model.
+2. Expand database capabilities with sort/filter/group configuration and richer property types.
+3. Add conflict-resolution UI and broader CI/production hardening.
 
 ## Framework direction
 

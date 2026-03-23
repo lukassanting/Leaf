@@ -366,7 +366,7 @@ function EmbeddedDatabaseView({
   return (
     <NodeViewWrapper className="group my-2" data-drag-handle="">
       <div contentEditable={false} className="relative">
-        <div className="absolute right-3 top-3 z-10">
+        <div className="absolute right-14 top-3 z-10">
           <button
             type="button"
             onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }}
@@ -479,40 +479,24 @@ function ColumnLayoutView({
 
   return (
     <NodeViewWrapper className="group my-2">
-      <div
-        contentEditable={false}
-        className="rounded-2xl border p-4"
-        style={{ borderColor: 'rgba(0,0,0,0.07)', background: '#fafafa' }}
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>
-              {attrs.layout === 2 ? 'Two-column layout' : 'Three-column layout'}
-            </div>
-            <div className="text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
-              Side-by-side blocks for notes, comparisons, and reference content.
-            </div>
-          </div>
-          <button
-            type="button"
-            onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }}
-            onClick={deleteNode}
-            className="rounded-md px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100"
-            style={{ color: 'var(--leaf-text-muted)', border: '1px solid rgba(0,0,0,0.06)', background: 'rgba(255,255,255,0.86)' }}
-          >
-            Remove
-          </button>
-        </div>
-
+      <div contentEditable={false} className="relative">
+        <button
+          type="button"
+          onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }}
+          onClick={(event) => { event.stopPropagation(); deleteNode() }}
+          className="absolute -top-3 right-0 z-10 rounded-md px-2 py-0.5 text-[11px] opacity-0 transition-opacity group-hover:opacity-100"
+          style={{ color: 'var(--leaf-text-muted)', background: 'var(--leaf-bg-editor, #fff)', border: '1px solid rgba(0,0,0,0.08)' }}
+        >
+          Remove columns
+        </button>
         <div
-          className="grid gap-5"
+          className="grid gap-4"
           style={{ gridTemplateColumns: `repeat(${attrs.layout}, minmax(0, 1fr))` }}
         >
           {attrs.columns.map((column, index) => (
             <div
               key={column.id}
-              className="rounded-xl border px-3 py-3"
-              style={{ border: '1px dashed rgba(0,0,0,0.1)', background: 'rgba(255,255,255,0.9)' }}
+              className="min-w-0"
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault()
@@ -522,21 +506,6 @@ function ColumnLayoutView({
                 dragIndexRef.current = null
               }}
             >
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-[0.07em]" style={{ color: 'var(--leaf-text-muted)' }}>
-                  Column {index + 1}
-                </span>
-                <button
-                  type="button"
-                  draggable
-                  onDragStart={() => { dragIndexRef.current = index }}
-                  className="cursor-grab rounded px-1 text-xs"
-                  style={{ color: 'var(--leaf-text-muted)' }}
-                  title="Drag to reorder column"
-                >
-                  ⋮⋮
-                </button>
-              </div>
               <ColumnRichEditor
                 content={column.content ?? createEmptyLeafDocument()}
                 placeholder={`Column ${index + 1}…`}
@@ -854,6 +823,9 @@ export default function LeafEditor({
   const [menuOpen, setMenuOpen] = useState(false)
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null)
   const [wikilinkMenu, setWikilinkMenu] = useState<WikilinkMenuState | null>(null)
+  const [columnDropZone, setColumnDropZone] = useState<{ top: number; left: number; width: number; height: number; side: 'left' | 'right' } | null>(null)
+  const columnDropRef = useRef<{ targetNodePos: number; targetNodeEnd: number; side: 'left' | 'right' } | null>(null)
+  const dragSourceRef = useRef<{ pos: number; end: number } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const pendingInsertPos = useRef<number | null>(null)
@@ -1487,6 +1459,170 @@ export default function LeafEditor({
     void applyAction(action, { selectionPos: Math.max(1, pos - 1) })
   }, [editor, applyAction])
 
+  // ─── Drag-to-create-columns ────────────────────────────────────────────────
+  const handleEditorDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!editor || !containerRef.current) return
+    // Only handle when TipTap is dragging a block
+    if (!editor.view.dragging) return
+
+    const container = containerRef.current
+    const proseMirror = container.querySelector('.ProseMirror')
+    if (!proseMirror) return
+
+    const EDGE_ZONE = 40 // px from left/right edge of block to trigger column drop
+
+    // Find the top-level block element under the cursor
+    let targetEl: HTMLElement | null = null
+    for (const child of proseMirror.children) {
+      const rect = (child as HTMLElement).getBoundingClientRect()
+      if (event.clientY >= rect.top && event.clientY <= rect.bottom) {
+        targetEl = child as HTMLElement
+        break
+      }
+    }
+
+    if (!targetEl) {
+      setColumnDropZone(null)
+      columnDropRef.current = null
+      return
+    }
+
+    const blockRect = targetEl.getBoundingClientRect()
+    const containerRect = container.getBoundingClientRect()
+    const relX = event.clientX - blockRect.left
+    const side: 'left' | 'right' | null =
+      relX <= EDGE_ZONE ? 'left' :
+      relX >= blockRect.width - EDGE_ZONE ? 'right' : null
+
+    if (!side) {
+      setColumnDropZone(null)
+      columnDropRef.current = null
+      return
+    }
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+
+    // Resolve the ProseMirror position of this target block
+    const pos = editor.view.posAtDOM(targetEl, 0)
+    try {
+      const $pos = editor.state.doc.resolve(pos)
+      const depth = $pos.depth > 0 ? 1 : 0
+      const nodeStart = $pos.before(depth)
+      const nodeEnd = $pos.after(depth)
+
+      // Don't allow dropping onto itself
+      if (dragSourceRef.current && dragSourceRef.current.pos === nodeStart) {
+        setColumnDropZone(null)
+        columnDropRef.current = null
+        return
+      }
+
+      // Don't allow dropping on columnLayout or embed nodes
+      const targetNode = editor.state.doc.nodeAt(nodeStart)
+      if (targetNode && (
+        targetNode.type.name === 'columnLayout' ||
+        targetNode.type.name === 'databaseEmbed' ||
+        targetNode.type.name === 'pageEmbed'
+      )) {
+        setColumnDropZone(null)
+        columnDropRef.current = null
+        return
+      }
+
+      columnDropRef.current = { targetNodePos: nodeStart, targetNodeEnd: nodeEnd, side }
+
+      // Show indicator
+      const indicatorWidth = 3
+      setColumnDropZone({
+        top: blockRect.top - containerRect.top,
+        left: side === 'left' ? blockRect.left - containerRect.left - 1 : blockRect.right - containerRect.left - 1,
+        width: indicatorWidth,
+        height: blockRect.height,
+        side,
+      })
+    } catch {
+      setColumnDropZone(null)
+      columnDropRef.current = null
+    }
+  }, [editor])
+
+  const handleEditorDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    const dropInfo = columnDropRef.current
+    const source = dragSourceRef.current
+    if (!dropInfo || !source || !editor || !editor.view.dragging) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    setColumnDropZone(null)
+    columnDropRef.current = null
+    dragSourceRef.current = null
+
+    const { targetNodePos, targetNodeEnd, side } = dropInfo
+    const { pos: sourcePos, end: sourceEnd } = source
+
+    // Don't drop a block onto itself
+    if (sourcePos === targetNodePos) {
+      editor.view.dragging = null
+      return
+    }
+
+    const targetNode = editor.state.doc.nodeAt(targetNodePos)
+    const sourceNode = editor.state.doc.nodeAt(sourcePos)
+    if (!targetNode || !sourceNode) {
+      editor.view.dragging = null
+      return
+    }
+
+    // Serialize both nodes as LeafDocument content for columns
+    const serializeNodeToDoc = (node: import('@tiptap/pm/model').Node): LeafDocument => {
+      return normalizeLeafDocument({ type: 'doc', version: 1, content: [node.toJSON()] } as LeafDocument)
+    }
+
+    const targetDoc = serializeNodeToDoc(targetNode)
+    const sourceDoc = serializeNodeToDoc(sourceNode)
+
+    // Determine column order based on drop side
+    const leftDoc = side === 'left' ? sourceDoc : targetDoc
+    const rightDoc = side === 'left' ? targetDoc : sourceDoc
+
+    const columns: LeafColumn[] = [
+      { id: createTempId(), content: leftDoc },
+      { id: createTempId(), content: rightDoc },
+    ]
+
+    // Clear TipTap's dragging state to prevent default drop
+    editor.view.dragging = null
+
+    const { tr } = editor.state
+    const columnNode = editor.state.schema.nodes.columnLayout.create({ layout: 2, columns })
+
+    // Process the later position first so earlier positions remain valid
+    if (sourcePos > targetNodePos) {
+      tr.delete(sourcePos, sourceEnd)
+      tr.replaceWith(targetNodePos, targetNodeEnd, columnNode)
+    } else {
+      tr.replaceWith(targetNodePos, targetNodeEnd, columnNode)
+      tr.delete(sourcePos, sourceEnd)
+    }
+
+    editor.view.dispatch(tr)
+  }, [editor])
+
+  const handleEditorDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    // Only clear if actually leaving the container, not entering a child
+    const container = containerRef.current
+    if (container && event.relatedTarget && container.contains(event.relatedTarget as globalThis.Node)) return
+    setColumnDropZone(null)
+    columnDropRef.current = null
+  }, [])
+
+  const handleEditorDragEnd = useCallback(() => {
+    setColumnDropZone(null)
+    columnDropRef.current = null
+    dragSourceRef.current = null
+  }, [])
+
   const handleModeChange = useCallback((nextMode: 'rich' | 'markdown') => {
     if (nextMode === mode) return
 
@@ -1554,7 +1690,7 @@ export default function LeafEditor({
       {mode === 'rich' ? (
         <div
           className="relative"
-          style={{ paddingLeft: 52 }}
+          style={{ paddingLeft: 60 }}
           onMouseMove={(event) => {
             if (hideTimer.current) {
               clearTimeout(hideTimer.current)
@@ -1567,10 +1703,32 @@ export default function LeafEditor({
             hideTimer.current = setTimeout(() => setBlockMenu(null), 300)
           }}
         >
-          <div ref={containerRef} className="relative">
+          <div
+            ref={containerRef}
+            className="relative"
+            onDragOver={handleEditorDragOver}
+            onDragLeave={handleEditorDragLeave}
+            onDrop={handleEditorDrop}
+          >
+            {columnDropZone && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: columnDropZone.top,
+                  left: columnDropZone.left,
+                  width: columnDropZone.width,
+                  height: columnDropZone.height,
+                  background: 'var(--leaf-green)',
+                  borderRadius: 2,
+                  pointerEvents: 'none',
+                  zIndex: 20,
+                  transition: 'top 0.1s, left 0.1s, height 0.1s',
+                }}
+              />
+            )}
             {blockMenu && (
               <div
-                style={{ position: 'absolute', top: blockMenu.top - 2, left: -48, display: 'flex', alignItems: 'center', gap: 2 }}
+                style={{ position: 'absolute', top: blockMenu.top - 2, left: -56, display: 'flex', alignItems: 'center', gap: 2 }}
                 onMouseEnter={() => {
                   if (hideTimer.current) {
                     clearTimeout(hideTimer.current)
@@ -1616,10 +1774,13 @@ export default function LeafEditor({
                       event.dataTransfer.setData('text/plain', wrapper.textContent || '')
                       event.dataTransfer.effectAllowed = 'move'
                       editor.view.dragging = { slice, move: true }
+                      dragSourceRef.current = { pos: nodeStart, end: nodeEnd }
                     } catch {
                       // fallback: let browser handle
+                      dragSourceRef.current = null
                     }
                   }}
+                  onDragEnd={handleEditorDragEnd}
                 >
                   <svg width="18" height="18" viewBox="0 0 14 14" fill="none">
                     <circle cx="5" cy="3" r="1.2" fill="currentColor" />

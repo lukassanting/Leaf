@@ -62,6 +62,8 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Persisted 2-column and 3-column block types in the document schema.
 - [x] Inline text editing inside column blocks.
 - [x] In-block drag reordering for column positions.
+- [x] Drag-to-create columns: drag any block to the left or right edge of another to create side-by-side columns.
+- [x] Minimal column rendering (no decorative wrappers — just blocks side by side).
 
 ### Local-first and backend
 
@@ -92,8 +94,8 @@ These are the next best steps after the completed redesign.
 
 | # | Item | Why next |
 |---|------|----------|
-| 4.1 | Upgrade column layouts from lightweight text columns to true nested block columns | Biggest functional gap in the new block system |
-| 4.2 | Add a real document block drag handle and block reorder flow | Completes the core Notion-like editing model |
+| ~~4.1~~ | ~~Upgrade column layouts from lightweight text columns to true nested block columns~~ | ✅ Done — drag-to-create columns + minimal rendering |
+| ~~4.2~~ | ~~Add a real document block drag handle and block reorder flow~~ | ✅ Done — block drag handle with column-drop zones |
 | 4.3 | Add scroll-position memory and small editor polish around status/focus states | High user value, low risk |
 
 ### Phase 5 — Search and knowledge graph
