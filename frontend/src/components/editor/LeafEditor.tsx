@@ -55,8 +55,9 @@ import { DatabaseIcon, LeafIcon } from '@/components/Icons'
 import { EmbeddedDatabaseBlock } from '@/components/database/EmbeddedDatabaseBlock'
 import { useNavigationProgress } from '@/components/NavigationProgress'
 import { warmEditorRoute } from '@/lib/warmEditorRoute'
-import { databasesApi } from '@/lib/api'
 import { ensureTagEntries } from '@/lib/workspaceDefaults'
+import { databasesApi } from '@/lib/api'
+
 import { createEmptyLeafDocument, getLeafContentText, normalizeLeafDocument } from '@/lib/leafDocument'
 import { rankSlashItems, SLASH_ITEMS, type SlashMenuState, SlashMenuPanel } from '@/components/SlashCommands'
 
@@ -947,7 +948,7 @@ export default function LeafEditor({
       if (tagSyncTimerRef.current) clearTimeout(tagSyncTimerRef.current)
       tagSyncTimerRef.current = setTimeout(() => {
         for (const t of newTags) syncedTagsRef.current.add(t.toLowerCase())
-        void ensureTagEntries(newTags).then(async () => {
+        void Promise.resolve().then(async () => {
           // Refresh the tag→leafId map after creation
           try {
             const databases = await databasesApi.list()
