@@ -9,6 +9,7 @@ You are helping build **Leaf**, a Notion-inspired personal knowledge manager. St
 - **Always update docs after a meaningful change.** When you add a feature, fix a bug, or refactor something significant, update:
   - `README.md` — quick-start, features list, project layout
   - `docs/PLANS_AND_ROADMAP.md` — move items between "Implemented" and "Future"; update the key-files table; add new decisions
+  - `docs/CODEBASE.md` — when you add/remove major modules or change where features live (file-purpose map + beginner tickets)
   - This file (`CLAUDE.md`) if the instructions themselves need updating
 
 - **No perf-measurement hacks.** React Strict Mode double-invokes effects. Do not use `performance.mark` / `performance.measure` inside `useEffect`; it causes errors.

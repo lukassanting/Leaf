@@ -61,6 +61,10 @@ All commands below are from the **repo root** (`Leaf/`).
 - Use `docs/DEBUGGING_PLAYBOOK.md` for a repeatable cross-stack workflow (route -> hook -> API client -> backend controller -> operations).
 - The playbook includes a worked Windows-shell example for diagnosing/fixing `make test` command issues.
 
+## Codebase map
+
+- **`docs/CODEBASE.md`** — directory-by-directory and file-by-file purpose guide, documentation conventions (Purpose blocks), and three beginner practice tickets (backend → frontend → full stack).
+
 ## Makefile targets
 
 | Target              | Description                          |
@@ -184,6 +188,7 @@ Leaf/
 ├── docs/
 │   ├── FRAMEWORK_DIRECTION.md
 │   ├── EDITOR_DESIGN.md
+│   ├── CODEBASE.md
 │   ├── DEBUGGING_PLAYBOOK.md
 │   └── PLANS_AND_ROADMAP.md
 ├── docker-compose.yml    # Full stack: api + frontend (run from root)

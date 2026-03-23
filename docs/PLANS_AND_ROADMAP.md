@@ -152,6 +152,13 @@ Questions still open for the next milestone:
 
 ## 6. Key files
 
+### Onboarding and codebase navigation
+
+| Path | Purpose |
+|------|---------|
+| `docs/CODEBASE.md` | File/directory map, in-code documentation conventions, three beginner practice tickets |
+| `docs/DEBUGGING_PLAYBOOK.md` | Cross-stack debugging workflow and worked examples |
+
 ### Frontend
 
 | Path | Purpose |
@@ -173,7 +180,6 @@ Questions still open for the next milestone:
 | `frontend/src/lib/leafDocument.ts` | Structured content parsing and normalization |
 | `frontend/e2e/workspace.spec.ts` | Browser regression coverage |
 | `docs/FRAMEWORK_DIRECTION.md` | Web framework decision and platform expansion guidance |
-| `docs/DEBUGGING_PLAYBOOK.md` | Cross-stack debugging flow and worked root-cause example |
 
 ### Backend
 
@@ -216,4 +222,4 @@ That means platform growth should focus first on:
 
 ---
 
-*Last updated: 2026-03-23. This roadmap reflects the column overhaul (nested node architecture, resize handles, 2–5 columns, responsive stacking), plus runtime/docs alignment updates (SQLite-default runtime, Windows-safe test target, and debug playbook).*
+*Last updated: 2026-03-23. This roadmap reflects the column overhaul (nested node architecture, resize handles, 2–5 columns, responsive stacking), plus runtime/docs alignment updates (SQLite-default runtime, Windows-safe test target, debug playbook, and `docs/CODEBASE.md` navigation guide).*
