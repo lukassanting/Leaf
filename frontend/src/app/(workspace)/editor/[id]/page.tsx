@@ -9,7 +9,7 @@
  * - Start at `useLeafPageData(leafId)` to understand the state shape: `content`, `title`, `tags`, `loadingLeaf`, etc.
  * - Then read `useLeafAutosave(...)` to see how content saves are scheduled.
  * - The callbacks (`handleTitleSave`, `handleDescriptionSave`, `handleTagsSave`, `handleIconSave`) call `*AndPrimeCache` helpers.
- * - UI structure: `TopStrip` -> `PageIdentityHeader` -> `Editor` -> `StatusBar`.
+ * - UI structure: `TopStrip` -> scroll column (`PageIdentityHeader` + `Editor`) -> `StatusBar`.
  *
  * Update:
  * - If you add a new metadata field, follow the pattern:
@@ -201,7 +201,7 @@ export default function EditorPage() {
 
   return (
     <div
-      className="flex min-h-screen flex-col"
+      className="flex min-h-0 flex-1 flex-col"
       style={{ background: 'var(--leaf-bg-editor)' }}
       onKeyDown={handleKeyDown}
     >
@@ -211,35 +211,8 @@ export default function EditorPage() {
         currentTitle={title}
       />
 
-      <div style={{ maxWidth: contentMaxWidth, margin: contentMaxWidth ? '0 auto' : undefined, padding: contentPadding || '0 28px' }}>
-      <PageIdentityHeader
-        kind="page"
-        icon={icon}
-        onIconClick={() => setIconPickerOpen((current) => !current)}
-        iconPicker={iconPickerOpen ? (
-          <IconPicker
-            currentIcon={icon}
-            onApply={(nextIcon) => { void handleIconSave(nextIcon) }}
-            onClose={() => setIconPickerOpen(false)}
-          />
-        ) : null}
-        title={title}
-        onTitleChange={setTitle}
-        onTitleBlur={(value) => { void handleTitleSave(value) }}
-        description={description}
-        onDescriptionChange={setDescription}
-        onDescriptionBlur={(value) => { void handleDescriptionSave(value) }}
-        tags={tags}
-        onTagsChange={(nextTags) => { void handleTagsSave(nextTags) }}
-        showTags
-      />
-      <div style={{ marginTop: 6, fontSize: 11, color: 'var(--leaf-text-muted)' }}>
-        Indexed content length: {contentTextLength} chars
-      </div>
-      </div>
-
-      {/* Editor canvas */}
-      <div className="flex-1 overflow-y-auto" style={{ padding: '0 0 40px' }}>
+      {/* Identity + body share one scroll region so the title scrolls away with the page */}
+      <div className="min-h-0 flex-1 overflow-y-auto" style={{ padding: '0 0 40px' }}>
         <div
           style={{
             maxWidth: contentMaxWidth,
@@ -247,26 +220,50 @@ export default function EditorPage() {
             padding: contentPadding || '0 28px',
           }}
         >
-            <Editor
-              content={content}
-              leafId={leafId}
-              onUpdate={(document) => {
-                setContent(document)
-                latestContentRef.current = document
-                scheduleSave(document)
-              }}
-              onCreateSubPage={handleCreateSubPage}
-              onCreateDatabase={handleCreateDatabase}
-              onStatusChange={(_, words) => setWordCount(words)}
-              onTagAdd={(tag) => {
-                if (!tags.includes(tag)) {
-                  void handleTagsSave([...tags, tag])
-                }
-              }}
-              mode={editorMode}
-              onModeChange={setEditorMode}
-              actionsRef={editorActionsRef}
-            />
+          <PageIdentityHeader
+            kind="page"
+            icon={icon}
+            onIconClick={() => setIconPickerOpen((current) => !current)}
+            iconPicker={iconPickerOpen ? (
+              <IconPicker
+                currentIcon={icon}
+                onApply={(nextIcon) => { void handleIconSave(nextIcon) }}
+                onClose={() => setIconPickerOpen(false)}
+              />
+            ) : null}
+            title={title}
+            onTitleChange={setTitle}
+            onTitleBlur={(value) => { void handleTitleSave(value) }}
+            description={description}
+            onDescriptionChange={setDescription}
+            onDescriptionBlur={(value) => { void handleDescriptionSave(value) }}
+            tags={tags}
+            onTagsChange={(nextTags) => { void handleTagsSave(nextTags) }}
+            showTags
+          />
+          <div style={{ marginTop: 6, marginBottom: 8, fontSize: 11, color: 'var(--leaf-text-muted)' }}>
+            Indexed content length: {contentTextLength} chars
+          </div>
+          <Editor
+            content={content}
+            leafId={leafId}
+            onUpdate={(document) => {
+              setContent(document)
+              latestContentRef.current = document
+              scheduleSave(document)
+            }}
+            onCreateSubPage={handleCreateSubPage}
+            onCreateDatabase={handleCreateDatabase}
+            onStatusChange={(_, words) => setWordCount(words)}
+            onTagAdd={(tag) => {
+              if (!tags.includes(tag)) {
+                void handleTagsSave([...tags, tag])
+              }
+            }}
+            mode={editorMode}
+            onModeChange={setEditorMode}
+            actionsRef={editorActionsRef}
+          />
         </div>
       </div>
 

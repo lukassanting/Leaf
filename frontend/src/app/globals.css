@@ -227,6 +227,44 @@ html[data-leaf-design="campaign"] .ProseMirror h3 {
   color: var(--leaf-green-light);
 }
 
+/* Horizontal rule — Campaign: gold gradient + centre diamond (editor / leaf-prose) */
+html[data-leaf-design="campaign"] .ProseMirror hr {
+  border: none;
+  margin: 2rem auto;
+  max-width: min(520px, 92%);
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--leaf-green) 0%, transparent) 6%,
+    color-mix(in srgb, var(--leaf-green) 35%, var(--leaf-bg-editor)) 20%,
+    var(--leaf-green) 42%,
+    var(--leaf-green-light) 50%,
+    var(--leaf-green) 58%,
+    color-mix(in srgb, var(--leaf-green) 35%, var(--leaf-bg-editor)) 80%,
+    color-mix(in srgb, var(--leaf-green) 0%, transparent) 94%,
+    transparent 100%
+  );
+  position: relative;
+  overflow: visible;
+  opacity: 1;
+}
+
+html[data-leaf-design="campaign"] .ProseMirror hr::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: linear-gradient(135deg, var(--leaf-green-light), var(--leaf-green));
+  box-shadow:
+    0 0 16px color-mix(in srgb, var(--leaf-green) 50%, transparent),
+    0 0 0 0.5px color-mix(in srgb, var(--leaf-green-light) 70%, transparent);
+  pointer-events: none;
+}
+
 .ProseMirror p  { margin: 0.4em 0; color: var(--color-text-body); }
 
 /* Lists */
@@ -277,28 +315,29 @@ html[data-leaf-design="campaign"] .ProseMirror h3 {
 .ProseMirror .leaf-story-tag--selected {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--leaf-green) 55%, transparent);
 }
+/* Classic (light): dark label text on pastel fills for contrast */
 .ProseMirror .leaf-story-tag--combat {
-  color: #fecaca;
+  color: #7f1d1d;
   background: color-mix(in srgb, #b83232 38%, var(--leaf-bg-elevated, #fff));
   border-color: color-mix(in srgb, #b83232 65%, transparent);
 }
 .ProseMirror .leaf-story-tag--political {
-  color: #fef3c7;
+  color: #78350f;
   background: color-mix(in srgb, #c9a84c 35%, var(--leaf-bg-elevated, #fff));
   border-color: color-mix(in srgb, #c9a84c 55%, transparent);
 }
 .ProseMirror .leaf-story-tag--character {
-  color: #bfdbfe;
+  color: #1e3a8a;
   background: color-mix(in srgb, #2d7aad 32%, var(--leaf-bg-elevated, #fff));
   border-color: color-mix(in srgb, #2d7aad 50%, transparent);
 }
 .ProseMirror .leaf-story-tag--lore {
-  color: #e9d5ff;
+  color: #5b21b6;
   background: color-mix(in srgb, #9b4fd8 30%, var(--leaf-bg-elevated, #fff));
   border-color: color-mix(in srgb, #9b4fd8 48%, transparent);
 }
 .ProseMirror .leaf-story-tag--boss {
-  color: #fce7f3;
+  color: #831843;
   background: color-mix(in srgb, #9d174d 36%, var(--leaf-bg-elevated, #fff));
   border-color: color-mix(in srgb, #9d174d 55%, transparent);
 }
@@ -306,6 +345,23 @@ html[data-leaf-design="campaign"] .ProseMirror h3 {
   color: var(--leaf-text-body, var(--color-text-body));
   background: color-mix(in srgb, var(--leaf-text-muted, #71717a) 14%, var(--leaf-bg-elevated, #fafafa));
   border-color: var(--leaf-border-soft, var(--color-border));
+}
+
+/* Campaign: light text on deeper tinted fills (unchanged look) */
+html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--combat {
+  color: #fecaca;
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--political {
+  color: #fef3c7;
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--character {
+  color: #bfdbfe;
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--lore {
+  color: #e9d5ff;
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--boss {
+  color: #fce7f3;
 }
 
 /* Stat strip (three kicker + value cards) */
@@ -644,6 +700,16 @@ html[data-leaf-design="campaign"] .ProseMirror pre code {
   min-width: 0;
 }
 
+.leaf-toggle-card-header-color-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--leaf-border-soft) 85%, transparent);
+}
+
 .leaf-toggle-card-input {
   width: 100%;
   background: transparent;
@@ -685,6 +751,45 @@ html[data-leaf-design="campaign"] .leaf-toggle-card-input-title {
   font-size: 0.92rem;
   font-style: italic;
   color: var(--leaf-text-muted);
+}
+
+.leaf-toggle-card-md-display {
+  width: 100%;
+  cursor: text;
+  min-height: 1.15em;
+  word-break: break-word;
+}
+
+.leaf-toggle-card-md-display.leaf-toggle-card-md-empty {
+  color: var(--leaf-text-hint);
+  opacity: 0.85;
+}
+
+.leaf-toggle-card-md-display strong {
+  font-weight: 700;
+}
+
+.leaf-toggle-card-md-display em {
+  font-style: italic;
+}
+
+.leaf-toggle-card-md-display code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  padding: 0.05em 0.25em;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--leaf-bg-app) 70%, var(--leaf-border-soft));
+}
+
+.leaf-toggle-card-md-display a {
+  color: var(--leaf-green);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.leaf-toggle-card-md-display del {
+  text-decoration: line-through;
+  opacity: 0.85;
 }
 
 .leaf-toggle-card--accent-0 .leaf-toggle-card-header {

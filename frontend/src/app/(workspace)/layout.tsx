@@ -118,7 +118,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
         {!focusMode && leftOpen ? <SidebarLeft activeId={activeId} /> : null}
 
         <main
-          className="relative flex min-w-0 flex-1 flex-col"
+          className="relative flex min-h-0 min-w-0 flex-1 flex-col"
           style={{ background: 'var(--leaf-bg-editor)' }}
         >
           {children}

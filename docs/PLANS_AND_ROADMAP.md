@@ -38,6 +38,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Slash commands and block insertion menu for headings, lists, todos, quotes, sub-pages, databases, and column layouts.
 - [x] Text alignment (paragraph, heading, blockquote) and palette text colours (`TextAlign`, `TextStyle`, `Color`); selection bubble + slash **Style** group (no static toolbar).
 - [x] Inline **story tag** atoms (variant + editable label) and **stat strip** block (three kicker/title pairs); presets in `lib/editorRichText.ts`.
+- [x] **Toggle card** header fields (eyebrow, title, subtitle): view mode renders inline Markdown (`**bold**`, `*italic*`, links, `code`, etc.); click or Enter/Space to edit source; subtitle supports multiple lines.
 - [x] Rich/Markdown mode switching plus Markdown import/export.
 - [x] Page embeds as dedicated block nodes.
 - [x] Inline database embeds as dedicated block nodes backed by the shared database surface.

@@ -95,6 +95,9 @@ export type LeafNode =
         title?: string
         subtitle?: string
         accent?: number
+        eyebrowColor?: string | null
+        titleColor?: string | null
+        subtitleColor?: string | null
       }
       content: LeafNode[]
     }

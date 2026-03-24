@@ -167,7 +167,8 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | Path | Purpose |
 |------|---------|
 | `src/components/Editor.tsx` | Re-exports main editor (TipTap) |
-| `src/components/editor/LeafEditor.tsx` | TipTap extensions (`TextStyle`, `Color`, `TextAlign`, `storyTag`, `statStrip`), slash menu, selection bubble, embeds, `toggleCard`, column layout, document model |
+| `src/components/editor/LeafEditor.tsx` | TipTap extensions (`TextStyle`, `Color`, `TextAlign`, `storyTag`, `statStrip`), slash menu, selection bubble, embeds, `toggleCard` (header fields: click to edit, inline Markdown when viewing), column layout, document model |
+| `src/lib/toggleCardMarkdown.ts` | Inline-only Markdown-it rendering for toggle card eyebrow / title / subtitle (no raw HTML) |
 | `src/components/SlashCommands.tsx` | Slash command definitions and menu (includes **Style** group) |
 | `src/components/editor/EditorSelectionBubble.tsx` | Selection bubble: alignment, clear colour, swatches (TipTap `BubbleMenu`; no static toolbar) |
 | `src/lib/editorRichText.ts` | Story-tag variants/presets, text-colour swatches, slash action helpers |
