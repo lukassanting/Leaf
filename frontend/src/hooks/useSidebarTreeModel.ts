@@ -37,7 +37,15 @@ import { emitLeafTreeChanged, onLeafCreated, onLeafDatabaseCreated, onLeafTitleC
 import { createLeafAndPrimeCache, renameLeafAndPrimeCache } from '@/lib/leafMutations'
 import { getCachedTree, setCachedTree } from '@/lib/leafCache'
 import { warmEditorRoute } from '@/lib/warmEditorRoute'
-import { buildTree, defaultExpanded, flattenTreeWithSearch, mapDbNodes, mapLeafNodes, type SidebarNode } from '@/components/sidebarTreeUtils'
+import {
+  buildTree,
+  defaultExpanded,
+  flattenTreeWithSearch,
+  mapDbNodes,
+  mapLeafNodes,
+  sidebarNodeIdToLeafApiId,
+  type SidebarNode,
+} from '@/components/sidebarTreeUtils'
 
 const EXPAND_KEY = 'leaf-sidebar-expanded'
 
@@ -242,7 +250,9 @@ export function useSidebarTreeModel(activeId?: string) {
 
   const handleReorder = useCallback(async (parentId: string, childIds: string[]) => {
     try {
-      await leavesApi.reorderChildren(parentId, { child_ids: childIds })
+      await leavesApi.reorderChildren(sidebarNodeIdToLeafApiId(parentId), {
+        child_ids: childIds.map(sidebarNodeIdToLeafApiId),
+      })
       setNodes((prev) => prev.map((node) => (node.id === parentId ? { ...node, children_ids: childIds } : node)))
     } catch {
       console.error('Reorder failed')
@@ -260,10 +270,12 @@ export function useSidebarTreeModel(activeId?: string) {
   const handleMove = useCallback(async (leafId: string, newParentId: string | null) => {
     const draggedNode = nodes.find((n) => n.id === leafId)
     if (!draggedNode || draggedNode.kind !== 'page' || draggedNode.isDbRow) return
+    const apiLeafId = sidebarNodeIdToLeafApiId(leafId)
+    const apiParentId = newParentId == null ? null : sidebarNodeIdToLeafApiId(newParentId)
     try {
-      await leavesApi.update(leafId, {
+      await leavesApi.update(apiLeafId, {
         title: draggedNode.title,
-        parent_id: newParentId,
+        parent_id: apiParentId,
         tags: draggedNode.tags ?? [],
       })
       emitLeafTreeChanged()

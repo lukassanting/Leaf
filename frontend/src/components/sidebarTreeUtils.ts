@@ -30,6 +30,16 @@
 
 import type { Database, LeafTreeItem } from '@/lib/api'
 
+const SIDEBAR_DBROW_PREFIX = 'dbrow:'
+
+/**
+ * Database row pages use synthetic ids `dbrow:${leafId}` in the sidebar tree.
+ * Leaf REST endpoints expect the bare leaf UUID.
+ */
+export function sidebarNodeIdToLeafApiId(nodeId: string): string {
+  return nodeId.startsWith(SIDEBAR_DBROW_PREFIX) ? nodeId.slice(SIDEBAR_DBROW_PREFIX.length) : nodeId
+}
+
 export type SidebarNode = {
   id: string
   title: string

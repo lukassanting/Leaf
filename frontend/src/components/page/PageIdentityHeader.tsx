@@ -215,9 +215,10 @@ export function PageIdentityHeader({
       />
 
       {description !== undefined && (
-        <input
-          ref={descriptionInputRef}
-          className="bg-transparent border-none outline-none"
+        <textarea
+          ref={descriptionInputRef as React.RefObject<HTMLTextAreaElement>}
+          className="bg-transparent border-none outline-none resize-none"
+          rows={1}
           style={{
             fontSize: 14,
             color: description ? 'var(--leaf-text-body)' : 'var(--leaf-text-hint)',
@@ -227,14 +228,16 @@ export function PageIdentityHeader({
             lineHeight: 1.6,
             caretColor: canEditDescription ? 'var(--leaf-green)' : undefined,
             cursor: canEditDescription ? 'text' : 'default',
+            overflow: 'hidden',
+            fieldSizing: 'content' as any,
           }}
           value={description}
           onChange={(event) => onDescriptionChange?.(event.target.value)}
           onBlur={(event) => onDescriptionBlur?.(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') {
+            if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault()
-              ;(event.target as HTMLInputElement).blur()
+              ;(event.target as HTMLTextAreaElement).blur()
             }
           }}
           readOnly={!canEditDescription}

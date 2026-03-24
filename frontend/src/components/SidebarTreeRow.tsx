@@ -89,7 +89,7 @@ export function SidebarTreeRow({
   const isHovered = hoverNodeId === node.id
   const isDatabase = node.kind === 'database'
   const isDbRow = node.isDbRow === true
-  const href = isDatabase ? `/databases/${node.id}` : isDbRow ? `/databases/${node.database_id}?row=${node.id.replace('dbrow:', '')}` : `/editor/${node.id}`
+  const href = isDatabase ? `/databases/${node.id}` : isDbRow ? `/editor/${node.id.replace('dbrow:', '')}` : `/editor/${node.id}`
 
   return (
     <div
@@ -171,7 +171,7 @@ export function SidebarTreeRow({
             }
             onNavigate()
           }}
-          onMouseEnter={() => onWarmRoute(isDbRow ? 'database' : node.kind)}
+          onMouseEnter={() => onWarmRoute(isDbRow ? 'page' : node.kind)}
         >
           {node.title || 'Untitled'}
         </Link>
