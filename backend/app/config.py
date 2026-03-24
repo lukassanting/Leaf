@@ -36,6 +36,13 @@ class ConfigSettings():
     DATA_DIR: str
     DATABASE_URL: str
 
+    # Sync settings
+    SYNC_MODE: str  # "off", "folder", "git"
+    SYNC_WATCH_ENABLED: bool
+    GIT_REMOTE_URL: str
+    GIT_AUTH_TOKEN: str
+    GIT_SYNC_INTERVAL: int  # seconds between git push/pull cycles
+
     def __init__(self):
         load_dotenv()
         self.config = Config(".env")
@@ -52,3 +59,10 @@ class ConfigSettings():
         # DATABASE_URL defaults to SQLite in DATA_DIR; override for custom paths.
         default_db = f"sqlite:///{Path(self.DATA_DIR) / '.leaf.db'}"
         self.DATABASE_URL = self.config("DATABASE_URL", cast=str, default=default_db)
+
+        # Sync configuration
+        self.SYNC_MODE = self.config("SYNC_MODE", cast=str, default="off")
+        self.SYNC_WATCH_ENABLED = self.config("SYNC_WATCH_ENABLED", cast=bool, default=True)
+        self.GIT_REMOTE_URL = self.config("GIT_REMOTE_URL", cast=str, default="")
+        self.GIT_AUTH_TOKEN = self.config("GIT_AUTH_TOKEN", cast=str, default="")
+        self.GIT_SYNC_INTERVAL = self.config("GIT_SYNC_INTERVAL", cast=int, default=300)

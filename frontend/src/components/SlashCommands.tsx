@@ -4,6 +4,7 @@
  * Shared slash-command metadata and UI panel.
  */
 
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { STORY_TAG_PRESETS, storyTagAction } from '@/lib/editorRichText'
 import { BLOCK_ICONS } from './Icons'
@@ -113,7 +114,7 @@ export function SlashMenuPanel({
   menu: SlashMenuState
   onSelect: (item: SlashItem) => void
 }) {
-  if (!menu) return null
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const grouped: { group: SlashGroup; items: { item: SlashItem; idx: number }[] }[] = []
   for (const group of GROUPS) {
@@ -129,61 +130,81 @@ export function SlashMenuPanel({
   const top = spaceBelow < 240 ? menu.rect.top - 6 - Math.min(240, window.innerHeight * 0.4) : menu.rect.bottom + 6
   const left = Math.min(menu.rect.left, window.innerWidth - 272)
 
+  useEffect(() => {
+    const root = scrollRef.current
+    if (!root) return
+    const el = root.querySelector(`[data-slash-idx="${menu.selectedIndex}"]`)
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [menu.selectedIndex, menu.items.length])
+
   const panel = (
     <div
-      className="fixed z-[9999] rounded-lg overflow-hidden"
+      className="fixed z-[9999] flex flex-col rounded-lg"
       style={{
         top,
         left,
         width: 260,
+        maxHeight: 'min(52vh, 420px)',
         background: 'var(--leaf-bg-elevated)',
         border: '1px solid var(--color-border)',
         boxShadow: '0 4px 20px color-mix(in srgb, var(--foreground) 12%, transparent)',
+        overflow: 'hidden',
       }}
       onMouseDown={(e) => e.preventDefault()}
+      role="listbox"
+      aria-label="Slash commands"
     >
-      {grouped.map(({ group, items }) => (
-        <div key={group}>
-          <div
-            className="px-3 pt-2.5 pb-1 text-[10px] font-medium tracking-wider uppercase"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            {group}
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-0.5"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {grouped.map(({ group, items }) => (
+          <div key={group}>
+            <div
+              className="px-3 pt-2.5 pb-1 text-[10px] font-medium tracking-wider uppercase"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              {group}
+            </div>
+            {items.map(({ item, idx }) => {
+              const isSelected = idx === menu.selectedIndex
+              return (
+                <button
+                  key={item.action}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  data-slash-idx={idx}
+                  onMouseDown={(event) => {
+                    event.preventDefault()
+                    onSelect(item)
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors duration-100"
+                  style={{ backgroundColor: isSelected ? 'var(--color-hover)' : undefined }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-hover)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isSelected ? 'var(--color-hover)' : '')}
+                >
+                  {BLOCK_ICONS[item.action] ?? null}
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-medium" style={{ color: 'var(--color-text-dark)' }}>
+                      {item.label}
+                    </span>
+                    <span className="block text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                      {item.description}
+                    </span>
+                  </span>
+                </button>
+              )
+            })}
           </div>
-          {items.map(({ item, idx }) => {
-            const isSelected = idx === menu.selectedIndex
-            return (
-              <button
-                key={item.action}
-                type="button"
-                onMouseDown={(event) => {
-                  event.preventDefault()
-                  onSelect(item)
-                }}
-                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors duration-100"
-                style={{ backgroundColor: isSelected ? 'var(--color-hover)' : undefined }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-hover)')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isSelected ? 'var(--color-hover)' : '')}
-              >
-                {BLOCK_ICONS[item.action] ?? null}
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-medium" style={{ color: 'var(--color-text-dark)' }}>
-                    {item.label}
-                  </span>
-                  <span className="block text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-                    {item.description}
-                  </span>
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      ))}
-      {grouped.length === 0 && (
-        <div className="px-3 py-3 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-          No results
-        </div>
-      )}
+        ))}
+        {grouped.length === 0 && (
+          <div className="px-3 py-3 text-sm" style={{ color: 'var(--color-text-muted)' }}>
+            No results
+          </div>
+        )}
+      </div>
     </div>
   )
 

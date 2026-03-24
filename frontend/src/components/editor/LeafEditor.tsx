@@ -68,6 +68,9 @@ import { databasesApi } from '@/lib/api'
 import { LEAF_TEXT_COLOR_SWATCHES, STORY_TAG_PRESETS, parseStoryTagAction } from '@/lib/editorRichText'
 import { createEmptyLeafDocument, getLeafContentText, normalizeLeafDocument } from '@/lib/leafDocument'
 import { rankSlashItems, SLASH_ITEMS, type SlashMenuState, SlashMenuPanel } from '@/components/SlashCommands'
+import { StoryTag } from '@/components/editor/storyTagExtension'
+import { computeSlashMatch, computeWikilinkMatch, type EditorSlashMatch } from '@/components/editor/slashMatchUtils'
+import { ToggleCardHeaderField } from '@/components/editor/ToggleCardHeaderField'
 
 function selectionBubbleShouldShow({
   editor,
@@ -148,12 +151,6 @@ type Props = {
   actionsRef?: React.MutableRefObject<EditorActions | null>
 }
 
-type SlashMatch = {
-  range: { from: number; to: number }
-  query: string
-  rect: SlashMenuState['rect']
-}
-
 type WikilinkMenuState = {
   items: LeafTreeItem[]
   query: string
@@ -193,78 +190,6 @@ function createTempId() {
   return `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-
-function computeSlashMatch(editor: NonNullable<ReturnType<typeof useEditor>>): SlashMatch | null {
-  const { state, view } = editor
-  const { selection } = state
-
-  if (!selection.empty) return null
-
-  const $from = selection.$from
-  const rect = view.coordsAtPos(selection.from)
-
-  for (let d = $from.depth; d > 0; d--) {
-    const node = $from.node(d)
-    if (!node.isTextblock) continue
-
-    const start = $from.start(d)
-    const rel = $from.pos - start
-    const textBefore = node.textBetween(0, rel, '\0', '\0')
-    const match = /(?:^|\s)\/([^\s/]*)$/.exec(textBefore)
-    if (!match) continue
-
-    const slashIndex = textBefore.length - match[0].length + match[0].lastIndexOf('/')
-    const from = start + slashIndex
-
-    return {
-      range: { from, to: selection.from },
-      query: match[1] ?? '',
-      rect: {
-        top: rect.top,
-        left: rect.left,
-        bottom: rect.bottom,
-      },
-    }
-  }
-
-  return null
-}
-
-function computeWikilinkMatch(editor: NonNullable<ReturnType<typeof useEditor>>): SlashMatch | null {
-  const { state, view } = editor
-  const { selection } = state
-
-  if (!selection.empty) return null
-
-  const $from = selection.$from
-  const rect = view.coordsAtPos(selection.from)
-
-  for (let d = $from.depth; d > 0; d--) {
-    const node = $from.node(d)
-    if (!node.isTextblock) continue
-
-    const start = $from.start(d)
-    const rel = $from.pos - start
-    const textBefore = node.textBetween(0, rel, '\0', '\0')
-    const match = /(?:^|[\s(])\[\[([^\]]*)$/.exec(textBefore)
-    if (!match) continue
-
-    const token = `[[${match[1] ?? ''}`
-    const from = $from.pos - token.length
-
-    return {
-      range: { from, to: selection.from },
-      query: match[1] ?? '',
-      rect: {
-        top: rect.top,
-        left: rect.left,
-        bottom: rect.bottom,
-      },
-    }
-  }
-
-  return null
-}
 
 function rankWikilinkItems(items: LeafTreeItem[], query: string): LeafTreeItem[] {
   const normalizedQuery = query.trim().toLowerCase()
@@ -724,76 +649,6 @@ const HashtagNode = Node.create({
   },
 })
 
-function StoryTagView({ node, updateAttributes, selected }: NodeViewProps) {
-  const variant = String(node.attrs.variant || 'neutral')
-  return (
-    <NodeViewWrapper
-      as="span"
-      contentEditable={false}
-      className={['leaf-story-tag', `leaf-story-tag--${variant}`, selected ? 'leaf-story-tag--selected' : ''].filter(Boolean).join(' ')}
-    >
-      <input
-        type="text"
-        value={String(node.attrs.label ?? '')}
-        onChange={(e) => updateAttributes({ label: e.target.value })}
-        onMouseDown={(e) => e.stopPropagation()}
-        className="leaf-story-tag-input"
-        aria-label="Story flag label"
-        size={Math.max(2, String(node.attrs.label ?? '').length + 1)}
-      />
-    </NodeViewWrapper>
-  )
-}
-
-const StoryTag = Node.create({
-  name: 'storyTag',
-  group: 'inline',
-  inline: true,
-  atom: true,
-  selectable: true,
-  draggable: false,
-  addAttributes() {
-    return {
-      label: { default: 'FLAG' },
-      variant: { default: 'neutral' },
-    }
-  },
-  parseHTML() {
-    return [
-      {
-        tag: 'span[data-type="story-tag"]',
-        getAttrs: (element) => {
-          if (!(element instanceof HTMLElement)) return false
-          return {
-            label: element.getAttribute('data-label') || element.textContent?.trim() || 'FLAG',
-            variant: element.getAttribute('data-variant') || 'neutral',
-          }
-        },
-      },
-    ]
-  },
-  renderHTML({ node, HTMLAttributes }) {
-    const label = String(node.attrs.label ?? 'FLAG')
-    const variant = String(node.attrs.variant ?? 'neutral')
-    return [
-      'span',
-      mergeAttributes(
-        {
-          'data-type': 'story-tag',
-          'data-label': label,
-          'data-variant': variant,
-          class: `leaf-story-tag leaf-story-tag--${variant}`,
-        },
-        HTMLAttributes,
-      ),
-      label,
-    ]
-  },
-  addNodeView() {
-    return ReactNodeViewRenderer(StoryTagView as never)
-  },
-})
-
 const Column = Node.create({
   name: 'column',
   content: 'block+',
@@ -843,39 +698,13 @@ const ColumnList = Node.create({
   },
 })
 
-type ToggleHeaderColorField = 'eyebrow' | 'title' | 'subtitle'
-
 function ToggleCardView({ node, updateAttributes }: NodeViewProps) {
-  const [headerColorField, setHeaderColorField] = useState<ToggleHeaderColorField | null>(null)
-  const headerColorBlurRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   const open = node.attrs.open !== false && node.attrs.open !== 'false'
   const accent = ((Number(node.attrs.accent) || 0) % 5 + 5) % 5
 
-  const clearHeaderColorBlur = () => {
-    if (headerColorBlurRef.current) {
-      clearTimeout(headerColorBlurRef.current)
-      headerColorBlurRef.current = null
-    }
-  }
-
-  const headerInputFocusHandlers = (field: ToggleHeaderColorField) => ({
-    onFocus: () => {
-      clearHeaderColorBlur()
-      setHeaderColorField(field)
-    },
-    onBlur: () => {
-      clearHeaderColorBlur()
-      headerColorBlurRef.current = setTimeout(() => setHeaderColorField(null), 220)
-    },
-  })
-
-  const colorAttrForField = (field: ToggleHeaderColorField) =>
-    field === 'eyebrow' ? 'eyebrowColor' : field === 'title' ? 'titleColor' : 'subtitleColor'
-
   const onHeaderPointer = (event: React.MouseEvent | React.KeyboardEvent) => {
     const target = event.target as HTMLElement
-    if (target.closest('input') || target.closest('.leaf-toggle-card-header-color-strip')) return
+    if (target.closest('.leaf-toggle-card-field-shell')) return
     if ('key' in event) {
       if (event.key !== 'Enter' && event.key !== ' ') return
       event.preventDefault()
@@ -902,84 +731,39 @@ function ToggleCardView({ node, updateAttributes }: NodeViewProps) {
           onKeyDown={onHeaderPointer}
         >
           <div className="leaf-toggle-card-eyebrow">
-            <input
-              type="text"
-              className="leaf-toggle-card-input leaf-toggle-card-input-eyebrow"
-              value={node.attrs.eyebrow ?? ''}
+            <ToggleCardHeaderField
+              value={String(node.attrs.eyebrow ?? '')}
               placeholder="Label"
-              aria-label="Card label"
+              ariaLabel="Card label"
+              className="leaf-toggle-card-input leaf-toggle-card-input-eyebrow"
               style={eyebrowColor ? { color: eyebrowColor } : undefined}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
-              onChange={(e) => updateAttributes({ eyebrow: e.target.value })}
-              {...headerInputFocusHandlers('eyebrow')}
+              onChange={(html) => updateAttributes({ eyebrow: html })}
             />
           </div>
           <div className="leaf-toggle-card-meta">
-            <input
-              type="text"
-              className="leaf-toggle-card-input leaf-toggle-card-input-title"
-              value={node.attrs.title ?? ''}
+            <ToggleCardHeaderField
+              value={String(node.attrs.title ?? '')}
               placeholder="Title"
-              aria-label="Card title"
+              ariaLabel="Card title"
+              className="leaf-toggle-card-input leaf-toggle-card-input-title"
               style={titleColor ? { color: titleColor } : undefined}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
-              onChange={(e) => updateAttributes({ title: e.target.value })}
-              {...headerInputFocusHandlers('title')}
+              onChange={(html) => updateAttributes({ title: html })}
             />
-            <input
-              type="text"
+            <ToggleCardHeaderField
+              value={String(node.attrs.subtitle ?? '')}
+              placeholder="Subtitle — type / for flags & marks"
+              ariaLabel="Card subtitle"
               className="leaf-toggle-card-input leaf-toggle-card-input-subtitle"
-              value={node.attrs.subtitle ?? ''}
-              placeholder="Subtitle"
-              aria-label="Card subtitle"
               style={subtitleColor ? { color: subtitleColor } : undefined}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
-              onChange={(e) => updateAttributes({ subtitle: e.target.value })}
-              {...headerInputFocusHandlers('subtitle')}
+              onChange={(html) => updateAttributes({ subtitle: html })}
             />
           </div>
-          {headerColorField ? (
-            <div
-              role="group"
-              aria-label="Header text colour"
-              className="leaf-toggle-card-header-color-strip"
-              style={{ gridColumn: '1 / -1' }}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                clearHeaderColorBlur()
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {LEAF_TEXT_COLOR_SWATCHES.map((sw) => (
-                <button
-                  key={sw.id}
-                  type="button"
-                  title={sw.title}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => updateAttributes({ [colorAttrForField(headerColorField)]: sw.value })}
-                  className="h-5 w-5 rounded-full border shrink-0 transition"
-                  style={{
-                    background: sw.value,
-                    borderColor: 'var(--leaf-border-strong)',
-                  }}
-                />
-              ))}
-              <button
-                type="button"
-                title="Clear colour"
-                className="px-1.5 py-0.5 rounded text-[10px] font-mono"
-                style={{ color: 'var(--leaf-text-muted)' }}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => updateAttributes({ [colorAttrForField(headerColorField)]: '' })}
-              >
-                Clr
-              </button>
-            </div>
-          ) : null}
         </div>
         <div className="leaf-toggle-card-body">
           <div className="leaf-toggle-card-body-inner">
@@ -1341,10 +1125,10 @@ export default function LeafEditor({
   const onTagAddRef = useRef(onTagAdd)
   const initialContentRef = useRef(normalizeLeafDocument(content))
   const lastSyncedRef = useRef(JSON.stringify(normalizeLeafDocument(content)))
-  const slashMatchRef = useRef<SlashMatch | null>(null)
+  const slashMatchRef = useRef<EditorSlashMatch | null>(null)
   const slashMenuRef = useRef<SlashMenuState | null>(null)
   const slashSelectActionRef = useRef<(action: string) => void>(() => {})
-  const wikilinkMatchRef = useRef<SlashMatch | null>(null)
+  const wikilinkMatchRef = useRef<EditorSlashMatch | null>(null)
   const wikilinkMenuRef = useRef<WikilinkMenuState | null>(null)
   const wikilinkSelectRef = useRef<(item: LeafTreeItem) => void>(() => {})
   const wikilinkCreateRef = useRef<(title: string) => void>(() => {})

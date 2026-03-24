@@ -758,14 +758,23 @@ html[data-leaf-design="campaign"] .ProseMirror pre code {
   min-width: 0;
 }
 
-.leaf-toggle-card-header-color-strip {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  padding-top: 10px;
-  border-top: 1px solid color-mix(in srgb, var(--leaf-border-soft) 85%, transparent);
+.leaf-toggle-card-field-shell {
+  width: 100%;
+  min-width: 0;
+}
+
+.leaf-toggle-card-field-pm.ProseMirror {
+  width: 100%;
+  outline: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.leaf-toggle-card-field-pm.ProseMirror p {
+  margin: 0;
+  padding: 0;
 }
 
 .leaf-toggle-card-input {

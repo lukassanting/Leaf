@@ -129,6 +129,8 @@ Reserved frontmatter fields (currently null, used by CRDT future):
 
 import json
 import shutil
+import time
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -165,12 +167,38 @@ def _html_to_md(html: str) -> str:
 # ─── File storage ─────────────────────────────────────────────────────────────
 
 class FileStorage:
+    # How long (seconds) a path stays in the "recently written" set.
+    _WRITE_SUPPRESS_TTL = 2.0
+
     def __init__(self, data_dir: str):
         self.root = Path(data_dir)
         self.pages_dir = self.root / "pages"
         self.databases_dir = self.root / "databases"
         self.pages_dir.mkdir(parents=True, exist_ok=True)
         self.databases_dir.mkdir(parents=True, exist_ok=True)
+
+        # Self-write suppression: the file watcher checks this to skip
+        # changes that originated from the API itself.
+        self._recently_written: dict[str, float] = {}
+        self._rw_lock = threading.Lock()
+
+    def was_recently_written(self, path: str | Path) -> bool:
+        """Return True if this path was written by us within the TTL window."""
+        key = str(Path(path).resolve())
+        now = time.monotonic()
+        with self._rw_lock:
+            ts = self._recently_written.get(key)
+            if ts is not None and (now - ts) < self._WRITE_SUPPRESS_TTL:
+                return True
+            # Clean up expired entry
+            self._recently_written.pop(key, None)
+            return False
+
+    def _record_write(self, path: Path) -> None:
+        """Mark a path as just written by us."""
+        key = str(path.resolve())
+        with self._rw_lock:
+            self._recently_written[key] = time.monotonic()
 
     # ─── Pages ────────────────────────────────────────────────────────────────
 
@@ -204,7 +232,9 @@ class FileStorage:
         }
         body = _html_to_md(content_html or "")
         text = f"---\n{yaml.dump(fm, default_flow_style=False, allow_unicode=True, sort_keys=False)}---\n\n{body}\n"
-        self._page_path(leaf_id, database_id).write_text(text, encoding="utf-8")
+        out_path = self._page_path(leaf_id, database_id)
+        self._record_write(out_path)
+        out_path.write_text(text, encoding="utf-8")
 
     def delete_page(self, leaf_id: str, database_id: Optional[str] = None) -> None:
         p = self._page_path(leaf_id, database_id)
@@ -238,7 +268,9 @@ class FileStorage:
             "crdt_checkpoint_id": None,
             "crdt_site_id": None,
         }
-        (db_dir / "meta.json").write_text(
+        meta_path = db_dir / "meta.json"
+        self._record_write(meta_path)
+        meta_path.write_text(
             json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
