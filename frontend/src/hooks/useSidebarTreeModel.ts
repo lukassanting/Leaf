@@ -181,7 +181,11 @@ export function useSidebarTreeModel(activeId?: string) {
   }), [])
 
   useEffect(() => onLeafTitleChanged((detail) => {
-    setNodes((prev) => prev.map((node) => (node.id === detail.id ? { ...node, title: detail.title } : node)))
+    setNodes((prev) => prev.map((node) => (
+      node.id === detail.id || sidebarNodeIdToLeafApiId(node.id) === detail.id
+        ? { ...node, title: detail.title }
+        : node
+    )))
   }), [])
 
   const tree = useMemo(() => buildTree(nodes), [nodes])
@@ -196,7 +200,7 @@ export function useSidebarTreeModel(activeId?: string) {
     if (!node) { setRenameId(null); return }
     try {
       if (node.kind === 'page') {
-        await renameLeafAndPrimeCache(id, {
+        await renameLeafAndPrimeCache(sidebarNodeIdToLeafApiId(id), {
           title: newTitle.trim(),
           parent_id: node.parent_id ?? undefined,
           children_ids: node.children_ids ?? [],
@@ -217,10 +221,10 @@ export function useSidebarTreeModel(activeId?: string) {
     if (!confirm(`Delete this ${label}?`)) return
     try {
       if (kind === 'page') {
-        await leavesApi.delete(id)
+        await leavesApi.delete(sidebarNodeIdToLeafApiId(id))
         emitLeafTreeChanged()
         setNodes((prev) => prev.filter((node) => node.id !== id))
-        if (activeId === id) router.push('/')
+        if (activeId === id || activeId === sidebarNodeIdToLeafApiId(id)) router.push('/')
       } else {
         await databasesApi.delete(id)
         emitLeafTreeChanged()
