@@ -49,6 +49,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Width modes (`normal`, `wide`, `full`) and focus mode.
 - [x] Bottom status bar with sync state and mode label.
 - [x] `Ask AI ⌘K` button in top navigation.
+- [x] Optional **Campaign** visual theme (D&D-inspired dark UI, gold accent, Cinzel / Crimson Pro, starfield background): top-strip toggle, `localStorage` key `leaf-design`, `html[data-leaf-design="campaign"]` token remap in `globals.css`.
 
 ### Databases
 

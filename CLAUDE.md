@@ -61,7 +61,7 @@ Leaf/
 └── frontend/                   # Next.js 15 App Router
     └── src/
         ├── app/
-        │   ├── layout.tsx                          # root: fonts only
+        │   ├── layout.tsx                          # root: fonts + DesignThemeProvider + theme script
         │   ├── (workspace)/
         │   │   ├── layout.tsx                      # shared sidebar
         │   │   ├── page.tsx                        # home / empty state
@@ -69,10 +69,12 @@ Leaf/
         │   │   └── databases/
         │   │       ├── page.tsx                    # database list
         │   │       └── [id]/page.tsx               # database table view
-        │   └── globals.css
+        │   └── globals.css         # design tokens; `data-leaf-design="campaign"` for D&D-style theme
         ├── components/
         │   ├── Editor.tsx          # TipTap rich/markdown editor
         │   ├── EditorToolbar.tsx   # formatting toolbar
+        │   ├── TopStrip.tsx        # breadcrumbs + classic/campaign design toggle
+        │   ├── DesignThemeProvider.tsx
         │   ├── Sidebar.tsx         # sidebar with new-page / new-db buttons
         │   └── SidebarTree.tsx     # leaf tree, search, drag-drop, rename
         └── lib/
@@ -81,6 +83,7 @@ Leaf/
             │   ├── types.ts
             │   ├── leaves.ts
             │   └── databases.ts
+            ├── designTheme.ts      # leaf-design localStorage + html data attribute
             ├── apiBase.ts          # API_BASE_URL env resolution
             └── leafCache.ts        # IndexedDB cache + offline queue
 ```

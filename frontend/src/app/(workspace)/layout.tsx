@@ -111,7 +111,10 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     <PaneVisContext.Provider value={{ leftOpen, setLeftOpen, rightOpen, setRightOpen }}>
     <AIContext.Provider value={{ aiOpen, setAiOpen }}>
     <NavigationProgressProvider>
-      <div className="flex h-screen overflow-hidden" style={{ background: 'var(--leaf-bg-app)' }}>
+      <div
+        className="leaf-workspace-shell flex h-screen overflow-hidden"
+        style={{ background: 'var(--leaf-bg-app)' }}
+      >
         {!focusMode && leftOpen ? <SidebarLeft activeId={activeId} /> : null}
 
         <main
@@ -131,8 +134,9 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full transition-transform duration-150 hover:scale-[1.02]"
           style={{
             background: 'var(--leaf-green)',
-            color: '#fff',
-            boxShadow: '0 12px 32px rgba(16,185,129,0.2), 0 0 0 1px rgba(255,255,255,0.3) inset',
+            color: 'var(--leaf-on-accent)',
+            boxShadow:
+              '0 12px 32px color-mix(in srgb, var(--leaf-green) 35%, transparent), 0 0 0 1px color-mix(in srgb, var(--leaf-on-accent) 35%, transparent) inset',
           }}
           title="Open AI companion"
         >
@@ -151,7 +155,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           onClick={() => setFocusMode(false)}
           className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors duration-150"
           style={{
-            background: 'rgba(255,255,255,0.92)',
+            background: 'var(--leaf-bg-elevated)',
             color: 'var(--leaf-text-sidebar)',
             border: '1px solid var(--leaf-border-strong)',
           }}

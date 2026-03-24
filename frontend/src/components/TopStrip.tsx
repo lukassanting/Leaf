@@ -8,6 +8,7 @@
  *   - content width mode selector
  *   - focus mode toggle
  *   - “Ask AI” button (opens the AI assistant)
+ *   - Settings (⋯): appearance / design theme (Classic vs Campaign)
  *
  * How to read:
  * - This component consumes multiple contexts from:
@@ -28,8 +29,10 @@
 
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useNavigationProgress } from '@/components/NavigationProgress'
+import { useLeafDesign } from '@/components/DesignThemeProvider'
 import { useFocusMode, useContentWidth, usePaneVis, useAI, type ContentWidth } from '@/app/(workspace)/layout'
 import { warmDatabaseRoute, warmEditorRoute } from '@/lib/warmEditorRoute'
 import { DatabaseIcon, LeafIcon } from '@/components/Icons'
@@ -79,10 +82,25 @@ const WIDTH_OPTIONS: { key: ContentWidth; title: string; icon: React.ReactNode }
 
 export function TopStrip({ breadcrumbs, currentTitle }: Props) {
   const { startNavigation } = useNavigationProgress()
+  const { design, setDesign } = useLeafDesign()
   const { focusMode, setFocusMode } = useFocusMode()
   const { contentWidth, setContentWidth } = useContentWidth()
   const { leftOpen, setLeftOpen, rightOpen, setRightOpen } = usePaneVis()
   const { setAiOpen } = useAI()
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const settingsWrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!settingsOpen) return
+    const onDocMouseDown = (event: MouseEvent) => {
+      const el = settingsWrapRef.current
+      if (el && !el.contains(event.target as Node)) {
+        setSettingsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [settingsOpen])
 
   if (focusMode) return null
 
@@ -92,7 +110,7 @@ export function TopStrip({ breadcrumbs, currentTitle }: Props) {
       style={{
         height: 48,
         padding: '0 16px',
-        background: 'rgba(255,255,255,0.88)',
+        background: 'var(--leaf-chrome-bar-bg)',
         backdropFilter: 'blur(18px)',
         borderBottom: '1px solid var(--leaf-border-soft)',
       }}
@@ -106,7 +124,7 @@ export function TopStrip({ breadcrumbs, currentTitle }: Props) {
           className="flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-150"
           style={{
             color: leftOpen ? 'var(--leaf-green)' : 'var(--leaf-text-muted)',
-            background: leftOpen ? 'rgba(16,185,129,0.08)' : 'transparent',
+            background: leftOpen ? 'color-mix(in srgb, var(--leaf-green) 10%, transparent)' : 'transparent',
           }}
         >
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
@@ -161,10 +179,10 @@ export function TopStrip({ breadcrumbs, currentTitle }: Props) {
           className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-colors duration-150"
           style={{
             background: 'var(--leaf-green)',
-            color: '#fff',
+            color: 'var(--leaf-on-accent)',
             fontWeight: 500,
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-primary-dk, #047857)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-primary-dk)' }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--leaf-green)' }}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -175,27 +193,111 @@ export function TopStrip({ breadcrumbs, currentTitle }: Props) {
           Ask AI
         </button>
 
-        {/* More menu placeholder */}
-        <button
-          type="button"
-          className="flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-150"
-          style={{ color: 'var(--leaf-text-muted)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-hover)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
-          title="More options"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="3.5" cy="7" r="1" fill="currentColor" />
-            <circle cx="7" cy="7" r="1" fill="currentColor" />
-            <circle cx="10.5" cy="7" r="1" fill="currentColor" />
-          </svg>
-        </button>
+        {/* Settings: appearance / design theme */}
+        <div ref={settingsWrapRef} className="relative">
+          <button
+            type="button"
+            className="flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-150"
+            style={{ color: 'var(--leaf-text-muted)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-hover)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
+            title="Settings"
+            aria-expanded={settingsOpen}
+            aria-haspopup="menu"
+            onClick={() => setSettingsOpen((open) => !open)}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+              <circle cx="3.5" cy="7" r="1" fill="currentColor" />
+              <circle cx="7" cy="7" r="1" fill="currentColor" />
+              <circle cx="10.5" cy="7" r="1" fill="currentColor" />
+            </svg>
+          </button>
+          {settingsOpen ? (
+            <div
+              role="menu"
+              aria-label="Settings"
+              className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[220px] rounded-lg border py-1 shadow-lg"
+              style={{
+                background: 'var(--leaf-bg-elevated)',
+                borderColor: 'var(--leaf-border-strong)',
+                boxShadow: 'var(--leaf-shadow-soft)',
+              }}
+            >
+              <div
+                className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider"
+                style={{ color: 'var(--leaf-text-muted)' }}
+              >
+                Appearance
+              </div>
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={design === 'default'}
+                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors duration-100"
+                style={{
+                  color: 'var(--leaf-text-title)',
+                  background: design === 'default' ? 'var(--color-hover)' : 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  if (design !== 'default') e.currentTarget.style.background = 'var(--color-hover)'
+                }}
+                onMouseLeave={(e) => {
+                  if (design !== 'default') e.currentTarget.style.background = 'transparent'
+                }}
+                onClick={() => {
+                  setDesign('default')
+                  setSettingsOpen(false)
+                }}
+              >
+                <span>
+                  <span className="block font-medium">Classic</span>
+                  <span className="block text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
+                    Default Leaf look
+                  </span>
+                </span>
+                {design === 'default' ? (
+                  <span style={{ color: 'var(--leaf-green)' }} aria-hidden>✓</span>
+                ) : null}
+              </button>
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={design === 'campaign'}
+                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors duration-100"
+                style={{
+                  color: 'var(--leaf-text-title)',
+                  background: design === 'campaign' ? 'var(--color-hover)' : 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  if (design !== 'campaign') e.currentTarget.style.background = 'var(--color-hover)'
+                }}
+                onMouseLeave={(e) => {
+                  if (design !== 'campaign') e.currentTarget.style.background = 'transparent'
+                }}
+                onClick={() => {
+                  setDesign('campaign')
+                  setSettingsOpen(false)
+                }}
+              >
+                <span>
+                  <span className="block font-medium">Campaign</span>
+                  <span className="block text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
+                    D&amp;D-inspired dark theme
+                  </span>
+                </span>
+                {design === 'campaign' ? (
+                  <span style={{ color: 'var(--leaf-green)' }} aria-hidden>✓</span>
+                ) : null}
+              </button>
+            </div>
+          ) : null}
+        </div>
 
         {/* Width mode switcher */}
         <div
           className="flex items-center gap-0.5"
           style={{
-            background: '#f4f4f5',
+            background: 'var(--leaf-segment-bg)',
             border: '1px solid var(--leaf-border-strong)',
             borderRadius: 6,
             padding: 2,
@@ -212,7 +314,7 @@ export function TopStrip({ breadcrumbs, currentTitle }: Props) {
                 width: 26,
                 height: 22,
                 borderRadius: 4,
-                background: contentWidth === opt.key ? '#fff' : 'transparent',
+                background: contentWidth === opt.key ? 'var(--leaf-segment-active-bg)' : 'transparent',
                 color: contentWidth === opt.key ? 'var(--leaf-text-sidebar)' : 'var(--leaf-text-muted)',
                 cursor: 'pointer',
               }}
@@ -245,7 +347,7 @@ export function TopStrip({ breadcrumbs, currentTitle }: Props) {
           className="flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-150"
           style={{
             color: rightOpen ? 'var(--leaf-green)' : 'var(--leaf-text-muted)',
-            background: rightOpen ? 'rgba(16,185,129,0.08)' : 'transparent',
+            background: rightOpen ? 'color-mix(in srgb, var(--leaf-green) 10%, transparent)' : 'transparent',
           }}
         >
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none">

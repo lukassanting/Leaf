@@ -135,6 +135,7 @@ Leaf is now on the v3 shell and editor architecture:
 - **Schema-first content:** page bodies use structured `LeafDocument` JSON, with a migration path for legacy HTML content.
 - **Stable editor core:** custom TipTap-based editor with slash commands, block insertion, page embeds, inline database embeds, Markdown import/export, and rich/Markdown mode switching.
 - **Workspace shell:** centered identity header, icon picker, content width modes, focus mode, bottom status bar, and a live right sidebar for metadata, tree navigation, and backlinks.
+- **Design themes:** classic (emerald / light) and optional **Campaign** (D&D-inspired dark palette, gold accent, Cinzel / Crimson Pro typography, starfield). Choose **Appearance** under the top bar **Settings** (⋯); choice persists in `localStorage` (`leaf-design`).
 - **Database parity:** standalone and inline databases share the same table, board, gallery, and list surfaces plus shared metadata handling.
 - **Column layouts:** real nested column architecture (2–5 columns) with drag-to-create, resizable widths, Notion-style invisible design, and responsive stacking on mobile. Available via `/columns` slash commands or by dragging blocks side by side.
 - **Local-first sync:** IndexedDB cache, offline queueing, debounced autosave, and conflict-aware content patching.
@@ -142,7 +143,7 @@ Leaf is now on the v3 shell and editor architecture:
 ## Features
 
 - **Pages & tree:** Notion-like hierarchy (projects/pages), shared sidebar with search, collapse-all, expand/collapse per node, inline rename, delete, drag-and-drop reorder, and inline child-page creation.
-- **Editor:** TipTap rich text with slash insertion, block menu, page/database embeds, resizable column layouts (2–5), drag-to-create columns, optional Markdown source mode, and Markdown import/export.
+- **Editor:** TipTap rich text with slash insertion, block menu, page/database embeds, resizable column layouts (2–5), drag-to-create columns, **Toggle Cards** (full-width collapsible blocks, slash `/` and **+** menu under group “Toggle Cards”), optional Markdown source mode, and Markdown import/export.
 - **Autosave:** Debounced PATCH to `/leaves/{id}/content` (~800 ms idle); Ctrl+S / Cmd+S to save immediately; optional conflict detection via `updated_at`.
 - **Leaf metadata diagnostics:** Leaf responses now include `content_text_length` so frontend surfaces can display/search-index text-size context.
 - **Local-first cache:** IndexedDB (with localStorage fallback) for instant page load and offline edits; pending saves sync when back online.
@@ -150,6 +151,7 @@ Leaf is now on the v3 shell and editor architecture:
 - **Metadata parity:** Pages and databases both support title, description, tags, and icons.
 - **Testing:** Backend integration coverage for leaves/databases and Playwright coverage for editor persistence, slash embeds, todo interaction, inline databases, and column layouts.
 - **Stack:** Next.js 15 (App Router), FastAPI, SQLite-default runtime, Tailwind CSS v4, TipTap, Docker Compose.
+- **Themes:** CSS variables in `globals.css`; `html[data-leaf-design="campaign"]` remaps tokens. Root layout loads Geist plus Cinzel / Cinzel Decorative / Crimson Pro for the campaign look.
 
 ## Next steps
 

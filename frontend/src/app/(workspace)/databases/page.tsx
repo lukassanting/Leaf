@@ -88,8 +88,8 @@ export default function DatabasesPage() {
           type="button"
           onClick={createDb}
           disabled={creating}
-          className="rounded-lg px-4 py-2 text-sm font-medium text-white transition disabled:opacity-50"
-          style={{ background: 'var(--leaf-green)' }}
+          className="rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50"
+          style={{ background: 'var(--leaf-green)', color: 'var(--leaf-on-accent)' }}
         >
           {creating ? 'Creating…' : 'Create'}
         </button>

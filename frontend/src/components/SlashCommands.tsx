@@ -9,7 +9,7 @@ import { BLOCK_ICONS } from './Icons'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SlashGroup = 'Text' | 'Structure' | 'Insert'
+export type SlashGroup = 'Text' | 'Structure' | 'Insert' | 'Toggle Cards'
 
 export type SlashItem = {
   label: string
@@ -55,6 +55,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   { label: 'Link to page',  description: 'Link an existing page or database', action: 'link', group: 'Insert', keywords: ['link', 'page', 'wikilink', 'mention'] },
   { label: 'Sub-page',      description: 'New child page',          action: 'subpage', group: 'Insert',    keywords: ['page', 'subpage'] },
   { label: 'Database',      description: 'New table database',      action: 'database',group: 'Insert',    keywords: ['database', 'db', 'table'] },
+  { label: 'Toggle Cards', description: 'Full-width card, collapsible body', action: 'toggleCard', group: 'Toggle Cards', keywords: ['toggle', 'card', 'collapse', 'accordion', 'episode', 'dnd', 'campaign'] },
 ]
 
 function getSlashItemScore(item: SlashItem, query: string): number | null {
@@ -87,7 +88,7 @@ export function rankSlashItems(query: string): SlashItem[] {
 
 // ─── Menu renderer (used in Editor.tsx) ──────────────────────────────────────
 
-const GROUPS: SlashGroup[] = ['Text', 'Structure', 'Insert']
+const GROUPS: SlashGroup[] = ['Text', 'Structure', 'Insert', 'Toggle Cards']
 
 export function SlashMenuPanel({
   menu,
@@ -119,9 +120,9 @@ export function SlashMenuPanel({
         top,
         left,
         width: 260,
-        background: '#fff',
+        background: 'var(--leaf-bg-elevated)',
         border: '1px solid var(--color-border)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+        boxShadow: '0 4px 20px color-mix(in srgb, var(--foreground) 12%, transparent)',
       }}
       onMouseDown={(e) => e.preventDefault()}
     >

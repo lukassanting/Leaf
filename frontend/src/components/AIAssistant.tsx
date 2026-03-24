@@ -60,16 +60,18 @@ export function AIAssistant({ onClose }: { onClose: () => void }) {
       <div
         className="overflow-hidden rounded-2xl border shadow-lg"
         style={{
-          background: 'rgba(255,255,255,0.94)',
+          background: 'var(--leaf-glass)',
           backdropFilter: 'blur(22px)',
-          borderColor: 'rgba(16,185,129,0.14)',
-          boxShadow: '0 24px 60px rgba(24,24,27,0.16), 0 0 0 1px rgba(16,185,129,0.08)',
+          borderColor: 'color-mix(in srgb, var(--leaf-green) 18%, transparent)',
+          boxShadow:
+            '0 24px 60px color-mix(in srgb, var(--foreground) 8%, transparent), 0 0 0 1px color-mix(in srgb, var(--leaf-green) 10%, transparent)',
         }}
       >
         <div
           style={{
             height: 2,
-            background: 'linear-gradient(90deg, rgba(16,185,129,0), rgba(16,185,129,0.7), rgba(16,185,129,0))',
+            background:
+              'linear-gradient(90deg, transparent, color-mix(in srgb, var(--leaf-green) 72%, transparent), transparent)',
             opacity: 0.6,
           }}
         />
@@ -85,7 +87,11 @@ export function AIAssistant({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             className="rounded-full border px-2.5 py-1 text-[10px]"
-            style={{ borderColor: 'var(--leaf-border-strong)', color: 'var(--leaf-text-muted)', background: '#fafafa' }}
+            style={{
+              borderColor: 'var(--leaf-border-strong)',
+              color: 'var(--leaf-text-muted)',
+              background: 'var(--leaf-bg-app)',
+            }}
           >
             Esc
           </button>
@@ -99,7 +105,11 @@ export function AIAssistant({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={() => setInput(item)}
                 className="whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition-colors duration-150"
-                style={{ borderColor: 'var(--leaf-border-strong)', color: 'var(--leaf-text-body)', background: '#fafafa' }}
+                style={{
+                  borderColor: 'var(--leaf-border-strong)',
+                  color: 'var(--leaf-text-body)',
+                  background: 'var(--leaf-bg-app)',
+                }}
               >
                 {item}
               </button>
@@ -126,8 +136,8 @@ export function AIAssistant({ onClose }: { onClose: () => void }) {
             disabled={!input.trim() || processing}
             className="rounded-lg px-3 py-2 text-xs transition-colors duration-150 disabled:opacity-50"
             style={{
-              background: input.trim() && !processing ? 'var(--leaf-green)' : '#f4f4f5',
-              color: input.trim() && !processing ? '#fff' : 'var(--leaf-text-muted)',
+              background: input.trim() && !processing ? 'var(--leaf-green)' : 'var(--leaf-segment-bg)',
+              color: input.trim() && !processing ? 'var(--leaf-on-accent)' : 'var(--leaf-text-muted)',
             }}
           >
             {processing ? 'Thinking…' : 'Run'}

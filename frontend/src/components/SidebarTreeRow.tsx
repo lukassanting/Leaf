@@ -151,7 +151,7 @@ export function SidebarTreeRow({
         <input
           autoFocus
           className="flex-1 min-w-0 rounded px-1 py-0.5 text-sm focus:outline-none"
-          style={{ background: '#fff', border: '1px solid var(--color-border)' }}
+          style={{ background: 'var(--leaf-bg-elevated)', border: '1px solid var(--color-border)' }}
           value={renameValue}
           onChange={(event) => setRenameValue(event.target.value)}
           onBlur={() => onRename(node.id, renameValue)}

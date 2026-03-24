@@ -217,7 +217,11 @@ export function IconPicker({ currentIcon, onApply, onClose }: Props) {
             onClose()
           }}
           className="flex-1 rounded-md px-2.5 py-1.5 text-[11.5px]"
-          style={{ border: '0.5px solid var(--leaf-green)', background: 'var(--leaf-green)', color: 'white' }}
+          style={{
+            border: '0.5px solid var(--leaf-green)',
+            background: 'var(--leaf-green)',
+            color: 'var(--leaf-on-accent)',
+          }}
         >
           Apply
         </button>

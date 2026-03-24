@@ -69,6 +69,17 @@ export type LeafNode =
   | { type: 'codeBlock'; content?: LeafTextNode[] }
   | { type: 'horizontalRule' }
   | { type: 'columnList'; content: LeafColumnNode[] }
+  | {
+      type: 'toggleCard'
+      attrs?: {
+        open?: boolean
+        eyebrow?: string
+        title?: string
+        subtitle?: string
+        accent?: number
+      }
+      content: LeafNode[]
+    }
   | { type: 'pageEmbed'; attrs: { id: string; title: string; kind: 'page' } }
   | { type: 'databaseEmbed'; attrs: { id: string; title: string; kind: 'database'; view?: 'table' | 'board' | 'gallery' } }
 

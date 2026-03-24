@@ -175,4 +175,5 @@ export const BLOCK_ICONS: Record<string, React.ReactNode> = {
       <DatabaseIcon size={14} className="text-[var(--leaf-text-body)]" />
     </span>
   ),
+  toggleCard: <BlockIcon label="▾" />,
 }

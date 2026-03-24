@@ -48,7 +48,7 @@ export function SidebarTreeContextMenu({
         style={{
           left: contextNode.x,
           top: contextNode.y,
-          background: '#fff',
+          background: 'var(--leaf-bg-elevated)',
           border: '1px solid var(--color-border)',
         }}
       >

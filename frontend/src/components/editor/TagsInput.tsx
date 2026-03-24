@@ -76,8 +76,8 @@ export function TagsInput({ tags, onChange }: { tags: string[]; onChange: (tags:
           key={tag}
           className="flex items-center gap-1 rounded-md text-xs font-medium"
           style={{
-            background: 'var(--leaf-green, #10b981)',
-            color: '#fff',
+            background: 'var(--leaf-green)',
+            color: 'var(--leaf-on-accent)',
             padding: '3px 8px 3px 6px',
           }}
         >

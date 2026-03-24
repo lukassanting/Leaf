@@ -100,7 +100,10 @@ export default function GraphPage() {
   }, [filteredEdges, graph.nodes])
 
   return (
-    <div className="flex min-h-screen flex-col" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(248,251,247,0.95))' }}>
+    <div
+      className="flex min-h-screen flex-col"
+      style={{ background: 'linear-gradient(180deg, var(--leaf-bg-editor), var(--leaf-bg-app))' }}
+    >
       <TopStrip breadcrumbs={[]} currentTitle="Graph View" />
       <div className="flex-1 overflow-y-auto px-8 py-10">
         <div className="mx-auto max-w-5xl">
@@ -123,7 +126,11 @@ export default function GraphPage() {
               <div
                 key={card.label}
                 className="rounded-2xl border px-4 py-3"
-                style={{ borderColor: 'rgba(0,0,0,0.05)', background: 'rgba(255,255,255,0.82)', boxShadow: 'var(--leaf-shadow-soft)' }}
+                style={{
+                  borderColor: 'var(--leaf-border-soft)',
+                  background: 'var(--leaf-glass)',
+                  boxShadow: 'var(--leaf-shadow-soft)',
+                }}
               >
                 <div style={{ fontSize: 11, color: 'var(--leaf-text-muted)', marginBottom: 6 }}>{card.label}</div>
                 <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--leaf-text-title)' }}>{card.value}</div>
@@ -138,7 +145,11 @@ export default function GraphPage() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Filter by page title or path…"
               className="w-full rounded-xl border px-3 py-2 text-sm outline-none"
-              style={{ borderColor: 'var(--leaf-border-strong)', background: 'rgba(255,255,255,0.82)', color: 'var(--leaf-text-title)' }}
+              style={{
+                borderColor: 'var(--leaf-border-strong)',
+                background: 'var(--leaf-glass)',
+                color: 'var(--leaf-text-title)',
+              }}
             />
           </div>
 
@@ -146,8 +157,8 @@ export default function GraphPage() {
             className="rounded-[24px] border"
             style={{
               minHeight: 480,
-              borderColor: 'rgba(0,0,0,0.05)',
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.9), rgba(244,248,244,0.9))',
+              borderColor: 'var(--leaf-border-soft)',
+              background: 'linear-gradient(180deg, var(--leaf-bg-elevated), var(--leaf-bg-editor))',
               position: 'relative',
               overflow: 'hidden',
               boxShadow: 'var(--leaf-shadow-soft)',
@@ -184,11 +195,20 @@ export default function GraphPage() {
                     }}
                     style={{ cursor: 'pointer' }}
                   >
-                    <circle cx={position.x} cy={position.y} r={radius} fill="rgba(16,185,129,0.12)" stroke="rgba(16,185,129,0.7)" strokeWidth="1.2" />
-                    <text x={position.x + radius + 6} y={position.y - 1} fontSize="12" fill="#334155">
+                    <circle
+                      cx={position.x}
+                      cy={position.y}
+                      r={radius}
+                      style={{
+                        fill: 'color-mix(in srgb, var(--leaf-green) 14%, transparent)',
+                        stroke: 'var(--leaf-green)',
+                      }}
+                      strokeWidth="1.2"
+                    />
+                    <text x={position.x + radius + 6} y={position.y - 1} fontSize="12" fill="var(--leaf-text-title)">
                       {node.title}
                     </text>
-                    <text x={position.x + radius + 6} y={position.y + 13} fontSize="10" fill="#94a3b8">
+                    <text x={position.x + radius + 6} y={position.y + 13} fontSize="10" fill="var(--leaf-text-muted)">
                       {node.path}
                     </text>
                   </g>

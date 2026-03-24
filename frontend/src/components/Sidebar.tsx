@@ -233,6 +233,9 @@ export function Sidebar({ activeId }: { activeId?: string }) {
               for (const col of (node as { content: { content: typeof document.content }[] }).content) {
                 if (col.content) walkNodes(col.content as typeof document.content)
               }
+            } else if (node.type === 'toggleCard' && 'content' in node) {
+              const inner = (node as { content?: typeof document.content }).content
+              if (inner) walkNodes(inner)
             }
           }
         }

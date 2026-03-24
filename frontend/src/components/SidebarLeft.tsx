@@ -189,7 +189,7 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
         <Link href="/" className="flex items-center gap-2 px-1 no-underline" style={{ color: 'var(--leaf-text-title)' }}>
           <div
             className="flex h-7 w-7 items-center justify-center rounded-lg"
-            style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--leaf-green)' }}
+            style={{ background: 'color-mix(in srgb, var(--leaf-green) 12%, transparent)', color: 'var(--leaf-green)' }}
           >
             <LeafIcon size={16} />
           </div>
@@ -291,14 +291,23 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
           onClick={() => { void handleNewPage() }}
           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors duration-150"
           style={{
-            background: 'rgba(16,185,129,0.08)',
+            background: 'color-mix(in srgb, var(--leaf-green) 9%, transparent)',
             color: 'var(--leaf-green)',
-            border: '1px solid rgba(16,185,129,0.14)',
+            border: '1px solid color-mix(in srgb, var(--leaf-green) 20%, transparent)',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.14)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.08)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'color-mix(in srgb, var(--leaf-green) 16%, transparent)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'color-mix(in srgb, var(--leaf-green) 9%, transparent)'
+          }}
         >
-          <span className="flex h-5 w-5 items-center justify-center rounded-md text-xs" style={{ background: 'rgba(16,185,129,0.12)' }}>+</span>
+          <span
+            className="flex h-5 w-5 items-center justify-center rounded-md text-xs"
+            style={{ background: 'color-mix(in srgb, var(--leaf-green) 14%, transparent)' }}
+          >
+            +
+          </span>
           <span style={{ fontWeight: 500 }}>New page</span>
         </button>
       </div>

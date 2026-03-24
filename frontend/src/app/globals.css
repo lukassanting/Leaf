@@ -3,6 +3,8 @@
 /* ─── Design tokens ──────────────────────────────────────────────────────────
    See LEAF_DESIGN_GUIDE.md for the full token reference.
    Palette: emerald green (#10b981) + zinc grays.
+   Campaign theme: `html[data-leaf-design="campaign"]` remaps the same tokens
+   (D&D-inspired gold / void / parchment text).
    ────────────────────────────────────────────────────────────────────────── */
 
 :root {
@@ -47,23 +49,111 @@
   --leaf-tag-text:     #047857;
   --leaf-shadow-soft:  0 10px 30px rgba(24, 24, 27, 0.06);
   --leaf-glass:        rgba(255, 255, 255, 0.82);
+
+  /* Surfaces not covered by legacy tokens */
+  --leaf-bg-subtle:       #e8e8ec;
+  --leaf-bg-elevated:     #ffffff;
+  --leaf-overlay-scrim:   rgba(250, 250, 250, 0.72);
+  --leaf-chrome-bar-bg:   rgba(255, 255, 255, 0.88);
+  --leaf-segment-bg:      #f4f4f5;
+  --leaf-segment-active-bg: #ffffff;
+  --leaf-on-accent:       #ffffff;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: rgba(16, 185, 129, 0.18);
-  color: #065f46;
+  background: color-mix(in srgb, var(--leaf-green) 22%, transparent);
+  color: var(--color-text-dark);
+}
+
+html[data-leaf-design="campaign"] ::selection {
+  color: var(--leaf-text-title);
 }
 
 html, body {
   height: 100%;
+}
+
+/* ─── Campaign: starfield (inspiration: docs/inspiration/.../d_and_d_style.html) */
+html[data-leaf-design="campaign"] body {
+  position: relative;
+  isolation: isolate;
+}
+
+html[data-leaf-design="campaign"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 100%),
+    radial-gradient(1px 1px at 50% 60%, rgba(255, 255, 255, 0.1) 0%, transparent 100%),
+    radial-gradient(1px 1px at 80% 20%, rgba(255, 255, 255, 0.12) 0%, transparent 100%),
+    radial-gradient(1px 1px at 35% 80%, rgba(255, 255, 255, 0.08) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 45%, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+}
+
+/* ─── Campaign theme — token remap ───────────────────────────────────────── */
+html[data-leaf-design="campaign"] {
+  --background: #080810;
+  --foreground: #d4cfc4;
+
+  --color-sidebar-bg:  #111120;
+  --color-primary:     #c9a84c;
+  --color-primary-dk:  #9a7b32;
+  --color-text-dark:   #e8e4d9;
+  --color-text-body:   #d4cfc4;
+  --color-text-muted:  #7a7569;
+  --color-border:      rgba(201, 168, 76, 0.22);
+
+  --color-tag-bg:      rgba(201, 168, 76, 0.12);
+  --color-tag-border:  rgba(201, 168, 76, 0.38);
+  --color-tag-text:    #c9a84c;
+
+  --color-active:      color-mix(in srgb, var(--leaf-green) 22%, transparent);
+  --color-hover:       color-mix(in srgb, var(--leaf-green) 12%, transparent);
+
+  --leaf-bg-sidebar:   #111120;
+  --leaf-bg-editor:    #0d0d1a;
+  --leaf-bg-app:       #080810;
+  --leaf-bg-hover:     color-mix(in srgb, var(--leaf-green) 10%, transparent);
+  --leaf-bg-active:    color-mix(in srgb, var(--leaf-green) 18%, transparent);
+  --leaf-bg-tag:       rgba(201, 168, 76, 0.12);
+  --leaf-border-soft:  rgba(255, 255, 255, 0.06);
+  --leaf-border-strong: rgba(201, 168, 76, 0.22);
+  --leaf-border-tag:   rgba(201, 168, 76, 0.38);
+  --leaf-text-title:   #e8e4d9;
+  --leaf-text-sidebar: #d4cfc4;
+  --leaf-text-body:    #d4cfc4;
+  --leaf-text-hint:    #7a7569;
+  --leaf-text-muted:   #7a7569;
+  --leaf-green:        #c9a84c;
+  --leaf-green-light:  #e4c76a;
+  --leaf-tag-text:     #c9a84c;
+  --leaf-shadow-soft:  0 12px 48px rgba(0, 0, 0, 0.55);
+  --leaf-glass:        rgba(22, 22, 40, 0.88);
+
+  --leaf-bg-subtle:       #1e1e35;
+  --leaf-bg-elevated:     #161628;
+  --leaf-overlay-scrim:   rgba(8, 8, 16, 0.78);
+  --leaf-chrome-bar-bg:   rgba(17, 17, 32, 0.94);
+  --leaf-segment-bg:      #161628;
+  --leaf-segment-active-bg: #1e1e35;
+  --leaf-on-accent:       #080810;
+}
+
+html[data-leaf-design="campaign"] body {
+  font-family: var(--font-crimson), 'Crimson Pro', Georgia, 'Times New Roman', serif;
+  font-size: 17px;
+  line-height: 1.65;
 }
 
 /* ─── Thin scrollbars ────────────────────────────────────────────────────── */
@@ -73,6 +163,13 @@ html, body {
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb { background-color: #d4d4d8; border-radius: 2px; }
 
+html[data-leaf-design="campaign"] * {
+  scrollbar-color: rgba(201, 168, 76, 0.35) transparent;
+}
+html[data-leaf-design="campaign"] *::-webkit-scrollbar-thumb {
+  background-color: rgba(201, 168, 76, 0.35);
+}
+
 /* ─── ProseMirror — editor typography ───────────────────────────────────── */
 
 .ProseMirror {
@@ -81,6 +178,12 @@ html, body {
   line-height: 1.75;
   outline: none;
   letter-spacing: -0.003em;
+}
+
+html[data-leaf-design="campaign"] .ProseMirror {
+  font-size: 17px;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
 }
 
 /* Headings — 500 weight max, never 600/700 */
@@ -109,6 +212,21 @@ html, body {
   color: var(--color-text-dark);
 }
 
+html[data-leaf-design="campaign"] .ProseMirror h1 {
+  font-family: var(--font-cinzel-decorative), 'Cinzel Decorative', var(--font-cinzel), serif;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--leaf-green);
+  text-shadow: 0 0 40px color-mix(in srgb, var(--leaf-green) 25%, transparent);
+}
+html[data-leaf-design="campaign"] .ProseMirror h2,
+html[data-leaf-design="campaign"] .ProseMirror h3 {
+  font-family: var(--font-cinzel), Cinzel, serif;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--leaf-green-light);
+}
+
 .ProseMirror p  { margin: 0.4em 0; color: var(--color-text-body); }
 
 /* Lists */
@@ -135,6 +253,12 @@ html, body {
   margin: 0.75em 0;
   position: relative;
 }
+
+html[data-leaf-design="campaign"] .ProseMirror pre {
+  background: var(--leaf-bg-elevated);
+  border: 1px solid var(--leaf-border-strong);
+}
+
 .ProseMirror pre::before {
   content: attr(data-language);
   position: absolute;
@@ -147,12 +271,21 @@ html, body {
   letter-spacing: 0.02em;
 }
 .ProseMirror code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   background: #f4f4f5;
   padding: 0.1em 0.35em;
   border-radius: 3px;
   color: #3f3f46;
+}
+
+html[data-leaf-design="campaign"] .ProseMirror code {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--leaf-text-body);
+}
+
+html[data-leaf-design="campaign"] .ProseMirror pre code {
+  color: var(--leaf-text-body);
 }
 .ProseMirror pre code {
   background: none;
@@ -193,24 +326,24 @@ html, body {
   align-items: center;
   border-radius: 999px;
   padding: 0.08rem 0.45rem;
-  background: rgba(16, 185, 129, 0.08);
+  background: color-mix(in srgb, var(--leaf-green) 10%, transparent);
   color: var(--leaf-green);
-  border: 1px solid rgba(16, 185, 129, 0.18);
+  border: 1px solid color-mix(in srgb, var(--leaf-green) 22%, transparent);
   white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
 .leaf-wikilink:hover {
-  background: rgba(16, 185, 129, 0.15);
-  border-color: rgba(16, 185, 129, 0.35);
+  background: color-mix(in srgb, var(--leaf-green) 18%, transparent);
+  border-color: color-mix(in srgb, var(--leaf-green) 40%, transparent);
 }
 
 .leaf-hashtag {
   display: inline;
   border-radius: 4px;
   padding: 0.05rem 0.35rem;
-  background: var(--leaf-green, #10b981);
-  color: #fff;
+  background: var(--leaf-green);
+  color: var(--leaf-on-accent);
   font-size: 0.85em;
   font-weight: 500;
   white-space: nowrap;
@@ -218,7 +351,7 @@ html, body {
   transition: background 0.15s;
 }
 .leaf-hashtag:hover {
-  background: var(--color-primary-dk, #047857);
+  background: var(--color-primary-dk);
 }
 
 /* ─── Block gutter ────────────────────────────────────────────────────
@@ -254,7 +387,7 @@ html, body {
   overflow: hidden;
 }
 .column-list-wrapper:hover [data-type="column"] {
-  background: rgba(0, 0, 0, 0.015);
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
 }
 
 /* Resize handle — invisible by default, visible on column-list hover.
@@ -328,7 +461,7 @@ html, body {
 /* Suppress heavy outline on embeds — they already have their own border */
 .ProseMirror [data-type="databaseEmbed"].ProseMirror-selectednode,
 .ProseMirror [data-type="pageEmbed"].ProseMirror-selectednode {
-  outline: 2px solid rgba(16, 185, 129, 0.35);
+  outline: 2px solid color-mix(in srgb, var(--leaf-green) 38%, transparent);
 }
 
 /* ─── Inline database embed ────────────────────────────────────────────── */
@@ -344,4 +477,157 @@ html, body {
 [data-type="column"] [data-node-view-wrapper] {
   max-width: 100%;
   overflow: hidden;
+}
+
+/* ─── Toggle card block (collapsible “episode”-style card) ───────────────── */
+.leaf-toggle-card-node {
+  margin-bottom: 2rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+.leaf-toggle-card {
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--leaf-border-soft);
+  transition: border-color 0.3s;
+  width: 100%;
+}
+
+.leaf-toggle-card:hover {
+  border-color: color-mix(in srgb, var(--leaf-green) 24%, transparent);
+}
+
+.leaf-toggle-card-header {
+  padding: 22px 40px 26px 26px;
+  display: grid;
+  grid-template-columns: minmax(80px, auto) 1fr;
+  gap: 12px 20px;
+  align-items: start;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s;
+}
+
+.leaf-toggle-card-header::after {
+  content: '▾';
+  position: absolute;
+  bottom: 12px;
+  right: 16px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--leaf-text-muted);
+  transition: transform 0.3s;
+  pointer-events: none;
+}
+
+.leaf-toggle-card[data-open="true"] .leaf-toggle-card-header::after {
+  transform: rotate(180deg);
+}
+
+.leaf-toggle-card-eyebrow {
+  padding-top: 2px;
+}
+
+.leaf-toggle-card-meta {
+  min-width: 0;
+}
+
+.leaf-toggle-card-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.leaf-toggle-card-input::placeholder {
+  color: var(--leaf-text-hint);
+  opacity: 0.8;
+}
+
+.leaf-toggle-card-input-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--leaf-text-muted);
+}
+
+html[data-leaf-design="campaign"] .leaf-toggle-card-input-eyebrow {
+  font-family: var(--font-cinzel), Cinzel, serif;
+  letter-spacing: 0.18em;
+}
+
+.leaf-toggle-card-input-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 6px;
+  color: var(--leaf-green);
+}
+
+html[data-leaf-design="campaign"] .leaf-toggle-card-input-title {
+  font-family: var(--font-cinzel), Cinzel, serif;
+}
+
+.leaf-toggle-card-input-subtitle {
+  font-size: 0.92rem;
+  font-style: italic;
+  color: var(--leaf-text-muted);
+}
+
+.leaf-toggle-card--accent-0 .leaf-toggle-card-header {
+  background: linear-gradient(135deg, var(--leaf-bg-elevated), color-mix(in srgb, var(--leaf-green) 10%, var(--leaf-bg-elevated)));
+}
+
+.leaf-toggle-card--accent-1 .leaf-toggle-card-header {
+  background: linear-gradient(135deg, var(--leaf-bg-elevated), rgba(107, 31, 168, 0.11));
+}
+
+.leaf-toggle-card--accent-2 .leaf-toggle-card-header {
+  background: linear-gradient(135deg, var(--leaf-bg-elevated), rgba(26, 74, 107, 0.12));
+}
+
+.leaf-toggle-card--accent-3 .leaf-toggle-card-header {
+  background: linear-gradient(135deg, var(--leaf-bg-elevated), rgba(26, 107, 42, 0.1));
+}
+
+.leaf-toggle-card--accent-4 .leaf-toggle-card-header {
+  background: linear-gradient(135deg, var(--leaf-bg-elevated), rgba(122, 96, 40, 0.14));
+}
+
+.leaf-toggle-card-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.45s ease;
+  border-top: 1px solid var(--leaf-border-soft);
+}
+
+.leaf-toggle-card[data-open="true"] .leaf-toggle-card-body {
+  max-height: 2600px;
+}
+
+.leaf-toggle-card-body-inner {
+  padding: 8px 26px 22px;
+  background: color-mix(in srgb, var(--leaf-bg-app) 40%, var(--leaf-bg-editor));
+}
+
+html[data-leaf-design="campaign"] .leaf-toggle-card-body-inner {
+  background: var(--leaf-bg-editor);
+}
+
+.leaf-toggle-card-prose [data-node-view-content] {
+  min-height: 0.5em;
+}
+
+.ProseMirror .leaf-toggle-card-node.ProseMirror-selectednode {
+  outline: 2px solid var(--leaf-green);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Workspace shell sits above starfield */
+.leaf-workspace-shell {
+  position: relative;
+  z-index: 1;
 }

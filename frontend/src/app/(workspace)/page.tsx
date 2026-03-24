@@ -142,11 +142,14 @@ export default function HomePage() {
                   key={page.id}
                   href={`/editor/${page.id}`}
                   className="flex items-center gap-3 rounded-2xl border px-4 py-3 transition-colors duration-150"
-                  style={{ borderColor: 'var(--leaf-border-strong)', background: '#fff' }}
+                  style={{ borderColor: 'var(--leaf-border-strong)', background: 'var(--leaf-bg-elevated)' }}
                   onClick={() => startNavigation()}
                   onMouseEnter={() => { void warmEditorRoute() }}
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: 'rgba(16,185,129,0.08)' }}>
+                  <span
+                    className="flex h-10 w-10 items-center justify-center rounded-xl"
+                    style={{ background: 'color-mix(in srgb, var(--leaf-green) 9%, transparent)' }}
+                  >
                     <span style={{ fontSize: 18, lineHeight: 1 }}>{page.icon}</span>
                   </span>
                   <span className="min-w-0 flex-1">
@@ -178,13 +181,15 @@ export default function HomePage() {
                   key={page.id}
                   href={`/editor/${page.id}`}
                   className="flex items-center gap-2.5 px-4 py-3 rounded-lg transition-colors duration-150"
-                  style={{ border: '1px solid var(--color-border)', background: '#fff' }}
+                  style={{ border: '1px solid var(--color-border)', background: 'var(--leaf-bg-elevated)' }}
                   onClick={() => startNavigation()}
                   onMouseEnter={(e) => {
                     void warmEditorRoute()
                     e.currentTarget.style.backgroundColor = 'var(--color-hover)'
                   }}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--leaf-bg-elevated)'
+                  }}
                 >
                   <span className="shrink-0" style={{ color: 'var(--color-text-muted)' }}>
                     <LeafIcon size={13} />
@@ -209,7 +214,7 @@ export default function HomePage() {
           onFocus={() => { void warmEditorRoute() }}
           disabled={creating}
           className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-opacity duration-150 disabled:opacity-50"
-          style={{ background: 'var(--color-primary)', color: '#fff' }}
+          style={{ background: 'var(--color-primary)', color: 'var(--leaf-on-accent)' }}
         >
           <span className="text-base leading-none">+</span>
           {creating ? 'Creating…' : 'New page'}

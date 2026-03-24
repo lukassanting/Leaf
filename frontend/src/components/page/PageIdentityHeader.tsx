@@ -175,12 +175,12 @@ export function PageIdentityHeader({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '2px solid #fff',
+              border: '2px solid var(--leaf-bg-editor)',
               pointerEvents: 'none',
             }}
           >
             <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-              <path d="M4 1V7M1 4H7" stroke="white" strokeWidth="1.3" strokeLinecap="round" />
+              <path d="M4 1V7M1 4H7" stroke="var(--leaf-on-accent)" strokeWidth="1.3" strokeLinecap="round" />
             </svg>
           </div>
         )}

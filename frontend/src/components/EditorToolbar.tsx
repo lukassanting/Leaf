@@ -128,7 +128,7 @@ export function EditorToolbar({ editor }: Props) {
                 : '',
             ].join(' ')}
             style={isActive
-              ? { background: 'rgba(16,185,129,0.08)', color: 'var(--leaf-green)' }
+              ? { background: 'color-mix(in srgb, var(--leaf-green) 9%, transparent)', color: 'var(--leaf-green)' }
               : { color: 'var(--leaf-text-muted)' }}
           >
             {item.label}

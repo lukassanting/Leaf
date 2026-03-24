@@ -152,7 +152,8 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 
 | Path | Purpose |
 |------|---------|
-| `src/app/layout.tsx` | Root layout (fonts, global shell) |
+| `src/app/layout.tsx` | Root layout: fonts (Geist + campaign fonts), `DesignThemeScript` in `<head>`, `DesignThemeProvider`, `globals.css` |
+| `src/app/globals.css` | Tailwind v4 import, `--leaf-*` design tokens, ProseMirror/column CSS, `html[data-leaf-design="campaign"]` theme overrides + starfield |
 | `src/app/(workspace)/layout.tsx` | Workspace chrome: sidebars, providers, shortcuts |
 | `src/app/(workspace)/page.tsx` | Home / workspace landing |
 | `src/app/(workspace)/loading.tsx` | Loading UI for workspace segment |
@@ -166,11 +167,13 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | Path | Purpose |
 |------|---------|
 | `src/components/Editor.tsx` | Re-exports main editor (TipTap) |
-| `src/components/editor/LeafEditor.tsx` | TipTap extensions, slash menu, embeds, document model |
+| `src/components/editor/LeafEditor.tsx` | TipTap extensions, slash menu, embeds, `toggleCard` collapsible block, column layout, document model |
 | `src/components/SlashCommands.tsx` | Slash command definitions and menu |
 | `src/components/EditorToolbar.tsx` | Formatting toolbar |
 | `src/components/StatusBar.tsx` | Sync state, word count, mode label |
-| `src/components/TopStrip.tsx` | Top bar, breadcrumbs |
+| `src/components/TopStrip.tsx` | Top bar, breadcrumbs, Settings (⋯) menu with appearance / design theme |
+| `src/components/DesignThemeProvider.tsx` | Client context: reads/writes `leaf-design` in `localStorage`, sets `data-leaf-design` on `<html>` |
+| `src/components/DesignThemeScript.tsx` | Inline script to apply saved theme before paint (avoids flash) |
 | `src/components/NavigationProgress.tsx` | Route transition indicator |
 | `src/components/LoadingShell.tsx` | Full-page loading placeholder |
 | `src/components/SidebarLeft.tsx` | Left nav: tree, new page/db |
@@ -205,6 +208,7 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 
 | Path | Purpose |
 |------|---------|
+| `src/lib/designTheme.ts` | `leaf-design` storage key, `LeafDesignId`, `applyLeafDesignToDocument`, `readStoredLeafDesign` |
 | `src/lib/apiBase.ts` | Resolves `NEXT_PUBLIC_API_URL` |
 | `src/lib/api/index.ts` | Re-exports API clients and types |
 | `src/lib/api/types.ts` | Shared TypeScript types (Leaf, Database, document nodes) |

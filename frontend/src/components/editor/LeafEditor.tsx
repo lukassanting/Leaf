@@ -41,7 +41,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { EditorContent, NodeViewWrapper, NodeViewContent, ReactNodeViewRenderer, useEditor } from '@tiptap/react'
+import { EditorContent, NodeViewWrapper, NodeViewContent, ReactNodeViewRenderer, useEditor, type NodeViewProps } from '@tiptap/react'
 import { Node, mergeAttributes, InputRule } from '@tiptap/core'
 import { DOMSerializer } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
@@ -63,6 +63,14 @@ import { createEmptyLeafDocument, getLeafContentText, normalizeLeafDocument } fr
 import { rankSlashItems, SLASH_ITEMS, type SlashMenuState, SlashMenuPanel } from '@/components/SlashCommands'
 
 const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' })
+turndown.addRule('leafToggleCard', {
+  filter(node) {
+    return node.nodeName === 'DIV' && (node as HTMLElement).getAttribute('data-type') === 'toggle-card'
+  },
+  replacement(_content, node) {
+    return `\n\n${(node as HTMLElement).outerHTML}\n\n`
+  },
+})
 const markdown = new MarkdownIt({ html: true })
 
 type EmbedCreateResult = {
@@ -239,10 +247,10 @@ function EmbeddedPageCard({
         contentEditable={false}
         className="group flex items-center gap-3 rounded-xl border px-3.5 py-3 transition-colors duration-150"
         style={{
-          borderColor: status === 'error' ? '#f2c4bc' : 'rgba(0,0,0,0.07)',
-          background: status === 'pending' ? '#f4f4f5' : '#fff',
+          borderColor: status === 'error' ? '#f2c4bc' : 'var(--leaf-border-soft)',
+          background: status === 'pending' ? 'var(--leaf-segment-bg)' : 'var(--leaf-bg-elevated)',
           cursor: canNavigate ? 'pointer' : 'default',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+          boxShadow: '0 1px 2px color-mix(in srgb, var(--foreground) 4%, transparent)',
         }}
         onClick={() => {
           if (!canNavigate) return
@@ -253,7 +261,7 @@ function EmbeddedPageCard({
       >
         <span
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: '#f4f4f5', color: 'var(--leaf-text-title)' }}
+          style={{ background: 'var(--leaf-segment-bg)', color: 'var(--leaf-text-title)' }}
         >
           <LeafIcon size={16} />
         </span>
@@ -313,14 +321,14 @@ function EmbeddedDatabaseView({
           contentEditable={false}
           className="group flex items-center gap-3 rounded-xl border px-4 py-3"
           style={{
-            borderColor: status === 'error' ? '#f2c4bc' : 'rgba(0,0,0,0.07)',
-            background: status === 'pending' ? '#f4f4f5' : '#fff',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+            borderColor: status === 'error' ? '#f2c4bc' : 'var(--leaf-border-soft)',
+            background: status === 'pending' ? 'var(--leaf-segment-bg)' : 'var(--leaf-bg-elevated)',
+            boxShadow: '0 1px 2px color-mix(in srgb, var(--foreground) 4%, transparent)',
           }}
         >
           <span
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-            style={{ background: '#f4f4f5', color: 'var(--leaf-text-title)' }}
+            style={{ background: 'var(--leaf-segment-bg)', color: 'var(--leaf-text-title)' }}
           >
             <DatabaseIcon size={16} />
           </span>
@@ -355,7 +363,11 @@ function EmbeddedDatabaseView({
             onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }}
             onClick={(event) => { event.stopPropagation(); handleDelete() }}
             className="rounded-md px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100"
-            style={{ color: 'var(--leaf-text-muted)', background: 'rgba(255,255,255,0.94)', border: '1px solid rgba(0,0,0,0.06)' }}
+            style={{
+              color: 'var(--leaf-text-muted)',
+              background: 'var(--leaf-glass)',
+              border: '1px solid var(--leaf-border-soft)',
+            }}
           >
             Remove
           </button>
@@ -514,7 +526,11 @@ function ColumnListView({
           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation() }}
           onClick={(e) => { e.stopPropagation(); unwrapColumns() }}
           className="rounded-md px-2 py-0.5 text-[11px] opacity-0 transition-opacity group-hover/cols:opacity-100"
-          style={{ color: 'var(--leaf-text-muted)', background: 'var(--leaf-bg-editor, #fff)', border: '1px solid rgba(0,0,0,0.08)' }}
+          style={{
+            color: 'var(--leaf-text-muted)',
+            background: 'var(--leaf-bg-editor)',
+            border: '1px solid var(--leaf-border-soft)',
+          }}
         >
           Remove columns
         </button>
@@ -692,8 +708,137 @@ const ColumnList = Node.create({
   },
 })
 
+function ToggleCardView({ node, updateAttributes }: NodeViewProps) {
+  const open = node.attrs.open !== false && node.attrs.open !== 'false'
+  const accent = ((Number(node.attrs.accent) || 0) % 5 + 5) % 5
+
+  const onHeaderPointer = (event: React.MouseEvent | React.KeyboardEvent) => {
+    const target = event.target as HTMLElement
+    if (target.closest('input')) return
+    if ('key' in event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return
+      event.preventDefault()
+    }
+    updateAttributes({ open: !open })
+  }
+
+  return (
+    <NodeViewWrapper className="leaf-toggle-card-node" data-drag-handle="">
+      <div
+        className={`leaf-toggle-card leaf-toggle-card--accent-${accent}`}
+        data-open={open ? 'true' : 'false'}
+      >
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={open}
+          className="leaf-toggle-card-header"
+          onClick={onHeaderPointer}
+          onKeyDown={onHeaderPointer}
+        >
+          <div className="leaf-toggle-card-eyebrow">
+            <input
+              type="text"
+              className="leaf-toggle-card-input leaf-toggle-card-input-eyebrow"
+              value={node.attrs.eyebrow ?? ''}
+              placeholder="Label"
+              aria-label="Card label"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => updateAttributes({ eyebrow: e.target.value })}
+            />
+          </div>
+          <div className="leaf-toggle-card-meta">
+            <input
+              type="text"
+              className="leaf-toggle-card-input leaf-toggle-card-input-title"
+              value={node.attrs.title ?? ''}
+              placeholder="Title"
+              aria-label="Card title"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => updateAttributes({ title: e.target.value })}
+            />
+            <input
+              type="text"
+              className="leaf-toggle-card-input leaf-toggle-card-input-subtitle"
+              value={node.attrs.subtitle ?? ''}
+              placeholder="Subtitle"
+              aria-label="Card subtitle"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => updateAttributes({ subtitle: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="leaf-toggle-card-body">
+          <div className="leaf-toggle-card-body-inner">
+            <NodeViewContent className="leaf-toggle-card-prose" />
+          </div>
+        </div>
+      </div>
+    </NodeViewWrapper>
+  )
+}
+
+const ToggleCard = Node.create({
+  name: 'toggleCard',
+  group: 'block',
+  content: 'block+',
+  defining: true,
+  isolating: true,
+  draggable: true,
+  addAttributes() {
+    return {
+      open: { default: true },
+      eyebrow: { default: '' },
+      title: { default: 'Toggle card' },
+      subtitle: { default: 'Click the header to expand or collapse' },
+      accent: { default: 0 },
+    }
+  },
+  parseHTML() {
+    return [
+      {
+        tag: 'div[data-type="toggle-card"]',
+        getAttrs: (element) => {
+          if (!(element instanceof HTMLElement)) return false
+          return {
+            open: element.getAttribute('data-open') !== 'false',
+            accent: parseInt(element.getAttribute('data-accent') || '0', 10) || 0,
+            eyebrow: element.getAttribute('data-eyebrow') || '',
+            title: element.getAttribute('data-title') || 'Toggle card',
+            subtitle: element.getAttribute('data-subtitle') || '',
+          }
+        },
+        contentElement: '[data-toggle-card-content]',
+      },
+    ]
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    return [
+      'div',
+      mergeAttributes(
+        {
+          'data-type': 'toggle-card',
+          'data-open': node.attrs.open === false ? 'false' : 'true',
+          'data-accent': String(node.attrs.accent ?? 0),
+          'data-eyebrow': node.attrs.eyebrow ?? '',
+          'data-title': node.attrs.title ?? '',
+          'data-subtitle': node.attrs.subtitle ?? '',
+        },
+        HTMLAttributes,
+      ),
+      ['div', { 'data-toggle-card-content': '' }, 0],
+    ]
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(ToggleCardView as never)
+  },
+})
+
 function BlockDropdown({ onSelect, onClose }: { onSelect: (action: string) => void; onClose: () => void }) {
-  const groups = ['Text', 'Structure', 'Insert'] as const
+  const groups = ['Text', 'Structure', 'Insert', 'Toggle Cards'] as const
 
   return (
     <>
@@ -704,9 +849,9 @@ function BlockDropdown({ onSelect, onClose }: { onSelect: (action: string) => vo
           top: 28,
           left: 0,
           width: 240,
-          background: '#fff',
+          background: 'var(--leaf-bg-elevated)',
           border: '1px solid var(--leaf-border-strong)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.10)',
+          boxShadow: '0 4px 20px color-mix(in srgb, var(--foreground) 10%, transparent)',
         }}
       >
         {groups.map((group) => {
@@ -765,13 +910,16 @@ function WikilinkPanel({
         top,
         left,
         width: 308,
-        background: '#fff',
+        background: 'var(--leaf-bg-elevated)',
         borderColor: 'var(--leaf-border-strong)',
-        boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+        boxShadow: '0 12px 32px color-mix(in srgb, var(--foreground) 14%, transparent)',
       }}
       onMouseDown={(event) => event.preventDefault()}
     >
-      <div className="border-b px-3 py-2 text-[10px] font-medium uppercase tracking-[0.09em]" style={{ color: 'var(--leaf-text-muted)', borderColor: 'rgba(0,0,0,0.05)' }}>
+      <div
+        className="border-b px-3 py-2 text-[10px] font-medium uppercase tracking-[0.09em]"
+        style={{ color: 'var(--leaf-text-muted)', borderColor: 'var(--leaf-border-soft)' }}
+      >
         Link to page or database
       </div>
       {menu.items.map((item, index) => {
@@ -782,7 +930,7 @@ function WikilinkPanel({
             key={item.id}
             type="button"
             className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors duration-100"
-            style={{ backgroundColor: isSelected ? 'var(--leaf-bg-hover)' : '#fff' }}
+            style={{ backgroundColor: isSelected ? 'var(--leaf-bg-hover)' : 'var(--leaf-bg-elevated)' }}
             onMouseDown={(event) => {
               event.preventDefault()
               onSelect(item)
@@ -810,8 +958,8 @@ function WikilinkPanel({
           type="button"
           className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100"
           style={{
-            backgroundColor: isCreateSelected ? 'var(--leaf-bg-hover)' : '#fff',
-            borderTop: menu.items.length > 0 ? '1px solid rgba(0,0,0,0.05)' : undefined,
+            backgroundColor: isCreateSelected ? 'var(--leaf-bg-hover)' : 'var(--leaf-bg-elevated)',
+            borderTop: menu.items.length > 0 ? '1px solid var(--leaf-border-soft)' : undefined,
           }}
           onMouseDown={(event) => {
             event.preventDefault()
@@ -820,7 +968,7 @@ function WikilinkPanel({
         >
           <span
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-            style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--leaf-green)' }}
+            style={{ background: 'color-mix(in srgb, var(--leaf-green) 12%, transparent)', color: 'var(--leaf-green)' }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M7 3v8M3 7h8" />
@@ -959,6 +1107,7 @@ export default function LeafEditor({
     HashtagNode,
     Column,
     ColumnList,
+    ToggleCard,
     PageEmbed,
     DatabaseEmbed,
     TaskList,
@@ -1459,6 +1608,22 @@ export default function LeafEditor({
       case 'database':
         await insertEmbedPlaceholder('database', selectionPos)
         return
+      case 'toggleCard':
+        editor.chain().focus().insertContentAt(selectionPos, [
+          {
+            type: 'toggleCard',
+            attrs: {
+              open: true,
+              eyebrow: '',
+              title: 'Toggle card',
+              subtitle: 'Click the header to expand or collapse',
+              accent: Math.floor(Math.random() * 5),
+            },
+            content: [{ type: 'paragraph' }],
+          },
+          { type: 'paragraph' },
+        ]).run()
+        return
     }
   }, [editor, insertEmbedPlaceholder])
 
@@ -1634,6 +1799,7 @@ export default function LeafEditor({
       const targetNode = editor.state.doc.nodeAt(nodeStart)
       if (targetNode && (
         targetNode.type.name === 'columnList' ||
+        targetNode.type.name === 'toggleCard' ||
         targetNode.type.name === 'databaseEmbed' ||
         targetNode.type.name === 'pageEmbed'
       )) {
@@ -1839,7 +2005,8 @@ export default function LeafEditor({
 
                         // Create a compact drag ghost
                         const ghost = document.createElement('div')
-                        ghost.style.cssText = 'position:fixed;top:-9999px;left:-9999px;max-width:300px;max-height:60px;overflow:hidden;padding:6px 12px;background:#fff;border:1px solid #e4e4e7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-size:13px;color:#3f3f46;'
+                        ghost.style.cssText =
+                          'position:fixed;top:-9999px;left:-9999px;max-width:300px;max-height:60px;overflow:hidden;padding:6px 12px;background:var(--leaf-bg-elevated);border:1px solid var(--leaf-border-strong);border-radius:8px;box-shadow:var(--leaf-shadow-soft);font-size:13px;color:var(--leaf-text-body);'
                         ghost.textContent = fragment.textContent?.slice(0, 80) || 'Block'
                         document.body.appendChild(ghost)
                         event.dataTransfer.setDragImage(ghost, 16, 16)

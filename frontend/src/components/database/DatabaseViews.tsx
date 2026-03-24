@@ -192,8 +192,12 @@ function Cell({
   return (
     <input
       ref={inputRef}
-      className="w-full rounded-md bg-white px-2 py-1 text-sm focus:outline-none"
-      style={{ border: '1px solid rgba(16,185,129,0.24)', boxShadow: '0 0 0 1px rgba(16,185,129,0.08)' }}
+      className="w-full rounded-md px-2 py-1 text-sm focus:outline-none"
+      style={{
+        border: '1px solid color-mix(in srgb, var(--leaf-green) 26%, transparent)',
+        boxShadow: '0 0 0 1px color-mix(in srgb, var(--leaf-green) 10%, transparent)',
+        background: 'var(--leaf-bg-elevated)',
+      }}
       value={draft}
       onChange={(event) => setDraft(event.target.value)}
       onBlur={commit}
@@ -227,8 +231,11 @@ function NameCell({ row, onSave }: { row: DatabaseRow; onSave: (title: string) =
     return (
       <input
         ref={inputRef}
-        className="w-full rounded bg-white px-1 py-0 text-sm font-medium focus:outline-none"
-        style={{ border: '1px solid rgba(16,185,129,0.24)' }}
+        className="w-full rounded px-1 py-0 text-sm font-medium focus:outline-none"
+        style={{
+          border: '1px solid color-mix(in srgb, var(--leaf-green) 26%, transparent)',
+          background: 'var(--leaf-bg-elevated)',
+        }}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
@@ -288,7 +295,14 @@ function RowPreview({
   const estimateColumn = getEstimateColumn(columns)
 
   return (
-    <div className="group rounded-xl border bg-white px-3.5 py-3 transition-colors duration-150" style={{ borderColor: 'rgba(0,0,0,0.07)', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+    <div
+      className="group rounded-xl border px-3.5 py-3 transition-colors duration-150"
+      style={{
+        borderColor: 'var(--leaf-border-soft)',
+        boxShadow: '0 1px 2px color-mix(in srgb, var(--foreground) 4%, transparent)',
+        background: 'var(--leaf-bg-elevated)',
+      }}
+    >
       <div className="mb-2">
         <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
       </div>
@@ -326,7 +340,14 @@ export function AddColumnModal({ onAdd, onClose }: { onAdd: (def: PropertyDefini
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative w-72 space-y-3 rounded-xl border bg-white p-5 shadow-lg" style={{ borderColor: 'var(--leaf-border-strong)', boxShadow: 'var(--leaf-shadow-soft)' }}>
+      <div
+        className="relative w-72 space-y-3 rounded-xl border p-5 shadow-lg"
+        style={{
+          borderColor: 'var(--leaf-border-strong)',
+          boxShadow: 'var(--leaf-shadow-soft)',
+          background: 'var(--leaf-bg-elevated)',
+        }}
+      >
         <h2 className="text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>New column</h2>
         <input
           autoFocus
@@ -349,7 +370,14 @@ export function AddColumnModal({ onAdd, onClose }: { onAdd: (def: PropertyDefini
         </select>
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>Cancel</button>
-          <button type="button" onClick={submit} className="rounded-lg px-3 py-1.5 text-sm text-white transition" style={{ background: 'var(--leaf-green)' }}>Add</button>
+          <button
+            type="button"
+            onClick={submit}
+            className="rounded-lg px-3 py-1.5 text-sm transition"
+            style={{ background: 'var(--leaf-green)', color: 'var(--leaf-on-accent)' }}
+          >
+            Add
+          </button>
         </div>
       </div>
     </div>
@@ -457,8 +485,8 @@ export function DatabaseToolbar({
         <button
           type="button"
           onClick={onAddRow}
-          className="ml-1 flex items-center gap-1 rounded-md px-2.5 py-1 text-[11.5px] font-medium text-white transition-colors"
-          style={{ background: 'var(--color-primary)' }}
+          className="ml-1 flex items-center gap-1 rounded-md px-2.5 py-1 text-[11.5px] font-medium transition-colors"
+          style={{ background: 'var(--color-primary)', color: 'var(--leaf-on-accent)' }}
         >
           New
         </button>
@@ -667,7 +695,15 @@ export function GalleryView({
         const status = statusColumn ? (row.properties || {})[statusColumn.key] : null
         const tone = coverTones[index % coverTones.length]
         return (
-          <div key={row.id} className="group overflow-hidden rounded-xl border bg-white transition-colors duration-150" style={{ borderColor: 'rgba(0,0,0,0.07)', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+          <div
+            key={row.id}
+            className="group overflow-hidden rounded-xl border transition-colors duration-150"
+            style={{
+              borderColor: 'var(--leaf-border-soft)',
+              boxShadow: '0 1px 2px color-mix(in srgb, var(--foreground) 4%, transparent)',
+              background: 'var(--leaf-bg-elevated)',
+            }}
+          >
             <div className="flex h-[88px] items-center justify-center" style={{ background: tone }}>
               <svg width="24" height="24" viewBox="0 0 16 16" fill="none" className="opacity-30">
                 <path d="M4.5 2.75H9.1L11.75 5.38V13.25H4.5V2.75Z" stroke="#a1a1aa" strokeWidth="1.15" strokeLinejoin="round" />
@@ -695,7 +731,7 @@ export function GalleryView({
         type="button"
         onClick={onAddRow}
         className="flex min-h-[152px] items-center justify-center rounded-xl border border-dashed"
-        style={{ borderColor: 'rgba(0,0,0,0.08)', background: '#fafafa' }}
+        style={{ borderColor: 'var(--leaf-border-soft)', background: 'var(--leaf-bg-app)' }}
       >
         <div className="flex flex-col items-center gap-1 text-[11.5px]" style={{ color: 'var(--leaf-text-muted)' }}>
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
