@@ -38,7 +38,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Slash commands and block insertion menu for headings, lists, todos, quotes, sub-pages, databases, and column layouts.
 - [x] Text alignment (paragraph, heading, blockquote) and palette text colours (`TextAlign`, `TextStyle`, `Color`); selection bubble + slash **Style** group (no static toolbar).
 - [x] Inline **story flag** atoms (variant + editable label; slash menu group **Flags**; distinct from page **tags** metadata) and **stat strip** block (three kicker/title pairs); presets in `lib/editorRichText.ts`.
-- [x] **Toggle cards**: header fields are plain text; collapsible body is normal editor content — slash commands (including flags, headings, lists) work inside the card body.
+- [x] **Toggle cards**: eyebrow/title/subtitle are small TipTap fields with a **filtered slash menu** (text marks, alignment, colours, **Flags**); values persist as string/HTML node attrs. Collapsible body is normal editor content — **full** slash commands (headings, lists, embeds, flags, etc.) work inside the card body.
 - [x] Rich/Markdown mode switching plus Markdown import/export.
 - [x] Page embeds as dedicated block nodes.
 - [x] Inline database embeds as dedicated block nodes backed by the shared database surface.
@@ -189,7 +189,9 @@ Questions still open for the next milestone:
 |------|---------|
 | `frontend/src/app/(workspace)/editor/[id]/page.tsx` | Page editor route and shell wiring |
 | `frontend/src/app/(workspace)/databases/[id]/page.tsx` | Standalone database page |
-| `frontend/src/components/editor/LeafEditor.tsx` | Main editor implementation and node views |
+| `frontend/src/components/editor/LeafEditor.tsx` | Main editor implementation, node views, and toggle card wiring |
+| `frontend/src/components/editor/ToggleCardHeaderField.tsx` | Toggle card header lines: mini TipTap + filtered slash (Style, Flags) |
+| `frontend/src/components/editor/toggleCardHeaderSlash.ts` | Slash actions and ranking for toggle header fields |
 | `frontend/src/lib/editorRichText.ts` | Story-tag presets and shared colour swatches |
 | `frontend/src/components/SlashCommands.tsx` | Shared slash menu data and menu UI |
 | `frontend/src/components/database/DatabaseSurface.tsx` | Shared standalone/embedded database renderer |
@@ -258,4 +260,4 @@ That means platform growth should focus first on:
 
 ---
 
-*Last updated: 2026-03-24. Added git-based sync (auto-commit/pull/push, scheduler, test connection, git status panel). Previous: bidirectional file sync (watchdog watcher, reverse sync, cloud conflict detection).*
+*Last updated: 2026-03-24. Toggle card headers: mini TipTap + filtered slash (Style, Flags); key-files rows for `ToggleCardHeaderField` / `toggleCardHeaderSlash`. Previous: git-based sync; bidirectional file sync.*

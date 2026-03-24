@@ -167,7 +167,12 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | Path | Purpose |
 |------|---------|
 | `src/components/Editor.tsx` | Re-exports main editor (TipTap) |
-| `src/components/editor/LeafEditor.tsx` | TipTap extensions (`TextStyle`, `Color`, `TextAlign`, `storyTag`, `statStrip`), slash menu (works inside nested blocks e.g. toggle card body), selection bubble, embeds, `toggleCard`, column layout, document model |
+| `src/components/editor/LeafEditor.tsx` | Main document TipTap (`TextStyle`, `Color`, `TextAlign`, `storyTagExtension`, `statStrip`), slash menu (full commands in nested toggle **body**), `ToggleCardHeaderField` for toggle **headers**, selection bubble, embeds, `toggleCard`, columns, document model |
+| `src/components/editor/ToggleCardHeaderField.tsx` | One-line TipTap per toggle header (eyebrow/title/subtitle); `SlashMenuPanel` + `rankToggleHeaderSlashItems`; syncs attrs when unfocused |
+| `src/components/editor/toggleCardHeaderFieldExtensions.ts` | StarterKit subset + single-paragraph doc, marks, hard break on Enter, placeholder |
+| `src/components/editor/toggleCardHeaderSlash.ts` | Allowed slash actions for headers (no block inserts); `applyToggleHeaderSlashAction` |
+| `src/components/editor/slashMatchUtils.ts` | `computeSlashMatch`, `computeWikilinkMatch` for main editor and nested fields |
+| `src/components/editor/storyTagExtension.tsx` | `StoryTag` atom + React node view (story flags) |
 | `src/components/SlashCommands.tsx` | Slash command definitions and menu (**Style**, **Flags** story-flag presets, **Toggle Cards**) |
 | `src/components/editor/EditorSelectionBubble.tsx` | Selection bubble: alignment, clear colour, swatches (TipTap `BubbleMenu`; no static toolbar) |
 | `src/lib/editorRichText.ts` | Story-flag variants/presets (slash: “Flag · …”), text-colour swatches, slash action helpers |
@@ -258,4 +263,4 @@ Browser UI (pages + components)
 - [FRAMEWORK_DIRECTION.md](FRAMEWORK_DIRECTION.md) — web/desktop/mobile posture (if present in your tree)  
 - Root [README.md](../README.md) — commands and quick start  
 
-*Last updated: 2026-03-23.*
+*Last updated: 2026-03-24 — toggle card header mini-editors and filtered slash (`ToggleCardHeaderField`, `toggleCardHeaderSlash`, `slashMatchUtils`, `storyTagExtension`).*

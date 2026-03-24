@@ -1,58 +1,44 @@
-# Leaf: run full stack (API + frontend + MySQL) and run tests.
-# Requires Docker and Docker Compose. On Windows you can use WSL or install Make (e.g. Chocolatey).
+# Leaf: local development workflow.
+# Requires: Python 3.11+, Node.js 20+, npm.
+# On Windows: install Make via Chocolatey (`choco install make`) or use the commands directly.
 
-COMPOSE = docker compose
 BACKEND_DIR = backend
 FRONTEND_DIR = frontend
 
-.PHONY: up up-d down down-volumes build test test-in-docker logs shell-api shell-frontend env
+.PHONY: api frontend install test env down
+
+# ── Setup ────────────────────────────────────────────────────────────────────
 
 # Ensure backend .env exists (copy from .env.example if missing).
-# Windows cmd.exe chokes on '!' and lacks Unix 'test'; use a Python one-liner so it works everywhere.
 env:
 	@python -c "import os; p=os.path.join('$(BACKEND_DIR)','.env'); e=os.path.join('$(BACKEND_DIR)','.env.example'); os.path.exists(p) or open(p,'wb').write(open(e,'rb').read()) or print('Created $(BACKEND_DIR)/.env')"
 
-# Start all services (MySQL, API, frontend). Builds images if needed.
-up: env
-	$(COMPOSE) up --build
+# Install all dependencies (backend + frontend).
+install: env
+	cd $(BACKEND_DIR) && pip install -r requirements.txt 2>/dev/null || poetry install
+	cd $(FRONTEND_DIR) && npm install
 
-# Same as up but detached (background)
-up-d: env
-	$(COMPOSE) up --build -d
+# ── Run (use two terminals) ──────────────────────────────────────────────────
 
-# Stop and remove containers
+# Terminal 1: start the backend API on http://localhost:8000
+api: env
+	cd $(BACKEND_DIR) && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Terminal 2: start the frontend on http://localhost:3000
+frontend:
+	cd $(FRONTEND_DIR) && npm run dev
+
+# Kill all backend + frontend processes.
 down:
-	$(COMPOSE) down
+	-@taskkill //F //IM python.exe 2>/dev/null || pkill -f uvicorn 2>/dev/null || true
+	-@taskkill //F //IM node.exe 2>/dev/null || pkill -f "next dev" 2>/dev/null || true
+	@echo "All stopped."
 
-# Stop and remove containers and the MySQL data volume
-down-volumes:
-	$(COMPOSE) down -v
+# ── Test ─────────────────────────────────────────────────────────────────────
 
-# Build all images without starting
-build: env
-	$(COMPOSE) build
-
-# Run tests: frontend lint; backend lint if available
 test:
 	@echo "--- Frontend (lint) ---"
 	cd $(FRONTEND_DIR) && npm run test
 	@echo "--- Backend (lint / tests) ---"
-	@cd $(BACKEND_DIR) && (poetry run flake8 app || poetry run python -m py_compile app/main.py || echo "Backend checks skipped (install Poetry to enable).")
+	@cd $(BACKEND_DIR) && (poetry run flake8 app 2>/dev/null || python -m py_compile app/main.py || echo "Backend checks skipped.")
 	@echo "Done."
-
-# Follow logs for all services
-logs:
-	$(COMPOSE) logs -f
-
-# One-off: run tests inside containers (e.g. when stack is up)
-test-in-docker:
-	$(COMPOSE) run --rm frontend npm run test
-	@echo "Backend: run 'docker compose run --rm api poetry run pytest' when tests exist."
-
-# Shell into API container (when stack is up)
-shell-api:
-	$(COMPOSE) exec api sh
-
-# Shell into frontend container
-shell-frontend:
-	$(COMPOSE) exec frontend sh

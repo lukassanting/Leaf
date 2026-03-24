@@ -2,64 +2,32 @@
 
 A fast, Notion-inspired workspace with rich pages, inline databases, a local-first cache, and a schema-first editor model. **FastAPI** backend, **Next.js 15** frontend, and default **SQLite** runtime storage (with Alembic/MySQL migration tooling still present for legacy workflows).
 
-## Quick start (Docker + Make)
+## Quick start
 
-**Prerequisites:** Docker and Docker Compose. For the Makefile: `make` (on Windows: WSL, Git Bash, or [Chocolatey](https://chocolatey.org/) `choco install make`). The `make up` and `make build` targets also require **Python** (used to create `backend/.env` from `.env.example` if missing).
+**Prerequisites:** Python 3.11+, Node.js 20+, npm. For the Makefile: `make` (on Windows: [Chocolatey](https://chocolatey.org/) `choco install make`, or use WSL / Git Bash).
 
 All commands below are from the **repo root** (`Leaf/`).
 
-1. **Start the full stack** (API + frontend):
+1. **Install dependencies** (first time only):
 
    ```bash
-   make up
+   make install
    ```
 
-   This creates `backend/.env` from `backend/.env.example` when needed, then runs `docker compose up --build`.
-   **Windows:** If `make up` fails on the `env` step (e.g. "Python not found"), create the env file manually:
-
-   ```cmd
-   copy backend\.env.example backend\.env
-   docker compose up --build
-   ```
-
-   **Without Make:**
+2. **Start the app** (two terminals):
 
    ```bash
-   cp backend/.env.example backend/.env   # macOS/Linux
-   # or: copy backend\.env.example backend\.env   # Windows
-   docker compose up --build
+   make api        # Terminal 1 — backend on http://localhost:8000
+   make frontend   # Terminal 2 — frontend on http://localhost:3000
    ```
 
-2. **Open the app**
+3. **Open** http://localhost:3000
 
-   - **Frontend:** http://localhost:3000
-   - **API:** http://localhost:8000
-   - **API docs:** http://localhost:8000/docs
-
-3. **Run tests**
-
-   ```bash
-   make test
-   ```
-
-   Runs the frontend linter and backend checks. If Poetry is not installed on your host, backend checks are skipped with a warning. To run tests inside Docker:
-
-   ```bash
-   make test-in-docker
-   ```
-
-4. **Stop**
-
-   ```bash
-   make down
-   ```
-
-   To also remove the database volume: `make down-volumes`.
+4. **Stop**: Ctrl+C in each terminal.
 
 ## Debugging workflow
 
 - Use `docs/DEBUGGING_PLAYBOOK.md` for a repeatable cross-stack workflow (route -> hook -> API client -> backend controller -> operations).
-- The playbook includes a worked Windows-shell example for diagnosing/fixing `make test` command issues.
 
 ## Codebase map
 
@@ -67,66 +35,109 @@ All commands below are from the **repo root** (`Leaf/`).
 
 ## Makefile targets
 
-| Target              | Description                          |
-|---------------------|--------------------------------------|
-| `make up`           | Start all services (builds if needed) |
-| `make up-d`         | Start in background                  |
-| `make down`         | Stop containers                      |
-| `make down-volumes` | Stop and remove DB volume            |
-| `make build`        | Build images only                    |
-| `make test`         | Frontend lint + backend checks       |
-| `make logs`         | Follow logs                          |
-| `make shell-api`    | Shell into API container              |
-| `make shell-frontend` | Shell into frontend container      |
+| Target | Description |
+|---|---|
+| `make api` | Start backend (FastAPI on :8000) |
+| `make frontend` | Start frontend (Next.js on :3000) |
+| `make install` | Install all dependencies |
+| `make test` | Frontend lint + backend checks |
 
-## Development without Docker
+## Cross-device sync
 
-1. **Backend:** In `backend/` run `poetry install`. Copy `backend/.env.example` to `backend/.env` and set `DATA_DIR` and/or `DATABASE_URL` (default is SQLite at `<DATA_DIR>/.leaf.db`). Start the API:
+Leaf stores your pages as `.md` files with YAML frontmatter in a **data directory**. The SQLite database is a rebuildable index, not the source of truth — your Markdown files are. This means syncing is just about keeping that folder in sync across devices.
 
-   ```bash
-   cd backend && poetry run uvicorn app.main:app --reload
-   ```
+Sync is **off** by default. Everything is configured from the **Settings** page in the app — no command-line setup required.
 
-2. **Frontend:** In `frontend/` run `npm install`. Set `NEXT_PUBLIC_API_URL=http://localhost:8000`, then:
+### How it works
 
-   ```bash
-   cd frontend && npm run dev
-   ```
+Leaf's data directory looks like this on disk:
 
-3. **Optional DB override:** If you want to point runtime to another DB, set `DATABASE_URL` to a valid SQLAlchemy connection URL.
+```
+~/Documents/Leaf/           # or wherever you choose
+├── My first page.md        # each page is a .md file with YAML frontmatter
+├── Meeting notes.md
+├── projects/
+│   └── Roadmap.md
+├── .leaf.db                # SQLite index (auto-rebuilt, not synced)
+└── .sync-config.json       # your sync preferences (auto-created)
+```
 
-## Database migrations
+Only the `.md` files matter. The database is rebuilt automatically from the files whenever needed.
 
-The app runtime currently initializes schema on startup via SQLAlchemy `create_all` using `DATABASE_URL` (default SQLite in `DATA_DIR`). Alembic files remain available for explicit migration workflows.
+### Setting up sync
 
-- **App runtime (default):** SQLite (`sqlite:///<DATA_DIR>/.leaf.db`).
-- **Alembic (legacy path):** currently configured for MySQL env vars in `backend/migrations/env.py`.
+1. Open **Settings** (gear icon in the sidebar, or go to `/settings`).
+2. Under **Sync Mode**, choose:
+   - **Folder sync** — for Google Drive, Dropbox, iCloud, or OneDrive.
+   - **Git sync** — for GitHub, GitLab, or any Git remote.
+3. Click **Save**. Changes take effect immediately and persist across restarts.
 
-### Running Alembic inside Docker
+### Folder sync (Google Drive / Dropbox / OneDrive)
 
-From repo root, enter the API container (name used by root `docker-compose.yml` is `leaf-api`):
+Best for most users. Your data directory just needs to live inside a cloud-synced folder.
 
+- **Desktop:** Place your Leaf data folder inside your cloud client's sync folder (e.g. `~/Google Drive/Leaf/`, `~/OneDrive/Leaf/`, `~/Dropbox/Leaf/`). The cloud client handles upload/download; Leaf watches for incoming changes and updates the index.
+- **How it works:** When another device edits a `.md` file and the cloud client downloads it, Leaf's file watcher detects the change and updates the local database. When you edit in Leaf, the file is written to disk and the cloud client uploads it.
+- **Conflict handling:** If the cloud service creates conflict copies (e.g. `page (1).md`, `page (conflicted copy).md`), Leaf detects them automatically. A badge appears on the sync indicator in the sidebar, and the **Conflicts** section on the Settings page lets you choose: keep local, keep remote, or keep both.
+
+### Git sync (GitHub / GitLab / any Git remote)
+
+Best for users who want version history, or who prefer Git over a cloud drive.
+
+1. Select **Git sync** in Settings.
+2. Enter the **Remote URL** (HTTPS, e.g. `https://github.com/you/leaf-notes.git`).
+3. If the repo is private, paste a **Personal Access Token** (PAT). For GitHub: create one at GitHub > Settings > Developer settings > Fine-grained tokens with **Contents** read/write permission.
+4. Click **Test Connection** to verify.
+5. Choose a **Sync interval** (default: every 5 minutes).
+6. Click **Save**.
+
+Leaf initializes a git repo in your data directory, creates a `.gitignore` (excludes the SQLite DB and metadata files), and starts a background loop: stage changes, commit, pull (rebase), push. The **Git Status** panel on Settings shows branch, remote, last commit, and any errors.
+
+### Sync status indicator
+
+The sidebar shows a sync indicator at the bottom:
+
+- **Green dot** + "Watching" or "Synced Xm ago" — everything is healthy.
+- **Yellow dot** + "Syncing..." — a sync cycle is in progress.
+- **Red dot** + "Sync error" — something went wrong (click to see details in Settings).
+- **Badge** — number of unresolved conflicts.
+
+Click the indicator to jump to Settings.
+
+### Sync dashboard (Settings page)
+
+The Settings page shows:
+
+- **Sync status**: current state, last synced time, pending file changes.
+- **Sync Now**: triggers an immediate sync cycle.
+- **Rebuild Index**: re-scans all `.md` files and rebuilds the SQLite database from scratch. Use this if the DB gets out of sync or after manually adding files.
+- **Conflicts**: detected file conflicts with resolution options.
+
+### For developers: enabling sync via environment variables
+
+During development, you can also pre-set sync mode with env vars before starting the backend:
+
+**macOS / Linux:**
 ```bash
-docker exec -it leaf-api sh
+SYNC_MODE=folder python -m uvicorn app.main:app --reload
 ```
 
-Inside the container:
-
-```sh
-cd /app
-alembic revision --autogenerate -m "Description of update"
-alembic upgrade head
+**Windows (PowerShell):**
+```powershell
+$env:SYNC_MODE="folder"; python -m uvicorn app.main:app --reload
 ```
 
-### Inspecting or removing the DB volume
+**Docker (dev only):** `make up` works without changes (sync defaults to off). Add `SYNC_MODE: folder` to the `api` environment block in `docker-compose.yml`, or just configure from the Settings page after the app starts. Note: for folder sync in Docker, you'd need to bind-mount a host directory instead of using the Docker volume so cloud clients can see the files.
 
-With the root `docker-compose.yml`, the default data volume is named `leaf_data`:
+## Data storage
 
-```bash
-docker volume inspect leaf_data
-# remove when containers are stopped:
-docker volume rm leaf_data
-```
+Leaf uses SQLite as a fast index and stores all page content as `.md` files in the data directory (`backend/data/` by default). The SQLite database is auto-created on first startup — no migrations needed.
+
+- **Data directory:** `backend/data/` (configurable via `DATA_DIR` in `backend/.env`)
+- **Database:** `backend/data/.leaf.db` (auto-created, rebuildable from `.md` files via Settings > Rebuild Index)
+- **Reset:** delete `backend/data/.leaf.db` and restart — the app creates a fresh database. Your `.md` files are preserved.
+
+Alembic migration tooling is still present in `backend/migrations/` for legacy workflows but is not needed for normal use.
 
 ## Current status
 
@@ -139,18 +150,20 @@ Leaf is now on the v3 shell and editor architecture:
 - **Database parity:** standalone and inline databases share the same table, board, gallery, and list surfaces plus shared metadata handling.
 - **Column layouts:** real nested column architecture (2–5 columns) with drag-to-create, resizable widths, Notion-style invisible design, and responsive stacking on mobile. Available via `/columns` slash commands or by dragging blocks side by side.
 - **Local-first sync:** IndexedDB cache, offline queueing, debounced autosave, and conflict-aware content patching.
+- **Cross-device sync:** Bidirectional `.md` file sync with watchdog-based file watcher, cloud conflict detection (Google Drive, Dropbox, OneDrive), and optional git-based sync (auto-commit/pull/push with PAT auth). Configurable from the Settings page.
 
 ## Features
 
 - **Pages & tree:** Notion-like hierarchy (projects/pages), shared sidebar with search, collapse-all, expand/collapse per node, inline rename, delete, drag-and-drop reorder, and inline child-page creation.
-- **Editor:** TipTap rich text with slash `/` and gutter **+** block menu for structure and marks (no top toolbar), **selection bubble** for alignment and text colours when text is highlighted, inline **story flags** (variant pills; type `/flag` in slash menu) and **stat strip** blocks (three kicker/value cards), page/database embeds, resizable column layouts (2–5), drag-to-create columns, **Toggle Cards** (collapsible blocks; slash commands work inside the card body), optional Markdown source mode, and Markdown import/export.
+- **Editor:** TipTap rich text with slash `/` and gutter **+** block menu for structure and marks (no top toolbar), **selection bubble** for alignment and text colours when text is highlighted, inline **story flags** (variant pills; type `/flag` in slash menu) and **stat strip** blocks (three kicker/value cards), page/database embeds, resizable column layouts (2–5), drag-to-create columns, **Toggle Cards** (collapsible blocks; eyebrow/title/subtitle use a **filtered slash menu** for text style and flags—full block slash remains in the card body), optional Markdown source mode, and Markdown import/export.
 - **Autosave:** Debounced PATCH to `/leaves/{id}/content` (~800 ms idle); Ctrl+S / Cmd+S to save immediately; optional conflict detection via `updated_at`.
 - **Leaf metadata diagnostics:** Leaf responses now include `content_text_length` so frontend surfaces can display/search-index text-size context.
 - **Local-first cache:** IndexedDB (with localStorage fallback) for instant page load and offline edits; pending saves sync when back online.
 - **Databases:** Notion-style collections of pages. Each entry is a real page. Views: Table, Board, Gallery, List. Schema-driven columns (text, number, tags, select). "Name" always links to the entry page. Inline cell editing and add-column flows are shared between standalone and embedded databases.
 - **Metadata parity:** Pages and databases both support title, description, tags, and icons.
+- **Cross-device sync:** Folder sync watches for external file changes (Google Drive, Dropbox, OneDrive). Git sync auto-commits and pushes/pulls to a remote repo on a schedule. Cloud conflict detection and resolution UI. All configurable from the Settings page — no env vars or restarts needed.
 - **Testing:** Backend integration coverage for leaves/databases and Playwright coverage for editor persistence, slash embeds, todo interaction, inline databases, and column layouts.
-- **Stack:** Next.js 15 (App Router), FastAPI, SQLite-default runtime, Tailwind CSS v4, TipTap, Docker Compose.
+- **Stack:** Next.js 15 (App Router), FastAPI, SQLite, Tailwind CSS v4, TipTap.
 - **Themes:** CSS variables in `globals.css`; `html[data-leaf-design="campaign"]` remaps tokens. Root layout loads Geist plus Cinzel / Cinzel Decorative / Crimson Pro for the campaign look.
 
 ## Next steps
@@ -159,7 +172,7 @@ The next recommended phase is:
 
 1. Build search and a quick switcher (`Cmd+K`) on top of the structured content model.
 2. Expand database capabilities with sort/filter/group configuration and richer property types.
-3. Add conflict-resolution UI and broader CI/production hardening.
+3. CI workflow and production deployment hardening.
 
 ## Framework direction
 
@@ -172,38 +185,45 @@ Leaf should stay on React/Next for the web app.
 
 See `docs/FRAMEWORK_DIRECTION.md` for the full decision and cross-platform guidance.
 
-## Production (placeholder)
+## Docker (optional)
 
-The root `docker-compose.yml` is aimed at development. For production you would typically:
+Docker Compose files are included for isolated builds and CI. They are **not** the primary development workflow.
 
-- Use a separate `docker-compose.prod.yml` or CI step that builds production images (e.g. multi-stage backend, `next build` + `next start` for frontend).
-- Prefer explicit migration/init steps instead of relying on startup schema creation for production.
-- Configure env (secrets, `ALLOWED_ORIGINS`, DB URL) for production.
+```bash
+make docker-up           # Build + start via Docker Compose
+make docker-down         # Stop containers
+make docker-down-volumes # Stop + remove data volume
+```
+
+Note: Docker uses its own data volume, separate from your local `backend/data/`. For production packaging, Leaf will be distributed as a desktop app (Electron/Tauri) — not as a Docker container.
 
 ## Project layout
 
 ```
 Leaf/
-├── CLAUDE.md             # AI code editor instructions and project context
-├── README.md             # ← this file
-├── LEAF_DESIGN_GUIDE.md  # visual design source of truth
+├── CLAUDE.md                    # AI code editor instructions
+├── README.md                    # ← this file
+├── Makefile                     # make up, test, install, etc.
 ├── docs/
-│   ├── FRAMEWORK_DIRECTION.md
-│   ├── EDITOR_DESIGN.md
+│   ├── PLANS_AND_ROADMAP.md
 │   ├── CODEBASE.md
 │   ├── DEBUGGING_PLAYBOOK.md
-│   └── PLANS_AND_ROADMAP.md
-├── docker-compose.yml    # Full stack: api + frontend (run from root)
-├── Makefile              # up, down, test, logs, etc.
-├── backend/              # FastAPI, Poetry, Alembic
+│   ├── FRAMEWORK_DIRECTION.md
+│   └── EDITOR_DESIGN.md
+├── backend/                     # FastAPI + SQLAlchemy + SQLite
 │   ├── app/
-│   ├── migrations/
-│   ├── Dockerfile.dev
-│   ├── docker-compose.dev.yml   # Legacy backend + MySQL setup
+│   │   ├── api/routes/          # leaf, database, sync controllers
+│   │   ├── database/            # models, operations, connectors
+│   │   ├── sync/                # file watcher, git sync, conflict detection
+│   │   ├── dtos/                # request/response schemas
+│   │   ├── main.py
+│   │   └── config.py
+│   ├── data/                    # .md files + .leaf.db (your data, not committed)
 │   └── .env.example
-└── frontend/             # Next.js 15 App Router, Tailwind v4, TipTap
-    └── src/
-        ├── app/(workspace)/     # Shared layout with sidebar and editor/database routes
-        ├── components/          # Editor, database surfaces, headers, sidebar
-        └── lib/                 # API clients, cache, document model, types
+├── frontend/                    # Next.js 15, Tailwind v4, TipTap
+│   └── src/
+│       ├── app/(workspace)/     # Editor, databases, settings routes
+│       ├── components/          # Editor, sidebar, database surfaces, sync indicator
+│       └── lib/                 # API clients, cache, document model
+└── docker-compose.yml           # Optional Docker setup
 ```

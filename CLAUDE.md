@@ -39,6 +39,8 @@ You are helping build **Leaf**, a Notion-inspired personal knowledge manager. St
 
 - **Windows CRLF in shell scripts.** Add `RUN sed -i 's/\r//' wait-for-it.sh && chmod +x wait-for-it.sh` in `backend/Dockerfile.dev`.
 
+- **Sync subsystem architecture.** Bidirectional file sync lives in `backend/app/sync/`. The file watcher uses `watchdog` to detect external changes to `.md` files and reverse-syncs into SQLite via `FileToDbSyncer`. Self-write suppression (`FileStorage._recently_written`) prevents the watcher from re-ingesting API writes. Sync config is persisted to `DATA_DIR/.sync-config.json` and loaded at startup. The frontend settings page is at `/settings`. The `SyncStatusIndicator` in the sidebar polls `GET /sync/status` every 10s. Git sync (`git_sync.py`) initializes a git repo in DATA_DIR, auto-commits, pulls with rebase, and pushes on a configurable interval via `SyncScheduler`. The `.gitignore` excludes `.leaf.db*`, `.sync-manifest.json`, `.sync-conflicts.json`, and `.sync-config.json`. PAT auth is embedded in the remote URL. `git` must be installed on the host.
+
 ## Project layout (top-level)
 
 ```
@@ -50,12 +52,20 @@ Leaf/
 ├── Makefile
 ├── backend/                    # FastAPI + Alembic + SQLAlchemy runtime
 │   ├── app/
-│   │   ├── api/routes/         # leaf_crud_controller, database_controller
+│   │   ├── api/routes/         # leaf_crud_controller, database_controller, sync_controller
 │   │   ├── database/
 │   │   │   ├── models/         # mysql_models.py
 │   │   │   ├── operations/     # leaf_operations, database_operations
 │   │   │   └── connectors/
-│   │   ├── dtos/               # leaf_dtos, database_dtos
+│   │   ├── dtos/               # leaf_dtos, database_dtos, sync_dtos
+│   │   ├── sync/               # bidirectional file sync subsystem
+│   │   │   ├── file_to_db.py   # reverse sync: .md → SQLite
+│   │   │   ├── file_watcher.py # watchdog-based live change detection
+│   │   │   ├── manifest.py     # SHA-256 file manifest for diff detection
+│   │   │   ├── conflict_store.py # persisted conflict tracking
+│   │   │   ├── cloud_detector.py # Google Drive/Dropbox/OneDrive conflict copies
+│   │   │   ├── git_sync.py     # git auto-commit/pull/push engine
+│   │   │   └── scheduler.py    # periodic background sync loop
 │   │   ├── main.py
 │   │   └── config.py
 │   └── migrations/versions/
@@ -67,6 +77,7 @@ Leaf/
         │   │   ├── layout.tsx                      # shared sidebar
         │   │   ├── page.tsx                        # home / empty state
         │   │   ├── editor/[id]/page.tsx            # page editor
+        │   │   ├── settings/page.tsx               # sync config + status + conflicts
         │   │   └── databases/
         │   │       ├── page.tsx                    # database list
         │   │       └── [id]/page.tsx               # database table view
@@ -76,13 +87,16 @@ Leaf/
         │   ├── TopStrip.tsx        # breadcrumbs + classic/campaign design toggle
         │   ├── DesignThemeProvider.tsx
         │   ├── Sidebar.tsx         # sidebar with new-page / new-db buttons
-        │   └── SidebarTree.tsx     # leaf tree, search, drag-drop, rename
+        │   ├── SidebarTree.tsx     # leaf tree, search, drag-drop, rename
+        │   └── SyncStatusIndicator.tsx # sidebar sync status dot + badge
         └── lib/
-            ├── api/                # typed API clients (leaves, databases)
+            ├── api/                # typed API clients (leaves, databases, sync)
             │   ├── index.ts
             │   ├── types.ts
             │   ├── leaves.ts
-            │   └── databases.ts
+            │   ├── databases.ts
+            │   ├── sync.ts         # sync API client
+            │   └── syncTypes.ts    # sync TypeScript interfaces
             ├── designTheme.ts      # leaf-design localStorage + html data attribute
             ├── apiBase.ts          # API_BASE_URL env resolution
             └── leafCache.ts        # IndexedDB cache + offline queue
