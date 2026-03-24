@@ -305,10 +305,10 @@ function RowPreview({
       <button
         type="button"
         onClick={() => onDeleteRow(row.id)}
-        className="mt-2 text-[10px] opacity-0 transition-opacity group-hover:opacity-100"
+        className="mt-2 rounded px-1 text-[10px] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/[0.05]"
         style={{ color: 'var(--leaf-text-muted)' }}
       >
-        ...
+        ···
       </button>
     </div>
   )
@@ -403,22 +403,23 @@ export function DatabaseToolbar({
   ]
 
   return (
-    <div className="mb-5 flex items-center justify-between">
-      <div className="flex items-center gap-0.5 rounded-full" style={{ background: '#f4f4f5', borderRadius: 20, padding: 3, border: '1px solid rgba(0,0,0,0.06)' }}>
+    <div
+      className="mb-0 flex items-center justify-between border-b px-2"
+      style={{ borderColor: 'var(--leaf-border-soft)' }}
+    >
+      {/* Flat tab-style view switcher */}
+      <div className="flex items-center gap-0 -mb-px">
         {labels.map(({ key, label }) => (
           <button
             key={key}
             type="button"
             onClick={() => onSetView(key)}
-            className="flex items-center gap-1.5 transition-colors duration-150"
+            className="flex items-center gap-1.5 border-b-2 px-3 pb-2 pt-2 transition-colors duration-150"
             style={{
-              padding: '5px 12px',
-              borderRadius: 16,
               fontSize: 12,
-              background: activeView === key ? '#fff' : 'transparent',
+              borderBottomColor: activeView === key ? 'var(--color-primary)' : 'transparent',
               color: activeView === key ? 'var(--leaf-text-title)' : 'var(--leaf-text-muted)',
               fontWeight: activeView === key ? 500 : 400,
-              boxShadow: activeView === key ? '0 1px 2px rgba(0,0,0,0.04)' : 'none',
             }}
           >
             {viewIcons[key]}
@@ -427,24 +428,37 @@ export function DatabaseToolbar({
         ))}
       </div>
 
-      <div className="flex items-center gap-1.5">
-        <button type="button" className="flex items-center gap-1.5" style={{ fontSize: 12, color: 'var(--leaf-text-muted)', padding: '5px 11px', borderRadius: 7, border: '1px solid rgba(0,0,0,0.06)', background: 'rgba(255,255,255,0.86)' }}>
+      {/* Action buttons */}
+      <div className="flex items-center gap-0.5 pb-1">
+        <button
+          type="button"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors hover:bg-black/[0.04]"
+          style={{ color: 'var(--leaf-text-muted)' }}
+        >
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 3H10M2.5 5.5H8.5M4 8H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
           Filter
         </button>
-        <button type="button" className="flex items-center gap-1.5" style={{ fontSize: 12, color: 'var(--leaf-text-muted)', padding: '5px 11px', borderRadius: 7, border: '1px solid rgba(0,0,0,0.06)', background: 'rgba(255,255,255,0.86)' }}>
+        <button
+          type="button"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors hover:bg-black/[0.04]"
+          style={{ color: 'var(--leaf-text-muted)' }}
+        >
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 3L3.5 5.5L6 3M5 8H10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
           Sort
         </button>
-        <button type="button" className="flex items-center gap-1.5" style={{ fontSize: 12, color: 'var(--leaf-text-muted)', padding: '5px 11px', borderRadius: 7, border: '1px solid rgba(0,0,0,0.06)', background: 'rgba(255,255,255,0.86)' }}>
+        <button
+          type="button"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors hover:bg-black/[0.04]"
+          style={{ color: 'var(--leaf-text-muted)' }}
+        >
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5" cy="5" r="3.5" stroke="currentColor" strokeWidth="1.2" /><path d="M7.5 7.5L10 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
           Search
         </button>
         <button
           type="button"
           onClick={onAddRow}
-          className="flex items-center gap-1.5 rounded-lg"
-          style={{ fontSize: 12, fontWeight: 500, color: '#fff', padding: '5px 12px', borderRadius: 7, background: 'var(--leaf-green)' }}
+          className="ml-1 flex items-center gap-1 rounded-md px-2.5 py-1 text-[11.5px] font-medium text-white transition-colors"
+          style={{ background: 'var(--color-primary)' }}
         >
           New
         </button>
@@ -466,25 +480,38 @@ export function TableView({
   highlightedRowId?: string | null
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border bg-white" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
+    <div className="overflow-x-auto px-2 pb-2">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr style={{ background: '#fafafa', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-            <th className="w-56 whitespace-nowrap px-3.5 py-2.5 text-left text-[11px] font-medium" style={{ color: 'var(--leaf-text-muted)', borderRight: '1px solid var(--leaf-border-soft)' }}>
-              <span className="flex items-center gap-1.5"><span style={{ opacity: 0.6 }}>T</span>Name</span>
+          <tr style={{ borderBottom: '1px solid var(--leaf-border-soft)' }}>
+            <th className="w-56 whitespace-nowrap px-3 py-2 text-left text-[11px] font-medium" style={{ color: 'var(--leaf-text-muted)' }}>
+              <span className="flex items-center gap-1.5">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.5 }}>
+                  <path d="M4.5 2.75H9.1L11.75 5.38V13.25H4.5V2.75Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                </svg>
+                Name
+              </span>
             </th>
             {columns.map((column) => (
-              <th key={column.key} className="whitespace-nowrap px-3.5 py-2.5 text-left text-[11px] font-medium" style={{ color: 'var(--leaf-text-muted)', borderRight: '1px solid var(--leaf-border-soft)' }}>
+              <th key={column.key} className="whitespace-nowrap px-3 py-2 text-left text-[11px] font-medium" style={{ color: 'var(--leaf-text-muted)' }}>
                 <span className="flex items-center gap-1">
-                  {/status/i.test(column.label) && <span style={{ opacity: 0.5 }}>⌄</span>}
-                  {column.type === 'tags' && <span style={{ opacity: 0.5 }}>⊛</span>}
-                  {column.type === 'number' && <span style={{ opacity: 0.5 }}>#</span>}
+                  {/status/i.test(column.label) && <span style={{ opacity: 0.45, fontSize: 9 }}>●</span>}
+                  {column.type === 'tags' && <span style={{ opacity: 0.45, fontSize: 9 }}>⊛</span>}
+                  {column.type === 'number' && <span style={{ opacity: 0.45 }}>#</span>}
                   {column.label}
                 </span>
               </th>
             ))}
-            <th className="px-3.5 py-2 text-left text-[11.5px] font-normal" style={{ color: 'var(--leaf-text-muted)' }}>
-              <button type="button" onClick={onAddColumn}>+ Add property</button>
+            <th className="px-3 py-2 text-left" style={{ color: 'var(--leaf-text-muted)' }}>
+              <button
+                type="button"
+                onClick={onAddColumn}
+                className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] transition-colors hover:bg-black/[0.04]"
+                style={{ color: 'var(--leaf-text-muted)' }}
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+                Add property
+              </button>
             </th>
           </tr>
         </thead>
@@ -492,28 +519,50 @@ export function TableView({
           {rows.map((row) => {
             const isHighlighted = highlightedRowId && row.leaf_id === highlightedRowId.replace('dbrow:', '')
             return (
-            <tr key={row.id} className="group" style={{ borderBottom: '1px solid var(--leaf-border-soft)', background: isHighlighted ? 'var(--leaf-bg-active)' : undefined }}>
-              <td className="px-3.5 py-2.5 align-middle" style={{ borderRight: '1px solid var(--leaf-border-soft)' }}>
-                <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
-              </td>
-              {columns.map((column) => (
-                <td key={column.key} className="px-3.5 py-2.5 align-middle" style={{ color: 'var(--leaf-text-body)', borderRight: '1px solid var(--leaf-border-soft)' }}>
-                  <Cell value={(row.properties || {})[column.key]} propDef={column} onSave={(value) => onUpdateCell(row.id, column.key, value)} />
+              <tr
+                key={row.id}
+                className="group transition-colors duration-75"
+                style={{
+                  borderBottom: '1px solid var(--leaf-border-soft)',
+                  background: isHighlighted ? 'var(--leaf-bg-active)' : undefined,
+                }}
+                onMouseEnter={(e) => { if (!isHighlighted) e.currentTarget.style.background = 'rgba(0,0,0,0.018)' }}
+                onMouseLeave={(e) => { if (!isHighlighted) e.currentTarget.style.background = '' }}
+              >
+                <td className="px-3 py-2 align-middle">
+                  <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
                 </td>
-              ))}
-              <td className="px-3.5 py-2.5 text-right align-middle">
-                <button type="button" onClick={() => onDeleteRow(row.id)} className="text-xs opacity-0 transition-opacity group-hover:opacity-100" style={{ color: 'var(--leaf-text-muted)' }}>
-                  ...
-                </button>
-              </td>
-            </tr>
+                {columns.map((column) => (
+                  <td key={column.key} className="px-3 py-2 align-middle" style={{ color: 'var(--leaf-text-body)' }}>
+                    <Cell value={(row.properties || {})[column.key]} propDef={column} onSave={(value) => onUpdateCell(row.id, column.key, value)} />
+                  </td>
+                ))}
+                <td className="px-3 py-2 text-right align-middle">
+                  <button
+                    type="button"
+                    onClick={() => onDeleteRow(row.id)}
+                    className="rounded px-1.5 py-0.5 text-[11px] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/[0.06]"
+                    style={{ color: 'var(--leaf-text-muted)' }}
+                  >
+                    ···
+                  </button>
+                </td>
+              </tr>
             )
           })}
         </tbody>
         <tfoot>
           <tr>
-            <td colSpan={columns.length + 2} className="px-3.5 py-2.5 text-[12.5px]" style={{ color: 'var(--leaf-text-muted)' }}>
-              <button type="button" onClick={onAddRow}>+ New</button>
+            <td colSpan={columns.length + 2} className="px-3 py-2">
+              <button
+                type="button"
+                onClick={onAddRow}
+                className="flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[12px] transition-colors hover:bg-black/[0.04]"
+                style={{ color: 'var(--leaf-text-muted)' }}
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+                New page
+              </button>
             </td>
           </tr>
         </tfoot>
@@ -549,7 +598,7 @@ export function BoardView({
   }, [rows, statusColumn, tagColumn])
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-1">
+    <div className="flex gap-4 overflow-x-auto px-2 py-3 pb-3">
       {groups.map(([group, groupRows]) => (
         <div key={group} className="w-[240px] min-w-[240px] shrink-0">
           <div className="flex items-center justify-between px-0.5 pb-2.5">
@@ -613,7 +662,7 @@ export function GalleryView({
   const coverTones = ['#ecfdf5', '#f5f5f4', '#ecfdf5', '#faf5ff']
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-3 px-2 py-3 sm:grid-cols-2 xl:grid-cols-3">
       {rows.map((row, index) => {
         const status = statusColumn ? (row.properties || {})[statusColumn.key] : null
         const tone = coverTones[index % coverTones.length]
@@ -676,7 +725,7 @@ export function ListView({
   const tagColumn = getTagColumn(columns)
 
   return (
-    <div>
+    <div className="px-2">
       {rows.map((row) => {
         const status = statusColumn ? (row.properties || {})[statusColumn.key] : null
         return (

@@ -146,7 +146,7 @@ export default function DatabaseViewPage() {
         </div>
 
         {/* Database content */}
-        <div className="flex-1 overflow-y-auto" style={{ padding: '22px 0 32px' }}>
+        <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 48 }}>
           <div
             style={{
               maxWidth: contentMaxWidth,
@@ -154,30 +154,20 @@ export default function DatabaseViewPage() {
               padding: contentPadding || '0 24px',
             }}
           >
-            <div
-              className="rounded-[24px] border px-4 py-4 sm:px-6"
-              style={{
-                borderColor: 'rgba(0,0,0,0.05)',
-                background: 'rgba(255,255,255,0.82)',
-                boxShadow: 'var(--leaf-shadow-soft)',
-              }}
-            >
-              <DatabaseSurface
-                activeView={activeView as ViewType}
-                rows={rows}
-                columns={columns}
-                addRow={addRow}
-                updateName={updateName}
-                updateCell={updateCell}
-                deleteRow={deleteRow}
-                setViewType={setViewType}
-                showAddCol={showAddCol}
-                setShowAddCol={setShowAddCol}
-                addColumn={addColumn}
-                highlightedRowId={highlightedRowId}
-              />
-            </div>
-          </div>
+            <DatabaseSurface
+              activeView={activeView as ViewType}
+              rows={rows}
+              columns={columns}
+              addRow={addRow}
+              updateName={updateName}
+              updateCell={updateCell}
+              deleteRow={deleteRow}
+              setViewType={setViewType}
+              showAddCol={showAddCol}
+              setShowAddCol={setShowAddCol}
+              addColumn={addColumn}
+              highlightedRowId={highlightedRowId}
+            />
         </div>
 
         {/* Status bar */}
