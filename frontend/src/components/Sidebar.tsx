@@ -216,18 +216,27 @@ export function Sidebar({ activeId }: { activeId?: string }) {
         }
         const document = parseLeafContent(leaf.content ?? null)
         const nextOutline: OutlineItem[] = []
-        document.content.forEach((node, index) => {
-          if (node.type === 'heading') {
-            const text = (node.content ?? []).map((item) => item.type === 'text' ? item.text : '\n').join('').trim()
-            if (text) {
-              nextOutline.push({
-                id: `heading-${index}-${text}`,
-                label: text,
-                level: node.attrs.level,
-              })
+        let headingCounter = 0
+        const walkNodes = (nodes: typeof document.content) => {
+          for (const node of nodes) {
+            if (node.type === 'heading') {
+              const text = ((node as { content?: { type: string; text?: string }[] }).content ?? [])
+                .map((item) => item.type === 'text' ? item.text : '\n').join('').trim()
+              if (text) {
+                nextOutline.push({
+                  id: `heading-${headingCounter++}-${text}`,
+                  label: text,
+                  level: node.attrs.level,
+                })
+              }
+            } else if (node.type === 'columnList' && 'content' in node) {
+              for (const col of (node as { content: { content: typeof document.content }[] }).content) {
+                if (col.content) walkNodes(col.content as typeof document.content)
+              }
             }
           }
-        })
+        }
+        walkNodes(document.content)
         setOutline(nextOutline)
 
         const linkedLeafDetails = await Promise.all(linkedLeaves.slice(0, 6).map(async (item) => {
@@ -490,16 +499,23 @@ export function Sidebar({ activeId }: { activeId?: string }) {
           ) : (
             <div style={{ marginLeft: 4 }}>
               {(() => {
-                const counters = { 1: 0, 2: 0, 3: 0 }
+                /* Hierarchical numbering: H1 → "1.", H2 under first H1 → "1.1",
+                   next H2 → "1.2", next H1 → "2.", H3 under H2 → "2.1.1", etc.
+                   When a higher-level heading appears, all deeper counters reset. */
+                const counters: Record<number, number> = { 1: 0, 2: 0, 3: 0 }
+                const minLevel = outline.length > 0
+                  ? Math.min(...outline.map((h) => h.level))
+                  : 1
                 let isFirst = true
                 return outline.map((item) => {
+                  // Increment the counter for this heading level
                   counters[item.level]++
-                  if (item.level < 3) counters[3] = 0
-                  if (item.level < 2) counters[2] = 0
-                  const parts = [counters[1]]
-                  if (counters[2] > 0 || item.level >= 2) parts.push(counters[2])
-                  if (counters[3] > 0 || item.level >= 3) parts.push(counters[3])
-                  const prefix = parts.join('.') + '.'
+                  // Reset all deeper counters
+                  for (let l = item.level + 1; l <= 3; l++) counters[l] = 0
+                  // Build prefix from minLevel through current level
+                  const parts: number[] = []
+                  for (let l = minLevel; l <= item.level; l++) parts.push(counters[l] || 0)
+                  const prefix = parts.join('.')
                   const first = isFirst
                   isFirst = false
 
@@ -508,7 +524,7 @@ export function Sidebar({ activeId }: { activeId?: string }) {
                     key={item.id}
                     className="flex items-start gap-2 rounded-md px-1.5 py-1 transition-colors duration-150"
                     style={{
-                      marginLeft: item.level === 1 ? 0 : item.level === 2 ? 12 : 24,
+                      marginLeft: (item.level - minLevel) * 12,
                       cursor: 'default',
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-hover)' }}
@@ -524,9 +540,9 @@ export function Sidebar({ activeId }: { activeId?: string }) {
                     )}
                     <span
                       style={{
-                        fontSize: item.level === 1 ? 12.5 : 12,
-                        color: first ? 'var(--leaf-green)' : item.level === 1 ? 'var(--leaf-text-title)' : 'var(--leaf-text-body)',
-                        fontWeight: item.level === 1 ? 500 : 400,
+                        fontSize: item.level === minLevel ? 12.5 : 12,
+                        color: first ? 'var(--leaf-green)' : item.level === minLevel ? 'var(--leaf-text-title)' : 'var(--leaf-text-body)',
+                        fontWeight: item.level === minLevel ? 500 : 400,
                         lineHeight: 1.5,
                       }}
                     >

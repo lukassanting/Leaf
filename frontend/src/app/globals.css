@@ -230,48 +230,78 @@ html, body {
 }
 
 /* ─── Column layout blocks ─────────────────────────────────────────────── */
+/* TipTap inserts an intermediate wrapper div (data-node-view-content-react)
+   inside [data-node-view-content], so the actual column children are
+   grandchildren.  We must make BOTH the outer and inner containers flex-row. */
 
-[data-node-view-content].column-list-inner {
+[data-node-view-content].column-list-inner,
+[data-node-view-content].column-list-inner > [data-node-view-content-react] {
   display: flex !important;
   flex-direction: row !important;
   gap: 16px !important;
   flex-wrap: nowrap !important;
 }
 
-[data-node-view-content].column-list-inner > [data-type="column"] {
+[data-node-view-content].column-list-inner [data-type="column"] {
   flex: 1 1 0% !important;
   min-width: 100px !important;
+  border-radius: 6px;
+  padding: 4px 8px;
+  transition: background 0.15s;
+  /* Column content must sit below resize handles (z-index 50) */
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+.column-list-wrapper:hover [data-type="column"] {
+  background: rgba(0, 0, 0, 0.015);
 }
 
-/* Resize handle — invisible by default, visible on hover */
+/* Resize handle — invisible by default, visible on column-list hover.
+   z-index must be high enough to sit above NodeViewWrapper elements
+   rendered inside column content (embeds, etc). */
 .column-resize-handle {
   position: absolute;
   top: 0;
-  width: 12px;
+  width: 24px;
+  margin-left: -12px;
   cursor: col-resize;
-  z-index: 5;
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.column-list-wrapper:hover .column-resize-handle,
+.column-resize-handle:active,
+.column-resize-handle.is-resizing {
+  opacity: 1;
 }
 .column-resize-handle::after {
   content: '';
   display: block;
-  width: 2px;
+  width: 3px;
   height: 100%;
   min-height: 24px;
-  border-radius: 1px;
-  background: transparent;
-  transition: background 0.15s;
+  border-radius: 2px;
+  background: var(--leaf-border-strong);
+  transition: background 0.15s, width 0.1s;
 }
-.column-resize-handle:hover::after,
-.column-resize-handle:active::after {
+.column-resize-handle:hover::after {
   background: var(--leaf-green);
+  width: 4px;
+}
+.column-resize-handle:active::after,
+.column-resize-handle.is-resizing::after {
+  background: var(--leaf-green-light);
+  width: 4px;
 }
 
 /* Stack columns on narrow screens */
 @media (max-width: 640px) {
-  .column-list-inner {
+  .column-list-inner,
+  .column-list-inner > [data-node-view-content-react] {
     flex-direction: column;
     gap: 8px;
   }
@@ -280,9 +310,38 @@ html, body {
   }
 }
 
+/* ─── Drag-to-create-column drop indicator ─────────────────────────────── */
+.column-drop-indicator {
+  animation: column-drop-pulse 1.2s ease-in-out infinite;
+}
+@keyframes column-drop-pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+/* ─── Block drag highlight ────────────────────────────────────────────── */
+.ProseMirror .ProseMirror-selectednode {
+  outline: 2px solid var(--leaf-green);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* Suppress heavy outline on embeds — they already have their own border */
+.ProseMirror [data-type="databaseEmbed"].ProseMirror-selectednode,
+.ProseMirror [data-type="pageEmbed"].ProseMirror-selectednode {
+  outline: 2px solid rgba(16, 185, 129, 0.35);
+}
+
 /* ─── Inline database embed ────────────────────────────────────────────── */
 .embedded-database-block {
   border: 1px solid var(--leaf-border-strong);
   border-radius: 10px;
+  overflow: hidden;
+}
+/* Database embeds inside columns must respect column width */
+[data-type="column"] .embedded-database-block {
+  overflow-x: auto;
+}
+[data-type="column"] [data-node-view-wrapper] {
+  max-width: 100%;
   overflow: hidden;
 }

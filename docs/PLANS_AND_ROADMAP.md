@@ -44,7 +44,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 
 - [x] Three-pane shell: left sidebar (navigation), center canvas, right sidebar (context).
 - [x] Left sidebar with KNOWLEDGE BASE, Personal, and PROJECTS sections.
-- [x] Right sidebar with METADATA, PAGE OUTLINE, and LINKED MENTIONS sections.
+- [x] Right sidebar with METADATA, PAGE OUTLINE (hierarchical numbering), and LINKED MENTIONS sections.
 - [x] Icon picker with SVG shapes, uploaded images, and emoji as user-selected content.
 - [x] Width modes (`normal`, `wide`, `full`) and focus mode.
 - [x] Bottom status bar with sync state and mode label.
@@ -68,6 +68,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Responsive stacking on narrow screens (< 640px).
 - [x] Nesting prevention — slash commands block column insertion inside existing columns.
 - [x] Automatic migration from legacy `columnLayout` (JSON blob) format to new nested node format.
+- [x] CSS fix for TipTap's intermediate `data-node-view-content-react` wrapper that broke flex layout (columns were stacking vertically).
 
 ### Local-first and backend
 

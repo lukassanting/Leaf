@@ -105,6 +105,7 @@ type WikilinkMenuState = {
 
 type BlockMenuState = {
   top: number
+  height: number
   endPos: number
 } | null
 
@@ -378,6 +379,7 @@ function ColumnListView({
   const wrapperRef = useRef<HTMLDivElement>(null)
   const [handles, setHandles] = useState<{ left: number; height: number }[]>([])
   const resizingRef = useRef(false)
+  const [isResizing, setIsResizing] = useState(false)
 
   useEffect(() => {
     const el = wrapperRef.current
@@ -388,9 +390,7 @@ function ColumnListView({
       const contentEl = el.querySelector('[data-node-view-content]') as HTMLElement | null
       if (!contentEl) return
 
-      const cols = Array.from(contentEl.children).filter(
-        (c) => c instanceof HTMLElement && c.getAttribute('data-type') === 'column',
-      ) as HTMLElement[]
+      const cols = Array.from(contentEl.querySelectorAll(':scope > [data-type="column"], :scope > [data-node-view-content-react] > [data-type="column"]')) as HTMLElement[]
 
       if (cols.length < 2) { setHandles([]); return }
 
@@ -400,7 +400,7 @@ function ColumnListView({
         const leftRect = cols[i].getBoundingClientRect()
         const rightRect = cols[i + 1].getBoundingClientRect()
         next.push({
-          left: leftRect.right - wrapperRect.left + 2,
+          left: (leftRect.right + rightRect.left) / 2 - wrapperRect.left,
           height: Math.max(leftRect.height, rightRect.height, 40),
         })
       }
@@ -426,9 +426,7 @@ function ColumnListView({
     const contentEl = el.querySelector('[data-node-view-content]') as HTMLElement | null
     if (!contentEl) return
 
-    const colEls = Array.from(contentEl.children).filter(
-      (c) => c instanceof HTMLElement && c.getAttribute('data-type') === 'column',
-    ) as HTMLElement[]
+    const colEls = Array.from(contentEl.querySelectorAll(':scope > [data-type="column"], :scope > [data-node-view-content-react] > [data-type="column"]')) as HTMLElement[]
     const gapPx = 16
     const containerWidth = el.getBoundingClientRect().width - (colEls.length - 1) * gapPx
 
@@ -441,6 +439,7 @@ function ColumnListView({
     const total = lw + rw
 
     resizingRef.current = true
+    setIsResizing(true)
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
 
@@ -457,6 +456,7 @@ function ColumnListView({
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
       resizingRef.current = false
+      setIsResizing(false)
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
 
@@ -519,12 +519,12 @@ function ColumnListView({
           Remove columns
         </button>
       </div>
-      <NodeViewContent className="column-list-inner" style={{ display: 'flex', flexDirection: 'row', gap: 16 }} />
+      <NodeViewContent className="column-list-inner" />
       {handles.map((h, i) => (
         <div
           key={i}
           contentEditable={false}
-          className="column-resize-handle"
+          className={`column-resize-handle${isResizing ? ' is-resizing' : ''}`}
           style={{ left: h.left, top: 0, height: h.height }}
           onMouseDown={(e) => startResize(e, i)}
         />
@@ -1558,7 +1558,7 @@ export default function LeafEditor({
       const $pos = editor.state.doc.resolve(result.pos)
       const depth = $pos.depth > 0 ? 1 : 0
       const endPos = $pos.after(depth)
-      setBlockMenu({ top: blockRect.top - containerRect.top, endPos })
+      setBlockMenu({ top: blockRect.top - containerRect.top, height: blockRect.height, endPos })
     } catch {
       setBlockMenu(null)
     }
@@ -1762,23 +1762,35 @@ export default function LeafEditor({
           >
             {columnDropZone && (
               <div
+                className="column-drop-indicator"
                 style={{
                   position: 'absolute',
                   top: columnDropZone.top,
-                  left: columnDropZone.left,
-                  width: columnDropZone.width,
+                  left: columnDropZone.left - 1,
+                  width: 4,
                   height: columnDropZone.height,
                   background: 'var(--leaf-green)',
                   borderRadius: 2,
                   pointerEvents: 'none',
                   zIndex: 20,
-                  transition: 'top 0.1s, left 0.1s, height 0.1s',
+                  transition: 'top 0.12s ease, left 0.12s ease, height 0.12s ease',
+                  boxShadow: '0 0 8px rgba(16, 185, 129, 0.4)',
                 }}
               />
             )}
             {blockMenu && (
               <div
-                style={{ position: 'absolute', top: blockMenu.top - 2, left: -56, display: 'flex', alignItems: 'center', gap: 2 }}
+                style={{
+                  position: 'absolute',
+                  top: blockMenu.top - 2,
+                  left: -56,
+                  height: Math.max(blockMenu.height, 28),
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: blockMenu.height > 60 ? 'flex-start' : 'flex-start',
+                  paddingTop: blockMenu.height > 60 ? 4 : 0,
+                }}
                 onMouseEnter={() => {
                   if (hideTimer.current) {
                     clearTimeout(hideTimer.current)
@@ -1786,67 +1798,80 @@ export default function LeafEditor({
                   }
                 }}
               >
-                <button
-                  type="button"
-                  onMouseDown={(event) => {
-                    event.preventDefault()
-                    pendingInsertPos.current = blockMenu.endPos
-                    setMenuOpen((current) => !current)
-                  }}
-                  className="flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-150 hover:bg-black/5"
-                  style={{ color: 'var(--leaf-text-muted)' }}
-                  title="Insert block"
-                >
-                  <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-                    <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  className="flex h-7 w-7 items-center justify-center rounded-md cursor-grab transition-colors duration-150 hover:bg-black/5 active:cursor-grabbing"
-                  style={{ color: 'var(--leaf-text-muted)' }}
-                  title="Drag to move"
-                  draggable
-                  onDragStart={(event) => {
-                    if (!editor) return
-                    try {
-                      const $pos = editor.state.doc.resolve(Math.max(0, blockMenu.endPos - 1))
-                      const depth = $pos.depth > 0 ? 1 : 0
-                      const nodeStart = $pos.before(depth)
-                      const nodeEnd = $pos.after(depth)
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <button
+                    type="button"
+                    onMouseDown={(event) => {
+                      event.preventDefault()
+                      pendingInsertPos.current = blockMenu.endPos
+                      setMenuOpen((current) => !current)
+                    }}
+                    className="flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-150 hover:bg-black/5"
+                    style={{ color: 'var(--leaf-text-muted)' }}
+                    title="Insert block"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                      <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className="flex h-7 w-7 items-center justify-center rounded-md cursor-grab transition-colors duration-150 hover:bg-black/5 active:cursor-grabbing"
+                    style={{ color: 'var(--leaf-text-muted)' }}
+                    title="Drag to move · Drop on block edge to create columns"
+                    draggable
+                    onDragStart={(event) => {
+                      if (!editor) return
+                      try {
+                        const $pos = editor.state.doc.resolve(Math.max(0, blockMenu.endPos - 1))
+                        const depth = $pos.depth > 0 ? 1 : 0
+                        const nodeStart = $pos.before(depth)
+                        const nodeEnd = $pos.after(depth)
 
-                      // Select the block so ProseMirror knows what to delete on move-drop
-                      editor.view.dispatch(
-                        editor.state.tr.setSelection(TextSelection.create(editor.state.doc, nodeStart, nodeEnd)),
-                      )
+                        // Select the block so ProseMirror knows what to delete on move-drop
+                        editor.view.dispatch(
+                          editor.state.tr.setSelection(TextSelection.create(editor.state.doc, nodeStart, nodeEnd)),
+                        )
 
-                      const slice = editor.state.doc.slice(nodeStart, nodeEnd)
-                      const serializer = DOMSerializer.fromSchema(editor.state.schema)
-                      const fragment = serializer.serializeFragment(slice.content)
-                      const wrapper = document.createElement('div')
-                      wrapper.appendChild(fragment)
-                      event.dataTransfer.clearData()
-                      event.dataTransfer.setData('text/html', wrapper.innerHTML)
-                      event.dataTransfer.setData('text/plain', wrapper.textContent || '')
-                      event.dataTransfer.effectAllowed = 'move'
-                      editor.view.dragging = { slice, move: true }
-                      dragSourceRef.current = { pos: nodeStart, end: nodeEnd }
-                    } catch {
-                      // fallback: let browser handle
-                      dragSourceRef.current = null
-                    }
-                  }}
-                  onDragEnd={handleEditorDragEnd}
-                >
-                  <svg width="18" height="18" viewBox="0 0 14 14" fill="none">
-                    <circle cx="5" cy="3" r="1.2" fill="currentColor" />
-                    <circle cx="9" cy="3" r="1.2" fill="currentColor" />
-                    <circle cx="5" cy="7" r="1.2" fill="currentColor" />
-                    <circle cx="9" cy="7" r="1.2" fill="currentColor" />
-                    <circle cx="5" cy="11" r="1.2" fill="currentColor" />
-                    <circle cx="9" cy="11" r="1.2" fill="currentColor" />
-                  </svg>
-                </button>
+                        const slice = editor.state.doc.slice(nodeStart, nodeEnd)
+                        const serializer = DOMSerializer.fromSchema(editor.state.schema)
+                        const fragment = serializer.serializeFragment(slice.content)
+
+                        // Create a compact drag ghost
+                        const ghost = document.createElement('div')
+                        ghost.style.cssText = 'position:fixed;top:-9999px;left:-9999px;max-width:300px;max-height:60px;overflow:hidden;padding:6px 12px;background:#fff;border:1px solid #e4e4e7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-size:13px;color:#3f3f46;'
+                        ghost.textContent = fragment.textContent?.slice(0, 80) || 'Block'
+                        document.body.appendChild(ghost)
+                        event.dataTransfer.setDragImage(ghost, 16, 16)
+                        requestAnimationFrame(() => ghost.remove())
+
+                        event.dataTransfer.clearData()
+                        event.dataTransfer.setData('text/html', (() => {
+                          const wrapper = document.createElement('div')
+                          wrapper.appendChild(fragment)
+                          return wrapper.innerHTML
+                        })())
+                        event.dataTransfer.setData('text/plain', fragment.textContent || '')
+                        event.dataTransfer.effectAllowed = 'move'
+                        editor.view.dragging = { slice, move: true }
+                        dragSourceRef.current = { pos: nodeStart, end: nodeEnd }
+                      } catch {
+                        // fallback: let browser handle
+                        dragSourceRef.current = null
+                      }
+                    }}
+                    onDragEnd={handleEditorDragEnd}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 14 14" fill="none">
+                      <circle cx="5" cy="3" r="1.2" fill="currentColor" />
+                      <circle cx="9" cy="3" r="1.2" fill="currentColor" />
+                      <circle cx="5" cy="7" r="1.2" fill="currentColor" />
+                      <circle cx="9" cy="7" r="1.2" fill="currentColor" />
+                      <circle cx="5" cy="11" r="1.2" fill="currentColor" />
+                      <circle cx="9" cy="11" r="1.2" fill="currentColor" />
+                    </svg>
+                  </button>
+                </div>
                 {menuOpen && <BlockDropdown onSelect={handleBlockAction} onClose={() => setMenuOpen(false)} />}
               </div>
             )}
