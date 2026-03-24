@@ -79,10 +79,10 @@ function classifyTone(raw: string): 'green' | 'amber' | 'red' | 'muted' {
 
 function Pill({ label, tone = 'muted', compact = false }: { label: string; tone?: 'green' | 'amber' | 'red' | 'muted'; compact?: boolean }) {
   const styles = {
-    green: { background: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0' },
-    amber: { background: '#fef5e0', color: '#7a5c10', borderColor: '#e8d48a' },
-    red: { background: '#fef0ee', color: '#8a3a2a', borderColor: '#e8c0b8' },
-    muted: { background: '#f4f4f5', color: '#3f3f46', borderColor: 'rgba(0,0,0,0.06)' },
+    green: { background: 'var(--leaf-db-pill-green-bg)', color: 'var(--leaf-db-pill-green-fg)', borderColor: 'var(--leaf-db-pill-green-border)' },
+    amber: { background: 'var(--leaf-db-pill-amber-bg)', color: 'var(--leaf-db-pill-amber-fg)', borderColor: 'var(--leaf-db-pill-amber-border)' },
+    red: { background: 'var(--leaf-db-pill-red-bg)', color: 'var(--leaf-db-pill-red-fg)', borderColor: 'var(--leaf-db-pill-red-border)' },
+    muted: { background: 'var(--leaf-db-pill-muted-bg)', color: 'var(--leaf-db-pill-muted-fg)', borderColor: 'var(--leaf-db-pill-muted-border)' },
   }[tone]
 
   return (
@@ -101,10 +101,10 @@ function Pill({ label, tone = 'muted', compact = false }: { label: string; tone?
 
 function StatusDot({ tone }: { tone: 'green' | 'amber' | 'red' | 'muted' }) {
   const color = {
-    green: '#10b981',
-    amber: '#f59e0b',
-    red: '#ef4444',
-    muted: '#a1a1aa',
+    green: 'var(--leaf-db-dot-green)',
+    amber: 'var(--leaf-db-dot-amber)',
+    red: 'var(--leaf-db-dot-red)',
+    muted: 'var(--leaf-db-dot-muted)',
   }[tone]
   return <span className="inline-block rounded-full" style={{ width: 6, height: 6, background: color }} />
 }
@@ -138,7 +138,7 @@ function ProgressValue({ value }: { value: unknown }) {
   const progress = Math.max(0, Math.min(100, parseNumberValue(value) ?? 0))
   return (
     <div className="min-w-[60px]">
-      <div className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: '#f4f4f5' }}>
+      <div className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: 'var(--leaf-db-progress-track)' }}>
         <div className="h-full rounded-[3px]" style={{ width: `${progress}%`, background: 'var(--leaf-green)' }} />
       </div>
     </div>
@@ -319,7 +319,7 @@ function RowPreview({
       <button
         type="button"
         onClick={() => onDeleteRow(row.id)}
-        className="mt-2 rounded px-1 text-[10px] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/[0.05]"
+        className="leaf-db-row-action mt-2 rounded px-1 text-[10px] opacity-0 transition-opacity group-hover:opacity-100"
         style={{ color: 'var(--leaf-text-muted)' }}
       >
         ···
@@ -460,7 +460,7 @@ export function DatabaseToolbar({
       <div className="flex items-center gap-0.5 pb-1">
         <button
           type="button"
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors hover:bg-black/[0.04]"
+          className="leaf-db-toolbar-btn flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors"
           style={{ color: 'var(--leaf-text-muted)' }}
         >
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 3H10M2.5 5.5H8.5M4 8H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
@@ -468,7 +468,7 @@ export function DatabaseToolbar({
         </button>
         <button
           type="button"
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors hover:bg-black/[0.04]"
+          className="leaf-db-toolbar-btn flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors"
           style={{ color: 'var(--leaf-text-muted)' }}
         >
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 3L3.5 5.5L6 3M5 8H10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -476,7 +476,7 @@ export function DatabaseToolbar({
         </button>
         <button
           type="button"
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors hover:bg-black/[0.04]"
+          className="leaf-db-toolbar-btn flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors"
           style={{ color: 'var(--leaf-text-muted)' }}
         >
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5" cy="5" r="3.5" stroke="currentColor" strokeWidth="1.2" /><path d="M7.5 7.5L10 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
@@ -534,7 +534,7 @@ export function TableView({
               <button
                 type="button"
                 onClick={onAddColumn}
-                className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] transition-colors hover:bg-black/[0.04]"
+                className="leaf-db-toolbar-btn flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] transition-colors"
                 style={{ color: 'var(--leaf-text-muted)' }}
               >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
@@ -554,7 +554,7 @@ export function TableView({
                   borderBottom: '1px solid var(--leaf-border-soft)',
                   background: isHighlighted ? 'var(--leaf-bg-active)' : undefined,
                 }}
-                onMouseEnter={(e) => { if (!isHighlighted) e.currentTarget.style.background = 'rgba(0,0,0,0.018)' }}
+                onMouseEnter={(e) => { if (!isHighlighted) e.currentTarget.style.background = 'var(--leaf-db-row-hover)' }}
                 onMouseLeave={(e) => { if (!isHighlighted) e.currentTarget.style.background = '' }}
               >
                 <td className="px-3 py-2 align-middle">
@@ -569,7 +569,7 @@ export function TableView({
                   <button
                     type="button"
                     onClick={() => onDeleteRow(row.id)}
-                    className="rounded px-1.5 py-0.5 text-[11px] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/[0.06]"
+                    className="leaf-db-row-action rounded px-1.5 py-0.5 text-[11px] opacity-0 transition-opacity group-hover:opacity-100"
                     style={{ color: 'var(--leaf-text-muted)' }}
                   >
                     ···
@@ -585,7 +585,7 @@ export function TableView({
               <button
                 type="button"
                 onClick={onAddRow}
-                className="flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[12px] transition-colors hover:bg-black/[0.04]"
+                className="leaf-db-toolbar-btn flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[12px] transition-colors"
                 style={{ color: 'var(--leaf-text-muted)' }}
               >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
@@ -662,7 +662,7 @@ export function BoardView({
           type="button"
           onClick={onAddRow}
           className="flex w-full items-center gap-1.5 rounded-xl border border-dashed px-3 py-2.5 text-sm"
-          style={{ color: 'var(--leaf-text-muted)', borderColor: 'rgba(0,0,0,0.08)', background: 'rgba(250,250,250,0.86)' }}
+          style={{ color: 'var(--leaf-text-muted)', borderColor: 'var(--leaf-db-board-add-border)', background: 'var(--leaf-db-board-add-bg)' }}
         >
           + New
         </button>
@@ -687,7 +687,12 @@ export function GalleryView({
   const tagColumn = getTagColumn(columns)
   const estimateColumn = getEstimateColumn(columns)
 
-  const coverTones = ['#ecfdf5', '#f5f5f4', '#ecfdf5', '#faf5ff']
+  const coverTones = [
+    'var(--leaf-db-gallery-cover-0)',
+    'var(--leaf-db-gallery-cover-1)',
+    'var(--leaf-db-gallery-cover-2)',
+    'var(--leaf-db-gallery-cover-3)',
+  ] as const
 
   return (
     <div className="grid gap-3 px-2 py-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -705,9 +710,9 @@ export function GalleryView({
             }}
           >
             <div className="flex h-[88px] items-center justify-center" style={{ background: tone }}>
-              <svg width="24" height="24" viewBox="0 0 16 16" fill="none" className="opacity-30">
-                <path d="M4.5 2.75H9.1L11.75 5.38V13.25H4.5V2.75Z" stroke="#a1a1aa" strokeWidth="1.15" strokeLinejoin="round" />
-                <path d="M8.9 2.75V5.55H11.75" stroke="#a1a1aa" strokeWidth="1.15" strokeLinejoin="round" />
+              <svg width="24" height="24" viewBox="0 0 16 16" fill="none" className="opacity-30" style={{ color: 'var(--leaf-db-icon-muted)' }}>
+                <path d="M4.5 2.75H9.1L11.75 5.38V13.25H4.5V2.75Z" stroke="currentColor" strokeWidth="1.15" strokeLinejoin="round" />
+                <path d="M8.9 2.75V5.55H11.75" stroke="currentColor" strokeWidth="1.15" strokeLinejoin="round" />
               </svg>
             </div>
             <div className="px-3 py-2.5">

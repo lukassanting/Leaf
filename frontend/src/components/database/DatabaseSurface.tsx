@@ -62,7 +62,7 @@ export function DatabaseSurface({
   highlightedRowId,
 }: Props) {
   return (
-    <>
+    <div className="leaf-database-surface">
       {showAddCol && <AddColumnModal onAdd={(definition) => { void addColumn(definition) }} onClose={() => setShowAddCol(false)} />}
 
       <DatabaseToolbar activeView={activeView} onSetView={(view) => { void setViewType(view) }} onAddRow={() => { void addRow() }} />
@@ -106,6 +106,6 @@ export function DatabaseSurface({
           onAddRow={() => { void addRow() }}
         />
       )}
-    </>
+    </div>
   )
 }

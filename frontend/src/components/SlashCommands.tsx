@@ -10,7 +10,7 @@ import { BLOCK_ICONS } from './Icons'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SlashGroup = 'Text' | 'Style' | 'Structure' | 'Insert' | 'Toggle Cards'
+export type SlashGroup = 'Text' | 'Style' | 'Structure' | 'Insert' | 'Flags' | 'Toggle Cards'
 
 export type SlashItem = {
   label: string
@@ -38,7 +38,7 @@ const STORY_TAG_SLASH_ITEMS: SlashItem[] = STORY_TAG_PRESETS.map((p) => ({
   label: p.slashLabel,
   description: p.slashDescription,
   action: storyTagAction(p.variant),
-  group: 'Insert' as const,
+  group: 'Flags' as const,
   keywords: p.keywords,
 }))
 
@@ -67,11 +67,11 @@ export const SLASH_ITEMS: SlashItem[] = [
   { label: '4 columns',     description: 'Four blocks side by side',  action: 'columns4', group: 'Insert', keywords: ['columns', '4 columns', 'layout'] },
   { label: '5 columns',     description: 'Five blocks side by side',  action: 'columns5', group: 'Insert', keywords: ['columns', '5 columns', 'layout'] },
   { label: 'Stat strip',    description: 'Three kicker + title stat cards', action: 'statStrip', group: 'Insert', keywords: ['stat', 'strip', 'stats', 'dc', 'hp', 'ac', 'cards'] },
-  ...STORY_TAG_SLASH_ITEMS,
   { label: 'Link to page',  description: 'Link an existing page or database', action: 'link', group: 'Insert', keywords: ['link', 'page', 'wikilink', 'mention'] },
   { label: 'Sub-page',      description: 'New child page',          action: 'subpage', group: 'Insert',    keywords: ['page', 'subpage'] },
   { label: 'Database',      description: 'New table database',      action: 'database',group: 'Insert',    keywords: ['database', 'db', 'table'] },
   { label: 'Toggle Cards', description: 'Full-width card, collapsible body', action: 'toggleCard', group: 'Toggle Cards', keywords: ['toggle', 'card', 'collapse', 'accordion', 'episode', 'dnd', 'campaign'] },
+  ...STORY_TAG_SLASH_ITEMS,
 ]
 
 function getSlashItemScore(item: SlashItem, query: string): number | null {
@@ -104,7 +104,7 @@ export function rankSlashItems(query: string): SlashItem[] {
 
 // ─── Menu renderer (used in Editor.tsx) ──────────────────────────────────────
 
-const GROUPS: SlashGroup[] = ['Text', 'Style', 'Structure', 'Insert', 'Toggle Cards']
+const GROUPS: SlashGroup[] = ['Text', 'Style', 'Structure', 'Insert', 'Flags', 'Toggle Cards']
 
 export function SlashMenuPanel({
   menu,

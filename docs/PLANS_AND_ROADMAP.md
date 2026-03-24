@@ -37,8 +37,8 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Stable TipTap editor rebuild with `gapcursor`/`dropcursor` disabled.
 - [x] Slash commands and block insertion menu for headings, lists, todos, quotes, sub-pages, databases, and column layouts.
 - [x] Text alignment (paragraph, heading, blockquote) and palette text colours (`TextAlign`, `TextStyle`, `Color`); selection bubble + slash **Style** group (no static toolbar).
-- [x] Inline **story tag** atoms (variant + editable label) and **stat strip** block (three kicker/title pairs); presets in `lib/editorRichText.ts`.
-- [x] **Toggle card** header fields (eyebrow, title, subtitle): view mode renders inline Markdown (`**bold**`, `*italic*`, links, `code`, etc.); click or Enter/Space to edit source; subtitle supports multiple lines.
+- [x] Inline **story flag** atoms (variant + editable label; slash menu group **Flags**; distinct from page **tags** metadata) and **stat strip** block (three kicker/title pairs); presets in `lib/editorRichText.ts`.
+- [x] **Toggle cards**: header fields are plain text; collapsible body is normal editor content — slash commands (including flags, headings, lists) work inside the card body.
 - [x] Rich/Markdown mode switching plus Markdown import/export.
 - [x] Page embeds as dedicated block nodes.
 - [x] Inline database embeds as dedicated block nodes backed by the shared database surface.
@@ -52,7 +52,8 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Width modes (`normal`, `wide`, `full`) and focus mode.
 - [x] Bottom status bar with sync state and mode label.
 - [x] `Ask AI ⌘K` button in top navigation.
-- [x] Optional **Campaign** visual theme (D&D-inspired dark UI, gold accent, Cinzel / Crimson Pro, starfield background): top-strip toggle, `localStorage` key `leaf-design`, `html[data-leaf-design="campaign"]` token remap in `globals.css`.
+- [x] Optional **Campaign** visual theme (D&D-inspired dark UI, gold accent, Cinzel / Crimson Pro, starfield background): top-strip toggle, `localStorage` key `leaf-design`, `html[data-leaf-design="campaign"]` token remap in `globals.css` (includes database table/board/gallery chrome via `--leaf-db-*` tokens).
+- [x] Workspace **Home** uses the same **TopStrip** (settings, width, sidebars) as editor/database routes.
 
 ### Databases
 
@@ -82,6 +83,23 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Structured content round-tripping on the backend.
 - [x] Backlink indexing for structured content text extraction.
 - [x] Leaf DTO now exposes `content_text_length` to help frontend diagnostics and search-oriented UI context.
+
+### Sync and multi-device
+
+- [x] Bidirectional file sync: `.md` files are the source of truth; DB is a rebuildable index.
+- [x] File watcher (`watchdog`) detects external changes to `.md` files and reverse-syncs into SQLite.
+- [x] Self-write suppression prevents the watcher from re-ingesting API-triggered writes.
+- [x] Sync manifest (`DATA_DIR/.sync-manifest.json`) for efficient SHA-256-based change detection.
+- [x] Cloud conflict detection for Google Drive, Dropbox, and OneDrive conflict copies.
+- [x] Conflict store with persisted `DATA_DIR/.sync-conflicts.json` and resolution API.
+- [x] Sync REST API: `GET/PUT /sync/config`, `GET /sync/status`, `POST /sync/trigger`, `POST /sync/rebuild-index`, conflict CRUD.
+- [x] Frontend Settings page (`/settings`) with sync mode selector, data dir display, watcher toggle, git config fields, sync status dashboard, and conflict resolution UI.
+- [x] Sidebar `SyncStatusIndicator`: green/yellow/red dot + "Synced Xm ago" + conflict badge, links to Settings.
+- [x] Runtime sync config persisted to `DATA_DIR/.sync-config.json`, loaded at startup.
+- [x] Git-based sync: auto-init repo in DATA_DIR, stage/commit/pull(rebase)/push cycle, PAT auth in URL, `.gitignore` for DB + metadata files.
+- [x] Periodic git sync scheduler (configurable interval, asyncio background task, post-pull DB reconciliation).
+- [x] Git test connection endpoint and UI button.
+- [x] Git status panel in Settings: branch, remote, last commit, uncommitted changes, errors.
 
 ### Verification completed
 
@@ -129,7 +147,8 @@ These are the next best steps after the completed redesign.
 
 | # | Item | Why next |
 |---|------|----------|
-| 7.1 | Conflict-resolution UI for `updated_at` mismatches | Required for trust in multi-device edits |
+| ~~7.1~~ | ~~Conflict-resolution UI for `updated_at` mismatches~~ | ✅ Done — bidirectional file sync + cloud conflict detection + settings page |
+| ~~7.4~~ | ~~Git-based sync (auto-commit + push/pull to remote)~~ | ✅ Done — git init/commit/pull/push cycle, periodic scheduler, test connection, git status panel |
 | 7.2 | CI workflow for lint + backend tests + Playwright smoke suite | Keeps redesign stable |
 | 7.3 | Production deployment path and env hardening | Needed before wider usage |
 
@@ -197,6 +216,17 @@ Questions still open for the next milestone:
 | `backend/app/database/operations/database_operations.py` | Database metadata/schema composition and row operations |
 | `backend/app/dtos/leaf_dtos.py` | Structured or legacy content DTOs |
 | `backend/app/dtos/database_dtos.py` | Database metadata and schema DTOs |
+| `backend/app/sync/file_to_db.py` | Reverse sync engine (file → DB) |
+| `backend/app/sync/file_watcher.py` | Watchdog-based live file change detection |
+| `backend/app/sync/manifest.py` | File hash manifest for change detection |
+| `backend/app/sync/conflict_store.py` | Persisted sync conflict tracking |
+| `backend/app/sync/cloud_detector.py` | Cloud service conflict copy detection |
+| `backend/app/sync/git_sync.py` | Git auto-commit/pull/push engine |
+| `backend/app/sync/scheduler.py` | Periodic background sync loop |
+| `backend/app/api/routes/sync/sync_controller.py` | Sync API endpoints (file + git) |
+| `frontend/src/app/(workspace)/settings/page.tsx` | Settings page with sync configuration UI |
+| `frontend/src/components/SyncStatusIndicator.tsx` | Sidebar sync status indicator |
+| `frontend/src/lib/api/sync.ts` | Sync API client |
 | `backend/tests/test_leaf_database_integration.py` | Integration coverage for current backend behavior |
 | `Makefile` | Local developer workflow (`up`, `test`, logs, shell helpers) |
 
@@ -228,4 +258,4 @@ That means platform growth should focus first on:
 
 ---
 
-*Last updated: 2026-03-23. This roadmap reflects the column overhaul (nested node architecture, resize handles, 2–5 columns, responsive stacking), plus runtime/docs alignment updates (SQLite-default runtime, Windows-safe test target, debug playbook, and `docs/CODEBASE.md` navigation guide).*
+*Last updated: 2026-03-24. Added git-based sync (auto-commit/pull/push, scheduler, test connection, git status panel). Previous: bidirectional file sync (watchdog watcher, reverse sync, cloud conflict detection).*

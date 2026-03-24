@@ -143,7 +143,7 @@ Leaf is now on the v3 shell and editor architecture:
 ## Features
 
 - **Pages & tree:** Notion-like hierarchy (projects/pages), shared sidebar with search, collapse-all, expand/collapse per node, inline rename, delete, drag-and-drop reorder, and inline child-page creation.
-- **Editor:** TipTap rich text with slash `/` and gutter **+** block menu for structure and marks (no top toolbar), **selection bubble** for alignment and text colours when text is highlighted, inline **story tags** (variant pills) and **stat strip** blocks (three kicker/value cards), page/database embeds, resizable column layouts (2–5), drag-to-create columns, **Toggle Cards** (full-width collapsible blocks with Markdown in header label/title/subtitle), optional Markdown source mode, and Markdown import/export.
+- **Editor:** TipTap rich text with slash `/` and gutter **+** block menu for structure and marks (no top toolbar), **selection bubble** for alignment and text colours when text is highlighted, inline **story flags** (variant pills; type `/flag` in slash menu) and **stat strip** blocks (three kicker/value cards), page/database embeds, resizable column layouts (2–5), drag-to-create columns, **Toggle Cards** (collapsible blocks; slash commands work inside the card body), optional Markdown source mode, and Markdown import/export.
 - **Autosave:** Debounced PATCH to `/leaves/{id}/content` (~800 ms idle); Ctrl+S / Cmd+S to save immediately; optional conflict detection via `updated_at`.
 - **Leaf metadata diagnostics:** Leaf responses now include `content_text_length` so frontend surfaces can display/search-index text-size context.
 - **Local-first cache:** IndexedDB (with localStorage fallback) for instant page load and offline edits; pending saves sync when back online.

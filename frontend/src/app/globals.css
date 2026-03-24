@@ -58,6 +58,35 @@
   --leaf-segment-bg:      #f4f4f5;
   --leaf-segment-active-bg: #ffffff;
   --leaf-on-accent:       #ffffff;
+
+  /* Database table/board/gallery — pills, hovers, gallery covers */
+  --leaf-db-pill-green-bg: #ecfdf5;
+  --leaf-db-pill-green-fg: #047857;
+  --leaf-db-pill-green-border: #a7f3d0;
+  --leaf-db-pill-amber-bg: #fef5e0;
+  --leaf-db-pill-amber-fg: #7a5c10;
+  --leaf-db-pill-amber-border: #e8d48a;
+  --leaf-db-pill-red-bg: #fef0ee;
+  --leaf-db-pill-red-fg: #8a3a2a;
+  --leaf-db-pill-red-border: #e8c0b8;
+  --leaf-db-pill-muted-bg: #f4f4f5;
+  --leaf-db-pill-muted-fg: #3f3f46;
+  --leaf-db-pill-muted-border: rgba(0, 0, 0, 0.06);
+  --leaf-db-dot-green: #10b981;
+  --leaf-db-dot-amber: #f59e0b;
+  --leaf-db-dot-red: #ef4444;
+  --leaf-db-dot-muted: #a1a1aa;
+  --leaf-db-progress-track: #f4f4f5;
+  --leaf-db-row-hover: rgba(0, 0, 0, 0.018);
+  --leaf-db-chrome-hover: rgba(0, 0, 0, 0.04);
+  --leaf-db-chrome-hover-strong: rgba(0, 0, 0, 0.06);
+  --leaf-db-board-add-bg: rgba(250, 250, 250, 0.86);
+  --leaf-db-board-add-border: rgba(0, 0, 0, 0.08);
+  --leaf-db-gallery-cover-0: #ecfdf5;
+  --leaf-db-gallery-cover-1: #f5f5f4;
+  --leaf-db-gallery-cover-2: #ecfdf5;
+  --leaf-db-gallery-cover-3: #faf5ff;
+  --leaf-db-icon-muted: #a1a1aa;
 }
 
 body {
@@ -148,6 +177,35 @@ html[data-leaf-design="campaign"] {
   --leaf-segment-bg:      #161628;
   --leaf-segment-active-bg: #1e1e35;
   --leaf-on-accent:       #080810;
+
+  /* Database views — dark surfaces (pills, hovers, gallery) */
+  --leaf-db-pill-green-bg: color-mix(in srgb, #10b981 20%, transparent);
+  --leaf-db-pill-green-fg: #a7f3d0;
+  --leaf-db-pill-green-border: color-mix(in srgb, #10b981 42%, transparent);
+  --leaf-db-pill-amber-bg: color-mix(in srgb, #f59e0b 18%, transparent);
+  --leaf-db-pill-amber-fg: #fcd34d;
+  --leaf-db-pill-amber-border: color-mix(in srgb, #f59e0b 38%, transparent);
+  --leaf-db-pill-red-bg: color-mix(in srgb, #ef4444 16%, transparent);
+  --leaf-db-pill-red-fg: #fca5a5;
+  --leaf-db-pill-red-border: color-mix(in srgb, #ef4444 35%, transparent);
+  --leaf-db-pill-muted-bg: color-mix(in srgb, var(--leaf-bg-elevated) 100%, transparent);
+  --leaf-db-pill-muted-fg: var(--leaf-text-muted);
+  --leaf-db-pill-muted-border: var(--leaf-border-soft);
+  --leaf-db-dot-green: #34d399;
+  --leaf-db-dot-amber: #fbbf24;
+  --leaf-db-dot-red: #f87171;
+  --leaf-db-dot-muted: #7a7569;
+  --leaf-db-progress-track: color-mix(in srgb, var(--leaf-border-soft) 75%, transparent);
+  --leaf-db-row-hover: color-mix(in srgb, var(--leaf-green) 10%, transparent);
+  --leaf-db-chrome-hover: color-mix(in srgb, var(--leaf-green) 12%, transparent);
+  --leaf-db-chrome-hover-strong: color-mix(in srgb, var(--leaf-green) 18%, transparent);
+  --leaf-db-board-add-bg: color-mix(in srgb, var(--leaf-bg-subtle) 55%, var(--leaf-bg-editor));
+  --leaf-db-board-add-border: var(--leaf-border-strong);
+  --leaf-db-gallery-cover-0: color-mix(in srgb, #10b981 14%, var(--leaf-bg-elevated));
+  --leaf-db-gallery-cover-1: color-mix(in srgb, var(--leaf-text-muted) 8%, var(--leaf-bg-elevated));
+  --leaf-db-gallery-cover-2: color-mix(in srgb, #a855f7 12%, var(--leaf-bg-elevated));
+  --leaf-db-gallery-cover-3: color-mix(in srgb, #c9a84c 10%, var(--leaf-bg-elevated));
+  --leaf-db-icon-muted: #7a7569;
 }
 
 html[data-leaf-design="campaign"] body {
@@ -281,7 +339,7 @@ html[data-leaf-design="campaign"] .ProseMirror hr::before {
   font-style: italic;
 }
 
-/* Inline story tags (campaign / D&D-style pills) */
+/* Inline story flags (CSS class `leaf-story-tag`; campaign / D&D-style pills) */
 .ProseMirror .leaf-story-tag {
   display: inline-flex;
   align-items: center;
@@ -753,45 +811,6 @@ html[data-leaf-design="campaign"] .leaf-toggle-card-input-title {
   color: var(--leaf-text-muted);
 }
 
-.leaf-toggle-card-md-display {
-  width: 100%;
-  cursor: text;
-  min-height: 1.15em;
-  word-break: break-word;
-}
-
-.leaf-toggle-card-md-display.leaf-toggle-card-md-empty {
-  color: var(--leaf-text-hint);
-  opacity: 0.85;
-}
-
-.leaf-toggle-card-md-display strong {
-  font-weight: 700;
-}
-
-.leaf-toggle-card-md-display em {
-  font-style: italic;
-}
-
-.leaf-toggle-card-md-display code {
-  font-family: ui-monospace, monospace;
-  font-size: 0.9em;
-  padding: 0.05em 0.25em;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--leaf-bg-app) 70%, var(--leaf-border-soft));
-}
-
-.leaf-toggle-card-md-display a {
-  color: var(--leaf-green);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.leaf-toggle-card-md-display del {
-  text-decoration: line-through;
-  opacity: 0.85;
-}
-
 .leaf-toggle-card--accent-0 .leaf-toggle-card-header {
   background: linear-gradient(135deg, var(--leaf-bg-elevated), color-mix(in srgb, var(--leaf-green) 10%, var(--leaf-bg-elevated)));
 }
@@ -846,4 +865,13 @@ html[data-leaf-design="campaign"] .leaf-toggle-card-body-inner {
 .leaf-workspace-shell {
   position: relative;
   z-index: 1;
+}
+
+/* Database surface — toolbar / row action hovers (theme via --leaf-db-chrome-hover*) */
+.leaf-db-toolbar-btn:hover {
+  background: var(--leaf-db-chrome-hover);
+}
+
+.leaf-db-row-action:hover {
+  background: var(--leaf-db-chrome-hover-strong);
 }

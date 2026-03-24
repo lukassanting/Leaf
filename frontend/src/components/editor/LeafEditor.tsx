@@ -53,17 +53,7 @@ import TaskList from '@tiptap/extension-task-list'
 import TextStyle from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
-  type RefObject,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MarkdownIt from 'markdown-it'
 import TurndownService from 'turndown'
 import { leavesApi, type Database, type LeafTreeItem, type LeafDocument } from '@/lib/api'
@@ -76,7 +66,6 @@ import { ensureTagEntries } from '@/lib/workspaceDefaults'
 import { databasesApi } from '@/lib/api'
 
 import { LEAF_TEXT_COLOR_SWATCHES, STORY_TAG_PRESETS, parseStoryTagAction } from '@/lib/editorRichText'
-import { renderToggleCardMarkdownField } from '@/lib/toggleCardMarkdown'
 import { createEmptyLeafDocument, getLeafContentText, normalizeLeafDocument } from '@/lib/leafDocument'
 import { rankSlashItems, SLASH_ITEMS, type SlashMenuState, SlashMenuPanel } from '@/components/SlashCommands'
 
@@ -212,26 +201,33 @@ function computeSlashMatch(editor: NonNullable<ReturnType<typeof useEditor>>): S
   if (!selection.empty) return null
 
   const $from = selection.$from
-  if (!$from.parent.isTextblock) return null
-
-  const textBefore = $from.parent.textBetween(0, $from.parentOffset, '\0', '\0')
-  const match = /(?:^|\s)\/([^\s/]*)$/.exec(textBefore)
-
-  if (!match) return null
-
-  const slashIndex = textBefore.length - match[0].length + match[0].lastIndexOf('/')
-  const from = selection.from - (textBefore.length - slashIndex)
   const rect = view.coordsAtPos(selection.from)
 
-  return {
-    range: { from, to: selection.from },
-    query: match[1] ?? '',
-    rect: {
-      top: rect.top,
-      left: rect.left,
-      bottom: rect.bottom,
-    },
+  for (let d = $from.depth; d > 0; d--) {
+    const node = $from.node(d)
+    if (!node.isTextblock) continue
+
+    const start = $from.start(d)
+    const rel = $from.pos - start
+    const textBefore = node.textBetween(0, rel, '\0', '\0')
+    const match = /(?:^|\s)\/([^\s/]*)$/.exec(textBefore)
+    if (!match) continue
+
+    const slashIndex = textBefore.length - match[0].length + match[0].lastIndexOf('/')
+    const from = start + slashIndex
+
+    return {
+      range: { from, to: selection.from },
+      query: match[1] ?? '',
+      rect: {
+        top: rect.top,
+        left: rect.left,
+        bottom: rect.bottom,
+      },
+    }
   }
+
+  return null
 }
 
 function computeWikilinkMatch(editor: NonNullable<ReturnType<typeof useEditor>>): SlashMatch | null {
@@ -241,26 +237,33 @@ function computeWikilinkMatch(editor: NonNullable<ReturnType<typeof useEditor>>)
   if (!selection.empty) return null
 
   const $from = selection.$from
-  if (!$from.parent.isTextblock) return null
-
-  const textBefore = $from.parent.textBetween(0, $from.parentOffset, '\0', '\0')
-  const match = /(?:^|[\s(])\[\[([^\]]*)$/.exec(textBefore)
-
-  if (!match) return null
-
-  const token = `[[${match[1] ?? ''}`
-  const from = selection.from - token.length
   const rect = view.coordsAtPos(selection.from)
 
-  return {
-    range: { from, to: selection.from },
-    query: match[1] ?? '',
-    rect: {
-      top: rect.top,
-      left: rect.left,
-      bottom: rect.bottom,
-    },
+  for (let d = $from.depth; d > 0; d--) {
+    const node = $from.node(d)
+    if (!node.isTextblock) continue
+
+    const start = $from.start(d)
+    const rel = $from.pos - start
+    const textBefore = node.textBetween(0, rel, '\0', '\0')
+    const match = /(?:^|[\s(])\[\[([^\]]*)$/.exec(textBefore)
+    if (!match) continue
+
+    const token = `[[${match[1] ?? ''}`
+    const from = $from.pos - token.length
+
+    return {
+      range: { from, to: selection.from },
+      query: match[1] ?? '',
+      rect: {
+        top: rect.top,
+        left: rect.left,
+        bottom: rect.bottom,
+      },
+    }
   }
+
+  return null
 }
 
 function rankWikilinkItems(items: LeafTreeItem[], query: string): LeafTreeItem[] {
@@ -735,7 +738,7 @@ function StoryTagView({ node, updateAttributes, selected }: NodeViewProps) {
         onChange={(e) => updateAttributes({ label: e.target.value })}
         onMouseDown={(e) => e.stopPropagation()}
         className="leaf-story-tag-input"
-        aria-label="Story tag label"
+        aria-label="Story flag label"
         size={Math.max(2, String(node.attrs.label ?? '').length + 1)}
       />
     </NodeViewWrapper>
@@ -751,7 +754,7 @@ const StoryTag = Node.create({
   draggable: false,
   addAttributes() {
     return {
-      label: { default: 'TAG' },
+      label: { default: 'FLAG' },
       variant: { default: 'neutral' },
     }
   },
@@ -762,7 +765,7 @@ const StoryTag = Node.create({
         getAttrs: (element) => {
           if (!(element instanceof HTMLElement)) return false
           return {
-            label: element.getAttribute('data-label') || element.textContent?.trim() || 'TAG',
+            label: element.getAttribute('data-label') || element.textContent?.trim() || 'FLAG',
             variant: element.getAttribute('data-variant') || 'neutral',
           }
         },
@@ -770,7 +773,7 @@ const StoryTag = Node.create({
     ]
   },
   renderHTML({ node, HTMLAttributes }) {
-    const label = String(node.attrs.label ?? 'TAG')
+    const label = String(node.attrs.label ?? 'FLAG')
     const variant = String(node.attrs.variant ?? 'neutral')
     return [
       'span',
@@ -842,141 +845,9 @@ const ColumnList = Node.create({
 
 type ToggleHeaderColorField = 'eyebrow' | 'title' | 'subtitle'
 
-function ToggleCardHeaderField({
-  field,
-  multiline,
-  placeholder,
-  ariaLabel,
-  displayClassName,
-  colorStyle,
-  value,
-  editingField,
-  setEditingField,
-  updateAttributes,
-  focusHandlers,
-  inputRef,
-}: {
-  field: ToggleHeaderColorField
-  multiline: boolean
-  placeholder: string
-  ariaLabel: string
-  displayClassName: string
-  colorStyle?: CSSProperties
-  value: string
-  editingField: ToggleHeaderColorField | null
-  setEditingField: (f: ToggleHeaderColorField | null) => void
-  updateAttributes: (attrs: Record<string, unknown>) => void
-  focusHandlers: { onFocus: () => void; onBlur: () => void }
-  inputRef: RefObject<HTMLInputElement | HTMLTextAreaElement | null>
-}) {
-  const raw = value ?? ''
-  const editing = editingField === field
-
-  const exitOnEscape = (e: ReactKeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.stopPropagation()
-      setEditingField(null)
-      ;(e.target as HTMLElement).blur()
-    }
-  }
-
-  const mergedBlur = () => {
-    setEditingField(null)
-    focusHandlers.onBlur()
-  }
-
-  if (editing) {
-    if (multiline) {
-      return (
-        <textarea
-          ref={inputRef as RefObject<HTMLTextAreaElement | null>}
-          rows={4}
-          className={`${displayClassName} min-h-[2.75rem] resize-y`}
-          value={raw}
-          placeholder={placeholder}
-          aria-label={ariaLabel}
-          style={colorStyle}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-          onChange={(e) => updateAttributes({ [field]: e.target.value })}
-          onKeyDown={exitOnEscape}
-          onFocus={focusHandlers.onFocus}
-          onBlur={mergedBlur}
-        />
-      )
-    }
-    return (
-      <input
-        ref={inputRef as RefObject<HTMLInputElement | null>}
-        type="text"
-        className={displayClassName}
-        value={raw}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
-        style={colorStyle}
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => updateAttributes({ [field]: e.target.value })}
-        onKeyDown={exitOnEscape}
-        onFocus={focusHandlers.onFocus}
-        onBlur={mergedBlur}
-      />
-    )
-  }
-
-  const html = renderToggleCardMarkdownField(raw, multiline)
-  const isEmpty = !String(raw).trim()
-
-  const displayHandlers = {
-    onMouseDown: (e: ReactMouseEvent) => e.stopPropagation(),
-    onClick: (e: ReactMouseEvent) => {
-      e.stopPropagation()
-      setEditingField(field)
-    },
-    onKeyDown: (e: ReactKeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault()
-        e.stopPropagation()
-        setEditingField(field)
-      }
-    },
-  }
-
-  const displayClass = `leaf-toggle-card-md-display ${displayClassName} ${isEmpty ? 'leaf-toggle-card-md-empty' : ''}`
-
-  if (isEmpty) {
-    return (
-      <div
-        tabIndex={0}
-        aria-label={`${ariaLabel} (empty, press Enter to edit)`}
-        className={displayClass}
-        style={colorStyle}
-        {...displayHandlers}
-      >
-        {placeholder}
-      </div>
-    )
-  }
-
-  return (
-    <div
-      tabIndex={0}
-      aria-label={ariaLabel}
-      className={displayClass}
-      style={colorStyle}
-      dangerouslySetInnerHTML={{ __html: html }}
-      {...displayHandlers}
-    />
-  )
-}
-
 function ToggleCardView({ node, updateAttributes }: NodeViewProps) {
   const [headerColorField, setHeaderColorField] = useState<ToggleHeaderColorField | null>(null)
-  const [headerEditField, setHeaderEditField] = useState<ToggleHeaderColorField | null>(null)
   const headerColorBlurRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const eyebrowInputRef = useRef<HTMLInputElement>(null)
-  const titleInputRef = useRef<HTMLInputElement>(null)
-  const subtitleInputRef = useRef<HTMLTextAreaElement>(null)
 
   const open = node.attrs.open !== false && node.attrs.open !== 'false'
   const accent = ((Number(node.attrs.accent) || 0) % 5 + 5) % 5
@@ -1002,21 +873,9 @@ function ToggleCardView({ node, updateAttributes }: NodeViewProps) {
   const colorAttrForField = (field: ToggleHeaderColorField) =>
     field === 'eyebrow' ? 'eyebrowColor' : field === 'title' ? 'titleColor' : 'subtitleColor'
 
-  useEffect(() => {
-    if (headerEditField === 'eyebrow') eyebrowInputRef.current?.focus()
-    else if (headerEditField === 'title') titleInputRef.current?.focus()
-    else if (headerEditField === 'subtitle') subtitleInputRef.current?.focus()
-  }, [headerEditField])
-
   const onHeaderPointer = (event: React.MouseEvent | React.KeyboardEvent) => {
     const target = event.target as HTMLElement
-    if (
-      target.closest('input') ||
-      target.closest('textarea') ||
-      target.closest('.leaf-toggle-card-md-display') ||
-      target.closest('.leaf-toggle-card-header-color-strip')
-    )
-      return
+    if (target.closest('input') || target.closest('.leaf-toggle-card-header-color-strip')) return
     if ('key' in event) {
       if (event.key !== 'Enter' && event.key !== ' ') return
       event.preventDefault()
@@ -1043,49 +902,43 @@ function ToggleCardView({ node, updateAttributes }: NodeViewProps) {
           onKeyDown={onHeaderPointer}
         >
           <div className="leaf-toggle-card-eyebrow">
-            <ToggleCardHeaderField
-              field="eyebrow"
-              multiline={false}
+            <input
+              type="text"
+              className="leaf-toggle-card-input leaf-toggle-card-input-eyebrow"
+              value={node.attrs.eyebrow ?? ''}
               placeholder="Label"
-              ariaLabel="Card label"
-              displayClassName="leaf-toggle-card-input leaf-toggle-card-input-eyebrow"
-              colorStyle={eyebrowColor ? { color: eyebrowColor } : undefined}
-              value={String(node.attrs.eyebrow ?? '')}
-              editingField={headerEditField}
-              setEditingField={setHeaderEditField}
-              updateAttributes={updateAttributes}
-              focusHandlers={headerInputFocusHandlers('eyebrow')}
-              inputRef={eyebrowInputRef}
+              aria-label="Card label"
+              style={eyebrowColor ? { color: eyebrowColor } : undefined}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => updateAttributes({ eyebrow: e.target.value })}
+              {...headerInputFocusHandlers('eyebrow')}
             />
           </div>
           <div className="leaf-toggle-card-meta">
-            <ToggleCardHeaderField
-              field="title"
-              multiline={false}
+            <input
+              type="text"
+              className="leaf-toggle-card-input leaf-toggle-card-input-title"
+              value={node.attrs.title ?? ''}
               placeholder="Title"
-              ariaLabel="Card title"
-              displayClassName="leaf-toggle-card-input leaf-toggle-card-input-title"
-              colorStyle={titleColor ? { color: titleColor } : undefined}
-              value={String(node.attrs.title ?? '')}
-              editingField={headerEditField}
-              setEditingField={setHeaderEditField}
-              updateAttributes={updateAttributes}
-              focusHandlers={headerInputFocusHandlers('title')}
-              inputRef={titleInputRef}
+              aria-label="Card title"
+              style={titleColor ? { color: titleColor } : undefined}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => updateAttributes({ title: e.target.value })}
+              {...headerInputFocusHandlers('title')}
             />
-            <ToggleCardHeaderField
-              field="subtitle"
-              multiline
+            <input
+              type="text"
+              className="leaf-toggle-card-input leaf-toggle-card-input-subtitle"
+              value={node.attrs.subtitle ?? ''}
               placeholder="Subtitle"
-              ariaLabel="Card subtitle"
-              displayClassName="leaf-toggle-card-input leaf-toggle-card-input-subtitle"
-              colorStyle={subtitleColor ? { color: subtitleColor } : undefined}
-              value={String(node.attrs.subtitle ?? '')}
-              editingField={headerEditField}
-              setEditingField={setHeaderEditField}
-              updateAttributes={updateAttributes}
-              focusHandlers={headerInputFocusHandlers('subtitle')}
-              inputRef={subtitleInputRef}
+              aria-label="Card subtitle"
+              style={subtitleColor ? { color: subtitleColor } : undefined}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => updateAttributes({ subtitle: e.target.value })}
+              {...headerInputFocusHandlers('subtitle')}
             />
           </div>
           {headerColorField ? (
@@ -2131,7 +1984,7 @@ export default function LeafEditor({
       editor.chain().focus().setTextSelection(selectionPos).insertContent([
         {
           type: 'storyTag',
-          attrs: { label: preset?.label ?? 'TAG', variant: storyVariant },
+          attrs: { label: preset?.label ?? 'FLAG', variant: storyVariant },
         },
         { type: 'text', text: ' ' },
       ]).run()

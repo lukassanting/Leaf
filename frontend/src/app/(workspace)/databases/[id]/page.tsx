@@ -87,7 +87,7 @@ export default function DatabaseViewPage() {
 
   return (
     <>
-      <div className="flex min-h-screen flex-col" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(248,251,247,0.95))' }}>
+      <div className="leaf-database-view-page flex min-h-0 flex-1 flex-col" style={{ background: 'var(--leaf-bg-editor)' }}>
         {/* Top strip */}
         <TopStrip
           breadcrumbs={breadcrumbs.map((c) => ({ id: c.id, title: c.title, kind: 'page' as const }))}
