@@ -108,6 +108,7 @@ export interface LeafTreeItem {
   title: string
   path: string
   type: LeafType
+  kind?: 'page' | 'database'
   parent_id?: string | null
   children_ids: string[]
   tags: string[]

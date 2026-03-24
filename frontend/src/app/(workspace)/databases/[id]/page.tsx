@@ -168,6 +168,7 @@ export default function DatabaseViewPage() {
               addColumn={addColumn}
               highlightedRowId={highlightedRowId}
             />
+          </div>
         </div>
 
         {/* Status bar */}

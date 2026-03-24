@@ -579,6 +579,7 @@ const WikilinkNode = Node.create({
       id: { default: '' },
       label: { default: 'Untitled' },
       path: { default: '' },
+      kind: { default: 'page' },
     }
   },
   parseHTML() {
@@ -591,6 +592,7 @@ const WikilinkNode = Node.create({
       'data-id': node.attrs.id,
       'data-path': node.attrs.path,
       'data-label': node.attrs.label,
+      'data-kind': node.attrs.kind || 'page',
       class: 'leaf-wikilink',
     }, HTMLAttributes), label]
   },
@@ -770,10 +772,11 @@ function WikilinkPanel({
       onMouseDown={(event) => event.preventDefault()}
     >
       <div className="border-b px-3 py-2 text-[10px] font-medium uppercase tracking-[0.09em]" style={{ color: 'var(--leaf-text-muted)', borderColor: 'rgba(0,0,0,0.05)' }}>
-        Link a page
+        Link to page or database
       </div>
       {menu.items.map((item, index) => {
         const isSelected = index === menu.selectedIndex
+        const isDb = item.kind === 'database'
         return (
           <button
             key={item.id}
@@ -789,7 +792,7 @@ function WikilinkPanel({
               className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
               style={{ background: 'var(--leaf-bg-tag)', color: 'var(--leaf-green)' }}
             >
-              <LeafIcon size={14} />
+              {isDb ? <DatabaseIcon size={13} /> : <LeafIcon size={14} />}
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>
@@ -1040,7 +1043,8 @@ export default function LeafEditor({
         const id = wikilink.getAttribute('data-id')
         if (id) {
           event.preventDefault()
-          routerRef.current.push(`/editor/${id}`)
+          const kind = wikilink.getAttribute('data-kind')
+          routerRef.current.push(kind === 'database' ? `/databases/${id}` : `/editor/${id}`)
           return true
         }
       }
@@ -1199,18 +1203,31 @@ export default function LeafEditor({
   useEffect(() => {
     let cancelled = false
 
-    void leavesApi.getTree({ includeDbRows: true })
-      .then((items) => {
-        if (cancelled) return
-        linkableLeavesRef.current = items.filter((item) => item.type === 'page')
-        if (editor) {
-          updateWikilinkMenu(editor)
-        }
-      })
-      .catch(() => {
-        if (cancelled) return
-        linkableLeavesRef.current = []
-      })
+    void Promise.all([
+      leavesApi.getTree({ includeDbRows: false }),
+      databasesApi.list(),
+    ]).then(([treeItems, databases]) => {
+      if (cancelled) return
+      const pages: LeafTreeItem[] = treeItems
+        .filter((item) => item.type === 'page')
+        .map((item) => ({ ...item, kind: 'page' as const }))
+      const dbItems: LeafTreeItem[] = databases.map((db) => ({
+        id: db.id,
+        title: db.title || 'Untitled database',
+        path: db.title || 'Untitled database',
+        type: 'page' as const,
+        kind: 'database' as const,
+        parent_id: null,
+        children_ids: [],
+        tags: [],
+        order: 0,
+      }))
+      linkableLeavesRef.current = [...pages, ...dbItems]
+      if (editor) updateWikilinkMenu(editor)
+    }).catch(() => {
+      if (cancelled) return
+      linkableLeavesRef.current = []
+    })
 
     return () => {
       cancelled = true
@@ -1314,6 +1331,7 @@ export default function LeafEditor({
             id: item.id,
             label: item.title || 'Untitled',
             path: item.path,
+            kind: item.kind ?? 'page',
           },
         },
         { type: 'text', text: ' ' },
@@ -1432,6 +1450,9 @@ export default function LeafEditor({
         ]).run()
         return
       }
+      case 'link':
+        editor.chain().focus().setTextSelection(selectionPos).insertContent('[[').run()
+        return
       case 'subpage':
         await insertEmbedPlaceholder('page', selectionPos)
         return
