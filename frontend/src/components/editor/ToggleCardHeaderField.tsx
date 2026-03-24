@@ -170,7 +170,11 @@ export function ToggleCardHeaderField({
 
   return (
     <>
-      <div className="leaf-toggle-card-field-shell" style={style}>
+      <div
+        className="leaf-toggle-card-field-shell"
+        style={style}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         <EditorContent editor={editor} />
       </div>
       {slashMenu ? (

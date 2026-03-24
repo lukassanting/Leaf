@@ -1284,20 +1284,9 @@ export default function LeafEditor({
 
   const editorProps = useMemo(() => ({
     attributes: { class: 'leaf-prose max-w-none min-h-[50vh] focus:outline-none' },
-    handleDOMEvents: {
-      mousedown: (_view: unknown, event: Event) => {
-        const el = event.target as HTMLElement | null
-        if (el?.closest?.('.leaf-toggle-card-field-shell')) return true
-        return false
-      },
-      click: (_view: unknown, event: Event) => {
-        const el = event.target as HTMLElement | null
-        if (el?.closest?.('.leaf-toggle-card-field-shell')) return true
-        return false
-      },
-    },
     handleClick: (_view: unknown, _pos: number, event: MouseEvent) => {
       const target = event.target as HTMLElement
+      if (target.closest('.leaf-toggle-card-field-shell')) return false
 
       // Wikilink click
       const wikilink = target.closest('[data-type="wikilink"]') as HTMLElement | null
