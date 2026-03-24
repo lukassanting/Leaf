@@ -702,15 +702,7 @@ function ToggleCardView({ node, updateAttributes }: NodeViewProps) {
   const open = node.attrs.open !== false && node.attrs.open !== 'false'
   const accent = ((Number(node.attrs.accent) || 0) % 5 + 5) % 5
 
-  const onHeaderPointer = (event: React.MouseEvent | React.KeyboardEvent) => {
-    const target = event.target as HTMLElement
-    if (target.closest('.leaf-toggle-card-field-shell')) return
-    if ('key' in event) {
-      if (event.key !== 'Enter' && event.key !== ' ') return
-      event.preventDefault()
-    }
-    updateAttributes({ open: !open })
-  }
+  const toggleOpen = () => updateAttributes({ open: !open })
 
   const eyebrowColor = String(node.attrs.eyebrowColor ?? '').trim()
   const titleColor = String(node.attrs.titleColor ?? '').trim()
@@ -722,14 +714,7 @@ function ToggleCardView({ node, updateAttributes }: NodeViewProps) {
         className={`leaf-toggle-card leaf-toggle-card--accent-${accent}`}
         data-open={open ? 'true' : 'false'}
       >
-        <div
-          role="button"
-          tabIndex={0}
-          aria-expanded={open}
-          className="leaf-toggle-card-header"
-          onClick={onHeaderPointer}
-          onKeyDown={onHeaderPointer}
-        >
+        <div className="leaf-toggle-card-header">
           <div className="leaf-toggle-card-eyebrow">
             <ToggleCardHeaderField
               value={String(node.attrs.eyebrow ?? '')}
@@ -764,6 +749,19 @@ function ToggleCardView({ node, updateAttributes }: NodeViewProps) {
               onChange={(html) => updateAttributes({ subtitle: html })}
             />
           </div>
+          <button
+            type="button"
+            className="leaf-toggle-card-chevron"
+            aria-expanded={open}
+            aria-label={open ? 'Collapse card' : 'Expand card'}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleOpen()
+            }}
+          >
+            ▾
+          </button>
         </div>
         <div className="leaf-toggle-card-body">
           <div className="leaf-toggle-card-body-inner">
@@ -787,7 +785,7 @@ const ToggleCard = Node.create({
       open: { default: true },
       eyebrow: { default: '' },
       title: { default: 'Toggle card' },
-      subtitle: { default: 'Click the header to expand or collapse' },
+      subtitle: { default: 'Use the arrow to expand or collapse' },
       accent: { default: 0 },
       eyebrowColor: { default: '' },
       titleColor: { default: '' },
@@ -1286,6 +1284,18 @@ export default function LeafEditor({
 
   const editorProps = useMemo(() => ({
     attributes: { class: 'leaf-prose max-w-none min-h-[50vh] focus:outline-none' },
+    handleDOMEvents: {
+      mousedown: (_view: unknown, event: Event) => {
+        const el = event.target as HTMLElement | null
+        if (el?.closest?.('.leaf-toggle-card-field-shell')) return true
+        return false
+      },
+      click: (_view: unknown, event: Event) => {
+        const el = event.target as HTMLElement | null
+        if (el?.closest?.('.leaf-toggle-card-field-shell')) return true
+        return false
+      },
+    },
     handleClick: (_view: unknown, _pos: number, event: MouseEvent) => {
       const target = event.target as HTMLElement
 
@@ -1600,7 +1610,8 @@ export default function LeafEditor({
     if (!match) return
 
     try {
-      const leaf = await leavesApi.create({ title, parent_id: leafId ?? null })
+      const parentId = leafId && leafId.trim() ? leafId : null
+      const leaf = await leavesApi.create({ title, parent_id: parentId, tags: [] })
       editor.chain()
         .focus()
         .deleteRange(match.range)
@@ -1752,7 +1763,7 @@ export default function LeafEditor({
               open: true,
               eyebrow: '',
               title: 'Toggle card',
-              subtitle: 'Click the header to expand or collapse',
+              subtitle: 'Use the arrow to expand or collapse',
               accent: Math.floor(Math.random() * 5),
             },
             content: [{ type: 'paragraph' }],

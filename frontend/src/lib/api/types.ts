@@ -186,6 +186,8 @@ export interface LeafCreate {
   tags?: string[]
   icon?: LeafIcon | null
   properties?: Record<string, string> | null
+  /** Sidebar ordering (root pages and siblings); optional on PATCH-style updates */
+  order?: number
 }
 
 export interface LeafContentUpdate {

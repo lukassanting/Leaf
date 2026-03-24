@@ -83,7 +83,7 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
         <input
           type="search"
           placeholder="Search…"
-          className="w-full rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-1"
+          className="leaf-sidebar-tree-search w-full rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-1"
           style={{
             background: 'rgba(255,255,255,0.6)',
             border: '1px solid var(--color-border)',

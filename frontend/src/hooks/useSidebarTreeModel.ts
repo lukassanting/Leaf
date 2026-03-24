@@ -116,6 +116,7 @@ export function useSidebarTreeModel(activeId?: string) {
                 parent_id: dbId,
                 children_ids: [],
                 order: 0,
+                tags: [],
                 isDbRow: true,
                 database_id: dbId,
               })
@@ -157,6 +158,7 @@ export function useSidebarTreeModel(activeId?: string) {
       parent_id: detail.parent_id,
       children_ids: [],
       order: 0,
+      tags: [],
     }
     setNodes((prev) => {
       if (detail.parent_id) {
@@ -190,6 +192,7 @@ export function useSidebarTreeModel(activeId?: string) {
           title: newTitle.trim(),
           parent_id: node.parent_id ?? undefined,
           children_ids: node.children_ids ?? [],
+          tags: node.tags ?? [],
         })
       } else {
         await databasesApi.update(id, { title: newTitle.trim() })
@@ -256,15 +259,57 @@ export function useSidebarTreeModel(activeId?: string) {
 
   const handleMove = useCallback(async (leafId: string, newParentId: string | null) => {
     const draggedNode = nodes.find((n) => n.id === leafId)
-    if (!draggedNode || draggedNode.kind !== 'page') return
+    if (!draggedNode || draggedNode.kind !== 'page' || draggedNode.isDbRow) return
     try {
       await leavesApi.update(leafId, {
         title: draggedNode.title,
         parent_id: newParentId,
+        tags: draggedNode.tags ?? [],
       })
       emitLeafTreeChanged()
     } catch {
       console.error('Move failed')
+    }
+    setDraggedId(null)
+    setDropTargetId(null)
+  }, [nodes])
+
+  const reorderRootPages = useCallback(async (draggedId: string, targetId: string) => {
+    const rootPages = nodes
+      .filter((n) => n.kind === 'page' && n.parent_id == null && !n.isDbRow)
+      .sort((a, b) => (a.order - b.order) || a.title.localeCompare(b.title) || a.id.localeCompare(b.id))
+    const ids = rootPages.map((n) => n.id)
+    const fromIdx = ids.indexOf(draggedId)
+    if (fromIdx === -1) {
+      setDraggedId(null)
+      setDropTargetId(null)
+      return
+    }
+    const newIds = [...ids]
+    newIds.splice(fromIdx, 1)
+    const insertAfter = newIds.indexOf(targetId)
+    if (insertAfter === -1) {
+      setDraggedId(null)
+      setDropTargetId(null)
+      return
+    }
+    newIds.splice(insertAfter + 1, 0, draggedId)
+    try {
+      await Promise.all(
+        newIds.map((id, order) => {
+          const n = nodes.find((x) => x.id === id)
+          if (!n) return Promise.resolve()
+          return leavesApi.update(id, {
+            title: n.title,
+            parent_id: null,
+            order,
+            tags: n.tags ?? [],
+          })
+        }),
+      )
+      emitLeafTreeChanged()
+    } catch {
+      console.error('Root reorder failed')
     }
     setDraggedId(null)
     setDropTargetId(null)
@@ -292,8 +337,14 @@ export function useSidebarTreeModel(activeId?: string) {
       return
     }
 
-    // Same parent → reorder siblings
-    if (draggedNode.parent_id && draggedNode.parent_id === targetNode.parent_id) {
+    const sameParent = draggedNode.parent_id === targetNode.parent_id
+
+    // Same parent → reorder siblings (including workspace root: parent_id null)
+    if (sameParent) {
+      if (draggedNode.parent_id == null) {
+        void reorderRootPages(draggedId, targetNode.id)
+        return
+      }
       const parent = nodes.find((n) => n.id === draggedNode.parent_id)
       if (!parent) { setDraggedId(null); setDropTargetId(null); return }
       const childIds = [...(parent.children_ids || [])]

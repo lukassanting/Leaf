@@ -110,6 +110,20 @@ html, body {
   height: 100%;
 }
 
+/* Right sidebar — linked mentions (classic); campaign overrides use !important below */
+.leaf-linked-mention-card {
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--leaf-text-body);
+  background: rgba(255, 255, 255, 0.7);
+  border-left: 3px solid var(--leaf-green);
+}
+
+.leaf-linked-mention-card:hover {
+  background: rgba(255, 255, 255, 0.9);
+}
+
 /* ─── Campaign: starfield (inspiration: docs/inspiration/.../d_and_d_style.html) */
 html[data-leaf-design="campaign"] body {
   position: relative;
@@ -206,6 +220,32 @@ html[data-leaf-design="campaign"] {
   --leaf-db-gallery-cover-2: color-mix(in srgb, #a855f7 12%, var(--leaf-bg-elevated));
   --leaf-db-gallery-cover-3: color-mix(in srgb, #c9a84c 10%, var(--leaf-bg-elevated));
   --leaf-db-icon-muted: #7a7569;
+}
+
+/* Sidebar search + linked mentions — campaign (overrides inline light surfaces) */
+html[data-leaf-design="campaign"] .leaf-sidebar-tree-search {
+  background: rgba(14, 14, 28, 0.92) !important;
+  border-color: var(--leaf-border-strong) !important;
+  color: var(--leaf-text-body) !important;
+}
+
+html[data-leaf-design="campaign"] .leaf-sidebar-tree-search::placeholder {
+  color: var(--leaf-text-muted);
+}
+
+html[data-leaf-design="campaign"] .leaf-linked-mentions-empty {
+  background: rgba(14, 14, 28, 0.88) !important;
+  border: 1px solid var(--leaf-border-soft) !important;
+  color: var(--leaf-text-muted) !important;
+}
+
+html[data-leaf-design="campaign"] .leaf-linked-mention-card {
+  background: rgba(18, 18, 36, 0.95) !important;
+  border-left-color: var(--leaf-green) !important;
+}
+
+html[data-leaf-design="campaign"] .leaf-linked-mention-card:hover {
+  background: rgba(26, 26, 44, 0.98) !important;
 }
 
 html[data-leaf-design="campaign"] body {
@@ -729,24 +769,38 @@ html[data-leaf-design="campaign"] .ProseMirror pre code {
   grid-template-columns: minmax(80px, auto) 1fr;
   gap: 12px 20px;
   align-items: start;
-  cursor: pointer;
+  cursor: default;
   position: relative;
   transition: background 0.2s;
 }
 
-.leaf-toggle-card-header::after {
-  content: '▾';
+.leaf-toggle-card-chevron {
   position: absolute;
-  bottom: 12px;
-  right: 16px;
-  font-size: 12px;
+  bottom: 10px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
   line-height: 1;
   color: var(--leaf-text-muted);
-  transition: transform 0.3s;
-  pointer-events: none;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.25s ease, color 0.15s ease, background 0.15s ease;
 }
 
-.leaf-toggle-card[data-open="true"] .leaf-toggle-card-header::after {
+.leaf-toggle-card-chevron:hover {
+  color: var(--leaf-text-body);
+  background: color-mix(in srgb, var(--leaf-green) 10%, transparent);
+}
+
+.leaf-toggle-card[data-open="true"] .leaf-toggle-card-chevron {
   transform: rotate(180deg);
 }
 

@@ -37,6 +37,7 @@ export type SidebarNode = {
   parent_id: string | null
   children_ids: string[]
   order: number
+  tags: string[]
   isDbRow?: boolean
   database_id?: string
 }
@@ -51,6 +52,7 @@ export function mapLeafNodes(raw: LeafTreeItem[]): SidebarNode[] {
     parent_id: leaf.parent_id ?? null,
     children_ids: leaf.children_ids ?? [],
     order: leaf.order ?? 0,
+    tags: leaf.tags ?? [],
   }))
 }
 
@@ -62,6 +64,7 @@ export function mapDbNodes(raw: Database[]): SidebarNode[] {
     parent_id: database.parent_leaf_id ?? null,
     children_ids: [],
     order: 10000 + index,
+    tags: [],
   }))
 }
 

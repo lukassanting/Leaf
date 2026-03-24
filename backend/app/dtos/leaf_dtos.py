@@ -58,6 +58,7 @@ class LeafUpdate(BaseModel):
     tags: Optional[list[str]] = None
     icon: Optional[dict] = None
     properties: Optional[dict] = None
+    order: Optional[int] = None
 
 
 class LeafContentUpdate(BaseModel):

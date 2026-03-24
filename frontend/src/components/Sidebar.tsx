@@ -571,7 +571,10 @@ export function Sidebar({ activeId }: { activeId?: string }) {
             Linked Mentions
           </SectionHeader>
           {backlinks.length === 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--leaf-text-muted)', padding: '2px 4px' }}>
+            <div
+              className="leaf-linked-mentions-empty rounded-lg px-2.5 py-2 text-xs"
+              style={{ color: 'var(--leaf-text-muted)' }}
+            >
               No linked mentions yet
             </div>
           ) : backlinks.map((item) => (
@@ -579,17 +582,7 @@ export function Sidebar({ activeId }: { activeId?: string }) {
               key={item.id}
               href={`/editor/${item.id}`}
               onClick={() => startNavigation()}
-              className="block rounded-lg transition-colors duration-150"
-              style={{
-                padding: '8px 10px',
-                fontSize: 12,
-                color: 'var(--leaf-text-body)',
-                background: 'rgba(255,255,255,0.7)',
-                borderLeft: '3px solid var(--leaf-green)',
-                marginBottom: 8,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.9)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.7)' }}
+              className="leaf-linked-mention-card block rounded-lg transition-colors duration-150"
             >
               <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--leaf-text-title)', marginBottom: 3 }}>{item.title}</div>
               <div style={{ fontSize: 11, color: 'var(--leaf-text-muted)', lineHeight: 1.5 }}>
