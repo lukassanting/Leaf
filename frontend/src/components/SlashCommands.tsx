@@ -5,11 +5,12 @@
  */
 
 import { createPortal } from 'react-dom'
+import { STORY_TAG_PRESETS, storyTagAction } from '@/lib/editorRichText'
 import { BLOCK_ICONS } from './Icons'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SlashGroup = 'Text' | 'Structure' | 'Insert' | 'Toggle Cards'
+export type SlashGroup = 'Text' | 'Style' | 'Structure' | 'Insert' | 'Toggle Cards'
 
 export type SlashItem = {
   label: string
@@ -33,6 +34,14 @@ export type SlashMenuState = {
 
 // ─── Items ───────────────────────────────────────────────────────────────────
 
+const STORY_TAG_SLASH_ITEMS: SlashItem[] = STORY_TAG_PRESETS.map((p) => ({
+  label: p.slashLabel,
+  description: p.slashDescription,
+  action: storyTagAction(p.variant),
+  group: 'Insert' as const,
+  keywords: p.keywords,
+}))
+
 export const SLASH_ITEMS: SlashItem[] = [
   // Text group
   { label: 'Heading 1',     description: 'Large section heading',   action: 'h1',      group: 'Text',      keywords: ['h1', 'heading', 'title'] },
@@ -42,6 +51,11 @@ export const SLASH_ITEMS: SlashItem[] = [
   { label: 'Italic',        description: 'Italic text',             action: 'italic',  group: 'Text',      keywords: ['italic', 'em'] },
   { label: 'Strikethrough', description: 'Strikethrough text',      action: 'strike',  group: 'Text',      keywords: ['strike', 'strikethrough'] },
   { label: 'Code',          description: 'Inline code snippet',     action: 'code',    group: 'Text',      keywords: ['code', 'inline'] },
+  // Style group
+  { label: 'Align left',    description: 'Left-align paragraph or heading', action: 'align_left',   group: 'Style', keywords: ['align', 'left'] },
+  { label: 'Align center',  description: 'Center paragraph or heading',     action: 'align_center', group: 'Style', keywords: ['align', 'center', 'middle'] },
+  { label: 'Align right',   description: 'Right-align paragraph or heading', action: 'align_right', group: 'Style', keywords: ['align', 'right'] },
+  { label: 'Reset text color', description: 'Remove inline colour from selection', action: 'textColor_clear', group: 'Style', keywords: ['color', 'reset', 'default', 'clear'] },
   // Structure group
   { label: 'Bullet list',   description: 'Unordered list',          action: 'bullet',  group: 'Structure', keywords: ['bullet', 'list', 'ul'] },
   { label: 'Numbered list', description: 'Ordered list',            action: 'ordered', group: 'Structure', keywords: ['numbered', 'ordered', 'ol'] },
@@ -52,6 +66,8 @@ export const SLASH_ITEMS: SlashItem[] = [
   { label: '3 columns',     description: 'Three blocks side by side', action: 'columns3', group: 'Insert', keywords: ['columns', '3 columns', 'layout'] },
   { label: '4 columns',     description: 'Four blocks side by side',  action: 'columns4', group: 'Insert', keywords: ['columns', '4 columns', 'layout'] },
   { label: '5 columns',     description: 'Five blocks side by side',  action: 'columns5', group: 'Insert', keywords: ['columns', '5 columns', 'layout'] },
+  { label: 'Stat strip',    description: 'Three kicker + title stat cards', action: 'statStrip', group: 'Insert', keywords: ['stat', 'strip', 'stats', 'dc', 'hp', 'ac', 'cards'] },
+  ...STORY_TAG_SLASH_ITEMS,
   { label: 'Link to page',  description: 'Link an existing page or database', action: 'link', group: 'Insert', keywords: ['link', 'page', 'wikilink', 'mention'] },
   { label: 'Sub-page',      description: 'New child page',          action: 'subpage', group: 'Insert',    keywords: ['page', 'subpage'] },
   { label: 'Database',      description: 'New table database',      action: 'database',group: 'Insert',    keywords: ['database', 'db', 'table'] },
@@ -88,7 +104,7 @@ export function rankSlashItems(query: string): SlashItem[] {
 
 // ─── Menu renderer (used in Editor.tsx) ──────────────────────────────────────
 
-const GROUPS: SlashGroup[] = ['Text', 'Structure', 'Insert', 'Toggle Cards']
+const GROUPS: SlashGroup[] = ['Text', 'Style', 'Structure', 'Insert', 'Toggle Cards']
 
 export function SlashMenuPanel({
   menu,

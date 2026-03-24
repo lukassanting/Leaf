@@ -167,9 +167,10 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | Path | Purpose |
 |------|---------|
 | `src/components/Editor.tsx` | Re-exports main editor (TipTap) |
-| `src/components/editor/LeafEditor.tsx` | TipTap extensions, slash menu, embeds, `toggleCard` collapsible block, column layout, document model |
-| `src/components/SlashCommands.tsx` | Slash command definitions and menu |
-| `src/components/EditorToolbar.tsx` | Formatting toolbar |
+| `src/components/editor/LeafEditor.tsx` | TipTap extensions (`TextStyle`, `Color`, `TextAlign`, `storyTag`, `statStrip`), slash menu, selection bubble, embeds, `toggleCard`, column layout, document model |
+| `src/components/SlashCommands.tsx` | Slash command definitions and menu (includes **Style** group) |
+| `src/components/editor/EditorSelectionBubble.tsx` | Selection bubble: alignment, clear colour, swatches (TipTap `BubbleMenu`; no static toolbar) |
+| `src/lib/editorRichText.ts` | Story-tag variants/presets, text-colour swatches, slash action helpers |
 | `src/components/StatusBar.tsx` | Sync state, word count, mode label |
 | `src/components/TopStrip.tsx` | Top bar, breadcrumbs, Settings (⋯) menu with appearance / design theme |
 | `src/components/DesignThemeProvider.tsx` | Client context: reads/writes `leaf-design` in `localStorage`, sets `data-leaf-design` on `<html>` |

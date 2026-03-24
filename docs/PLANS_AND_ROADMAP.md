@@ -36,6 +36,8 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Schema-first `LeafDocument` content model with HTML migration support.
 - [x] Stable TipTap editor rebuild with `gapcursor`/`dropcursor` disabled.
 - [x] Slash commands and block insertion menu for headings, lists, todos, quotes, sub-pages, databases, and column layouts.
+- [x] Text alignment (paragraph, heading, blockquote) and palette text colours (`TextAlign`, `TextStyle`, `Color`); selection bubble + slash **Style** group (no static toolbar).
+- [x] Inline **story tag** atoms (variant + editable label) and **stat strip** block (three kicker/title pairs); presets in `lib/editorRichText.ts`.
 - [x] Rich/Markdown mode switching plus Markdown import/export.
 - [x] Page embeds as dedicated block nodes.
 - [x] Inline database embeds as dedicated block nodes backed by the shared database surface.
@@ -168,6 +170,7 @@ Questions still open for the next milestone:
 | `frontend/src/app/(workspace)/editor/[id]/page.tsx` | Page editor route and shell wiring |
 | `frontend/src/app/(workspace)/databases/[id]/page.tsx` | Standalone database page |
 | `frontend/src/components/editor/LeafEditor.tsx` | Main editor implementation and node views |
+| `frontend/src/lib/editorRichText.ts` | Story-tag presets and shared colour swatches |
 | `frontend/src/components/SlashCommands.tsx` | Shared slash menu data and menu UI |
 | `frontend/src/components/database/DatabaseSurface.tsx` | Shared standalone/embedded database renderer |
 | `frontend/src/components/database/EmbeddedDatabaseBlock.tsx` | Inline database block wrapper |

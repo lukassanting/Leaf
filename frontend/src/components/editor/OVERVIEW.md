@@ -10,5 +10,5 @@ The editor likely combines:
 
 - TipTap-based rich editing
 - Markdown editing mode
-- Toolbar/actions/status wiring
+- Slash / block menu + selection bubble (no static toolbar); status bar on the page shell
 

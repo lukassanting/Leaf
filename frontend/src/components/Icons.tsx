@@ -165,6 +165,19 @@ export const BLOCK_ICONS: Record<string, React.ReactNode> = {
   quote:   <BlockIcon label='"' />,
   columns2: <BlockIcon label="2C" />,
   columns3: <BlockIcon label="3C" />,
+  columns4: <BlockIcon label="4C" />,
+  columns5: <BlockIcon label="5C" />,
+  statStrip: <BlockIcon label="≡" />,
+  align_left: <BlockIcon label="L" />,
+  align_center: <BlockIcon label="C" />,
+  align_right: <BlockIcon label="R" />,
+  textColor_clear: <BlockIcon label="A" />,
+  storyTag_combat: <BlockIcon label="⚔" />,
+  storyTag_political: <BlockIcon label="◎" />,
+  storyTag_character: <BlockIcon label="◇" />,
+  storyTag_lore: <BlockIcon label="✦" />,
+  storyTag_boss: <BlockIcon label="☠" />,
+  storyTag_neutral: <BlockIcon label="◇" />,
   subpage: (
     <span className="inline-flex items-center justify-center w-7 h-7 rounded-md shrink-0" style={{ background: 'rgba(244,244,245,0.82)', border: '1px solid rgba(0,0,0,0.06)' }}>
       <LeafIcon size={14} className="text-[var(--leaf-text-body)]" />

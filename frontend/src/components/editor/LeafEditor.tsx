@@ -40,32 +40,82 @@
 
 'use client'
 
+import 'tippy.js/dist/tippy.css'
+
 import { useRouter } from 'next/navigation'
-import { EditorContent, NodeViewWrapper, NodeViewContent, ReactNodeViewRenderer, useEditor, type NodeViewProps } from '@tiptap/react'
-import { Node, mergeAttributes, InputRule } from '@tiptap/core'
+import { BubbleMenu, EditorContent, NodeViewWrapper, NodeViewContent, ReactNodeViewRenderer, useEditor, type NodeViewProps } from '@tiptap/react'
+import { Node, mergeAttributes, InputRule, isTextSelection } from '@tiptap/core'
 import { DOMSerializer } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import TaskItem from '@tiptap/extension-task-item'
 import TaskList from '@tiptap/extension-task-list'
+import TextStyle from '@tiptap/extension-text-style'
+import Color from '@tiptap/extension-color'
+import TextAlign from '@tiptap/extension-text-align'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MarkdownIt from 'markdown-it'
 import TurndownService from 'turndown'
 import { leavesApi, type Database, type LeafTreeItem, type LeafDocument } from '@/lib/api'
 import { DatabaseIcon, LeafIcon } from '@/components/Icons'
+import { EditorSelectionBubble } from './EditorSelectionBubble'
 import { EmbeddedDatabaseBlock } from '@/components/database/EmbeddedDatabaseBlock'
 import { useNavigationProgress } from '@/components/NavigationProgress'
 import { warmEditorRoute } from '@/lib/warmEditorRoute'
 import { ensureTagEntries } from '@/lib/workspaceDefaults'
 import { databasesApi } from '@/lib/api'
 
+import { LEAF_TEXT_COLOR_SWATCHES, STORY_TAG_PRESETS, parseStoryTagAction } from '@/lib/editorRichText'
 import { createEmptyLeafDocument, getLeafContentText, normalizeLeafDocument } from '@/lib/leafDocument'
 import { rankSlashItems, SLASH_ITEMS, type SlashMenuState, SlashMenuPanel } from '@/components/SlashCommands'
+
+function selectionBubbleShouldShow({
+  editor,
+  view,
+  state,
+  from,
+  to,
+  element,
+}: {
+  editor: import('@tiptap/core').Editor
+  view: import('@tiptap/pm/view').EditorView
+  state: import('@tiptap/pm/state').EditorState
+  from: number
+  to: number
+  element: HTMLElement
+}): boolean {
+  const { doc, selection } = state
+  const { empty } = selection
+  if (!editor.isEditable) return false
+  const isEmptyTextBlock = !doc.textBetween(from, to).length && isTextSelection(selection)
+  const isChildOfMenu = element.contains(document.activeElement)
+  const hasEditorFocus = view.hasFocus() || isChildOfMenu
+  if (!hasEditorFocus || empty || isEmptyTextBlock) return false
+  if (editor.isActive('code') || editor.isActive('codeBlock')) return false
+  return true
+}
 
 const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' })
 turndown.addRule('leafToggleCard', {
   filter(node) {
     return node.nodeName === 'DIV' && (node as HTMLElement).getAttribute('data-type') === 'toggle-card'
+  },
+  replacement(_content, node) {
+    return `\n\n${(node as HTMLElement).outerHTML}\n\n`
+  },
+})
+turndown.addRule('leafStoryTag', {
+  filter(node) {
+    return node.nodeName === 'SPAN' && (node as HTMLElement).getAttribute('data-type') === 'story-tag'
+  },
+  replacement(_content, node) {
+    const el = node as HTMLElement
+    return `[${el.getAttribute('data-label') || el.textContent || ''}]`
+  },
+})
+turndown.addRule('leafStatStrip', {
+  filter(node) {
+    return node.nodeName === 'DIV' && (node as HTMLElement).getAttribute('data-type') === 'stat-strip'
   },
   replacement(_content, node) {
     return `\n\n${(node as HTMLElement).outerHTML}\n\n`
@@ -659,6 +709,77 @@ const HashtagNode = Node.create({
     ]
   },
 })
+
+function StoryTagView({ node, updateAttributes, selected }: NodeViewProps) {
+  const variant = String(node.attrs.variant || 'neutral')
+  return (
+    <NodeViewWrapper
+      as="span"
+      contentEditable={false}
+      className={['leaf-story-tag', `leaf-story-tag--${variant}`, selected ? 'leaf-story-tag--selected' : ''].filter(Boolean).join(' ')}
+    >
+      <input
+        type="text"
+        value={String(node.attrs.label ?? '')}
+        onChange={(e) => updateAttributes({ label: e.target.value })}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="leaf-story-tag-input"
+        aria-label="Story tag label"
+        size={Math.max(2, String(node.attrs.label ?? '').length + 1)}
+      />
+    </NodeViewWrapper>
+  )
+}
+
+const StoryTag = Node.create({
+  name: 'storyTag',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: true,
+  draggable: false,
+  addAttributes() {
+    return {
+      label: { default: 'TAG' },
+      variant: { default: 'neutral' },
+    }
+  },
+  parseHTML() {
+    return [
+      {
+        tag: 'span[data-type="story-tag"]',
+        getAttrs: (element) => {
+          if (!(element instanceof HTMLElement)) return false
+          return {
+            label: element.getAttribute('data-label') || element.textContent?.trim() || 'TAG',
+            variant: element.getAttribute('data-variant') || 'neutral',
+          }
+        },
+      },
+    ]
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    const label = String(node.attrs.label ?? 'TAG')
+    const variant = String(node.attrs.variant ?? 'neutral')
+    return [
+      'span',
+      mergeAttributes(
+        {
+          'data-type': 'story-tag',
+          'data-label': label,
+          'data-variant': variant,
+          class: `leaf-story-tag leaf-story-tag--${variant}`,
+        },
+        HTMLAttributes,
+      ),
+      label,
+    ]
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(StoryTagView as never)
+  },
+})
+
 const Column = Node.create({
   name: 'column',
   content: 'block+',
@@ -837,8 +958,103 @@ const ToggleCard = Node.create({
   },
 })
 
+function StatStripView({ node, updateAttributes }: NodeViewProps) {
+  const pairs = [
+    ['kicker0', 'title0'],
+    ['kicker1', 'title1'],
+    ['kicker2', 'title2'],
+  ] as const
+  return (
+    <NodeViewWrapper className="leaf-stat-strip" data-drag-handle="">
+      <div className="leaf-stat-strip-grid">
+        {pairs.map(([k, t]) => (
+          <div key={k} className="leaf-stat-strip-cell">
+            <input
+              type="text"
+              className="leaf-stat-strip-kicker"
+              placeholder="Kicker"
+              value={String((node.attrs as Record<string, string>)[k] ?? '')}
+              onChange={(e) => updateAttributes({ [k]: e.target.value })}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+            <input
+              type="text"
+              className="leaf-stat-strip-title"
+              placeholder="Value"
+              value={String((node.attrs as Record<string, string>)[t] ?? '')}
+              onChange={(e) => updateAttributes({ [t]: e.target.value })}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+          </div>
+        ))}
+      </div>
+    </NodeViewWrapper>
+  )
+}
+
+const StatStrip = Node.create({
+  name: 'statStrip',
+  group: 'block',
+  atom: true,
+  draggable: true,
+  selectable: true,
+  defining: true,
+  isolating: true,
+  addAttributes() {
+    return {
+      kicker0: { default: '' },
+      title0: { default: '' },
+      kicker1: { default: '' },
+      title1: { default: '' },
+      kicker2: { default: '' },
+      title2: { default: '' },
+    }
+  },
+  parseHTML() {
+    return [
+      {
+        tag: 'div[data-type="stat-strip"]',
+        getAttrs: (element) => {
+          if (!(element instanceof HTMLElement)) return false
+          const g = (name: string) => element.getAttribute(`data-${name}`) ?? ''
+          return {
+            kicker0: g('kicker0'),
+            title0: g('title0'),
+            kicker1: g('kicker1'),
+            title1: g('title1'),
+            kicker2: g('kicker2'),
+            title2: g('title2'),
+          }
+        },
+      },
+    ]
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    const a = node.attrs as Record<string, string>
+    return [
+      'div',
+      mergeAttributes(
+        {
+          'data-type': 'stat-strip',
+          'data-kicker0': a.kicker0 ?? '',
+          'data-title0': a.title0 ?? '',
+          'data-kicker1': a.kicker1 ?? '',
+          'data-title1': a.title1 ?? '',
+          'data-kicker2': a.kicker2 ?? '',
+          'data-title2': a.title2 ?? '',
+          class: 'leaf-stat-strip-host',
+        },
+        HTMLAttributes,
+      ),
+    ]
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(StatStripView as never)
+  },
+})
+
 function BlockDropdown({ onSelect, onClose }: { onSelect: (action: string) => void; onClose: () => void }) {
-  const groups = ['Text', 'Structure', 'Insert', 'Toggle Cards'] as const
+  const groups = ['Text', 'Style', 'Structure', 'Insert', 'Toggle Cards'] as const
 
   return (
     <>
@@ -1103,11 +1319,16 @@ export default function LeafEditor({
         width: 2,
       },
     }),
+    TextStyle,
+    Color,
+    TextAlign.configure({ types: ['heading', 'paragraph', 'blockquote'] }),
     WikilinkNode,
     HashtagNode,
+    StoryTag,
     Column,
     ColumnList,
     ToggleCard,
+    StatStrip,
     PageEmbed,
     DatabaseEmbed,
     TaskList,
@@ -1567,6 +1788,18 @@ export default function LeafEditor({
       case 'code':
         editor.chain().focus().setTextSelection(selectionPos).toggleCode().run()
         return
+      case 'align_left':
+        editor.chain().focus().setTextSelection(selectionPos).setTextAlign('left').run()
+        return
+      case 'align_center':
+        editor.chain().focus().setTextSelection(selectionPos).setTextAlign('center').run()
+        return
+      case 'align_right':
+        editor.chain().focus().setTextSelection(selectionPos).setTextAlign('right').run()
+        return
+      case 'textColor_clear':
+        editor.chain().focus().setTextSelection(selectionPos).unsetColor().run()
+        return
       case 'bullet':
         editor.chain().focus().setTextSelection(selectionPos).toggleBulletList().run()
         return
@@ -1608,6 +1841,27 @@ export default function LeafEditor({
       case 'database':
         await insertEmbedPlaceholder('database', selectionPos)
         return
+      case 'statStrip': {
+        const $posStrip = editor.state.doc.resolve(selectionPos)
+        for (let d = $posStrip.depth; d > 0; d--) {
+          if ($posStrip.node(d).type.name === 'column') return
+        }
+        editor.chain().focus().insertContentAt(selectionPos, [
+          {
+            type: 'statStrip',
+            attrs: {
+              kicker0: '',
+              title0: '',
+              kicker1: '',
+              title1: '',
+              kicker2: '',
+              title2: '',
+            },
+          },
+          { type: 'paragraph' },
+        ]).run()
+        return
+      }
       case 'toggleCard':
         editor.chain().focus().insertContentAt(selectionPos, [
           {
@@ -1624,6 +1878,26 @@ export default function LeafEditor({
           { type: 'paragraph' },
         ]).run()
         return
+    }
+
+    const storyVariant = parseStoryTagAction(action)
+    if (storyVariant) {
+      const preset = STORY_TAG_PRESETS.find((p) => p.variant === storyVariant)
+      editor.chain().focus().setTextSelection(selectionPos).insertContent([
+        {
+          type: 'storyTag',
+          attrs: { label: preset?.label ?? 'TAG', variant: storyVariant },
+        },
+        { type: 'text', text: ' ' },
+      ]).run()
+      return
+    }
+
+    for (const sw of LEAF_TEXT_COLOR_SWATCHES) {
+      if (action === `textColor_${sw.id}`) {
+        editor.chain().focus().setTextSelection(selectionPos).setColor(sw.value).run()
+        return
+      }
     }
   }, [editor, insertEmbedPlaceholder])
 
@@ -1800,6 +2074,7 @@ export default function LeafEditor({
       if (targetNode && (
         targetNode.type.name === 'columnList' ||
         targetNode.type.name === 'toggleCard' ||
+        targetNode.type.name === 'statStrip' ||
         targetNode.type.name === 'databaseEmbed' ||
         targetNode.type.name === 'pageEmbed'
       )) {
@@ -1926,6 +2201,16 @@ export default function LeafEditor({
             onDragOver={handleEditorDragOver}
             onDragLeave={handleEditorDragLeave}
           >
+            {editor ? (
+              <BubbleMenu
+                editor={editor}
+                pluginKey="leafSelectionBubble"
+                tippyOptions={{ duration: 150, placement: 'top', zIndex: 10050 }}
+                shouldShow={selectionBubbleShouldShow}
+              >
+                <EditorSelectionBubble editor={editor} />
+              </BubbleMenu>
+            ) : null}
             {columnDropZone && (
               <div
                 className="column-drop-indicator"

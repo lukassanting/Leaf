@@ -19,6 +19,7 @@ You are helping build **Leaf**, a Notion-inspired personal knowledge manager. St
 - **Tailwind v4 + PostCSS.** `postcss.config.mjs` must use ESM only — no `module.exports`. Tailwind plugins are declared with `@plugin` in `globals.css` or via the `postcss.config.mjs` plugins array. The old `tailwind.config.ts` `plugins:` array does **not** apply them in v4.
 
 - **TipTap headings need explicit CSS.** Tailwind resets all heading styles. Add `.ProseMirror h1/h2/h3` rules in `globals.css` — do not rely on `@tailwindcss/typography`.
+- **Rich text extensions:** `TextStyle` + `Color` + `TextAlign` on `paragraph`, `heading`, `blockquote`; inline `storyTag` (variant pill) and block `statStrip` (three kicker/title fields). Shared presets/swatches: `frontend/src/lib/editorRichText.ts`. No static formatting bar — use slash `/` and the gutter **+** menu for blocks/marks; alignment + colours use TipTap `BubbleMenu` (`EditorSelectionBubble.tsx`) when text is selected. Wire new slash actions in `SlashCommands.tsx` + `LeafEditor` `applyAction`.
 
 - **Database rows ARE pages.** Each `database_rows` row has a `leaf_id` FK auto-created on insert. The linked leaf is the full page (title + content). `leaves.database_id` marks a leaf as a database entry — these are filtered out of the sidebar tree. The "Name" column in the database view is always the leaf title, edited via `leavesApi.update`, not `databasesApi.updateRow`.
 
@@ -72,7 +73,6 @@ Leaf/
         │   └── globals.css         # design tokens; `data-leaf-design="campaign"` for D&D-style theme
         ├── components/
         │   ├── Editor.tsx          # TipTap rich/markdown editor
-        │   ├── EditorToolbar.tsx   # formatting toolbar
         │   ├── TopStrip.tsx        # breadcrumbs + classic/campaign design toggle
         │   ├── DesignThemeProvider.tsx
         │   ├── Sidebar.tsx         # sidebar with new-page / new-db buttons

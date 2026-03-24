@@ -243,6 +243,117 @@ html[data-leaf-design="campaign"] .ProseMirror h3 {
   font-style: italic;
 }
 
+/* Inline story tags (campaign / D&D-style pills) */
+.ProseMirror .leaf-story-tag {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  max-width: 100%;
+  margin: 0 0.12em;
+  padding: 0.12em 0.5em;
+  border-radius: 999px;
+  font-size: 0.7em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+.ProseMirror .leaf-story-tag-input {
+  min-width: 2.5em;
+  max-width: 12em;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  outline: none;
+}
+.ProseMirror .leaf-story-tag--selected {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--leaf-green) 55%, transparent);
+}
+.ProseMirror .leaf-story-tag--combat {
+  color: #fecaca;
+  background: color-mix(in srgb, #b83232 38%, var(--leaf-bg-elevated, #fff));
+  border-color: color-mix(in srgb, #b83232 65%, transparent);
+}
+.ProseMirror .leaf-story-tag--political {
+  color: #fef3c7;
+  background: color-mix(in srgb, #c9a84c 35%, var(--leaf-bg-elevated, #fff));
+  border-color: color-mix(in srgb, #c9a84c 55%, transparent);
+}
+.ProseMirror .leaf-story-tag--character {
+  color: #bfdbfe;
+  background: color-mix(in srgb, #2d7aad 32%, var(--leaf-bg-elevated, #fff));
+  border-color: color-mix(in srgb, #2d7aad 50%, transparent);
+}
+.ProseMirror .leaf-story-tag--lore {
+  color: #e9d5ff;
+  background: color-mix(in srgb, #9b4fd8 30%, var(--leaf-bg-elevated, #fff));
+  border-color: color-mix(in srgb, #9b4fd8 48%, transparent);
+}
+.ProseMirror .leaf-story-tag--boss {
+  color: #fce7f3;
+  background: color-mix(in srgb, #9d174d 36%, var(--leaf-bg-elevated, #fff));
+  border-color: color-mix(in srgb, #9d174d 55%, transparent);
+}
+.ProseMirror .leaf-story-tag--neutral {
+  color: var(--leaf-text-body, var(--color-text-body));
+  background: color-mix(in srgb, var(--leaf-text-muted, #71717a) 14%, var(--leaf-bg-elevated, #fafafa));
+  border-color: var(--leaf-border-soft, var(--color-border));
+}
+
+/* Stat strip (three kicker + value cards) */
+.ProseMirror .leaf-stat-strip {
+  margin: 0.85em 0;
+}
+.ProseMirror .leaf-stat-strip-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+@media (max-width: 640px) {
+  .ProseMirror .leaf-stat-strip-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.ProseMirror .leaf-stat-strip-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--leaf-border-soft, var(--color-border));
+  background: var(--leaf-bg-elevated, #fafafa);
+}
+.ProseMirror .leaf-stat-strip-kicker,
+.ProseMirror .leaf-stat-strip-title {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  outline: none;
+  padding: 0;
+  margin: 0;
+}
+.ProseMirror .leaf-stat-strip-kicker {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--leaf-text-muted, var(--color-text-muted));
+}
+.ProseMirror .leaf-stat-strip-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--leaf-text-title, var(--color-text-dark));
+}
+
 /* Code */
 .ProseMirror pre {
   background: #fafafa;

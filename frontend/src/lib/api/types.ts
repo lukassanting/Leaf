@@ -24,9 +24,12 @@
  */
 export type LeafType = 'page' | 'project'
 
-export type LeafMark = {
-  type: 'bold' | 'italic' | 'strike' | 'code'
-}
+export type LeafMark =
+  | { type: 'bold' }
+  | { type: 'italic' }
+  | { type: 'strike' }
+  | { type: 'code' }
+  | { type: 'textStyle'; attrs?: { color?: string | null } }
 
 export type LeafTextNode = {
   type: 'text'
@@ -51,7 +54,22 @@ export type LeafHashtagNode = {
   }
 }
 
-export type LeafInlineNode = LeafTextNode | { type: 'hardBreak' } | LeafWikilinkNode | LeafHashtagNode
+export type StoryTagVariant = 'combat' | 'political' | 'character' | 'lore' | 'boss' | 'neutral'
+
+export type LeafStoryTagNode = {
+  type: 'storyTag'
+  attrs: {
+    label: string
+    variant: StoryTagVariant
+  }
+}
+
+export type LeafInlineNode =
+  | LeafTextNode
+  | { type: 'hardBreak' }
+  | LeafWikilinkNode
+  | LeafHashtagNode
+  | LeafStoryTagNode
 
 export type LeafColumnNode = {
   type: 'column'
@@ -60,9 +78,9 @@ export type LeafColumnNode = {
 }
 
 export type LeafNode =
-  | { type: 'paragraph'; content?: LeafInlineNode[] }
-  | { type: 'heading'; attrs: { level: 1 | 2 | 3 }; content?: LeafInlineNode[] }
-  | { type: 'blockquote'; content: LeafNode[] }
+  | { type: 'paragraph'; attrs?: { textAlign?: string | null }; content?: LeafInlineNode[] }
+  | { type: 'heading'; attrs: { level: 1 | 2 | 3; textAlign?: string | null }; content?: LeafInlineNode[] }
+  | { type: 'blockquote'; attrs?: { textAlign?: string | null }; content: LeafNode[] }
   | { type: 'bulletList'; content: { type: 'listItem'; content: LeafNode[] }[] }
   | { type: 'orderedList'; content: { type: 'listItem'; content: LeafNode[] }[] }
   | { type: 'taskList'; content: { type: 'taskItem'; attrs: { checked: boolean }; content: LeafNode[] }[] }
@@ -82,6 +100,17 @@ export type LeafNode =
     }
   | { type: 'pageEmbed'; attrs: { id: string; title: string; kind: 'page' } }
   | { type: 'databaseEmbed'; attrs: { id: string; title: string; kind: 'database'; view?: 'table' | 'board' | 'gallery' } }
+  | {
+      type: 'statStrip'
+      attrs: {
+        kicker0: string
+        title0: string
+        kicker1: string
+        title1: string
+        kicker2: string
+        title2: string
+      }
+    }
 
 export type LeafDocument = {
   type: 'doc'
