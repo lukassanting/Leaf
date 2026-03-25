@@ -20,11 +20,21 @@ Debug:
 - If requests validate but data is wrong, inspect the `DatabaseOperations` implementation and DTO mapping.
 """
 
+from urllib.parse import unquote
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database.operations.database_operations import DatabaseOperations
-from app.dtos.database_dtos import Database, DatabaseCreate, DatabaseUpdate, Row, RowCreate, RowUpdate
+from app.dtos.database_dtos import (
+    Database,
+    DatabaseCreate,
+    DatabaseUpdate,
+    RemovePropertyResponse,
+    Row,
+    RowCreate,
+    RowUpdate,
+)
 
 router = APIRouter()
 
@@ -65,6 +75,20 @@ def update_database(
     return db
 
 
+@router.delete("/databases/{database_id}/properties/{property_key}", response_model=RemovePropertyResponse)
+def remove_database_property(
+    database_id: UUID,
+    property_key: str,
+    ops: DatabaseOperations = Depends(DatabaseOperations),
+):
+    """Remove a schema column and delete that key from all rows."""
+    result = ops.remove_schema_property(database_id, unquote(property_key))
+    if result is None:
+        raise HTTPException(status_code=404, detail="Database or property not found")
+    database, rows = result
+    return RemovePropertyResponse(database=database, rows=rows)
+
+
 @router.delete("/databases/{database_id}", status_code=204)
 def delete_database(
     database_id: UUID,
@@ -72,6 +96,18 @@ def delete_database(
 ):
     if not ops.delete_database(database_id):
         raise HTTPException(status_code=404, detail="Database not found")
+
+
+@router.post("/databases/{database_id}/restore", response_model=Database)
+def restore_database(
+    database_id: UUID,
+    ops: DatabaseOperations = Depends(DatabaseOperations),
+):
+    """Undo soft-delete (e.g. after Cmd/Ctrl+Z in the client)."""
+    db = ops.restore_database(database_id)
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not found or not deleted")
+    return db
 
 
 @router.post("/databases/{database_id}/rows", response_model=Row)
@@ -91,7 +127,10 @@ def list_rows(
     database_id: UUID,
     ops: DatabaseOperations = Depends(DatabaseOperations),
 ):
-    return ops.get_rows(database_id)
+    rows = ops.get_rows(database_id)
+    if rows is None:
+        raise HTTPException(status_code=404, detail="Database not found")
+    return rows
 
 
 @router.get("/databases/{database_id}/rows/{row_id}", response_model=Row)

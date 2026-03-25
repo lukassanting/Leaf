@@ -70,7 +70,8 @@ import { createEmptyLeafDocument, getLeafContentText, normalizeLeafDocument } fr
 import { rankSlashItems, SLASH_ITEMS, type SlashMenuState, SlashMenuPanel } from '@/components/SlashCommands'
 import { StoryTag } from '@/components/editor/storyTagExtension'
 import { computeSlashMatch, computeWikilinkMatch, type EditorSlashMatch } from '@/components/editor/slashMatchUtils'
-import { ToggleCardHeaderField } from '@/components/editor/ToggleCardHeaderField'
+
+import { Callout, CALLOUT_VARIANTS, CALLOUT_VARIANT_META, type CalloutVariant } from '@/components/editor/calloutExtension'
 
 function selectionBubbleShouldShow({
   editor,
@@ -119,6 +120,14 @@ turndown.addRule('leafStoryTag', {
 turndown.addRule('leafStatStrip', {
   filter(node) {
     return node.nodeName === 'DIV' && (node as HTMLElement).getAttribute('data-type') === 'stat-strip'
+  },
+  replacement(_content, node) {
+    return `\n\n${(node as HTMLElement).outerHTML}\n\n`
+  },
+})
+turndown.addRule('leafCallout', {
+  filter(node) {
+    return node.nodeName === 'DIV' && (node as HTMLElement).getAttribute('data-type') === 'callout'
   },
   replacement(_content, node) {
     return `\n\n${(node as HTMLElement).outerHTML}\n\n`
@@ -295,11 +304,13 @@ function EmbeddedDatabaseView({
   const { id, title, status, view } = node.attrs
 
   const handleDelete = useCallback(() => {
-    deleteNode()
     if (id) {
       void databasesApi.delete(id).then(() => {
+        deleteNode()
         window.dispatchEvent(new CustomEvent('leaf-tree-changed'))
       }).catch(console.error)
+    } else {
+      deleteNode()
     }
   }, [deleteNode, id])
 
@@ -702,11 +713,15 @@ function ToggleCardView({ node, updateAttributes }: NodeViewProps) {
   const open = node.attrs.open !== false && node.attrs.open !== 'false'
   const accent = ((Number(node.attrs.accent) || 0) % 5 + 5) % 5
 
-  const toggleOpen = () => updateAttributes({ open: !open })
-
-  const eyebrowColor = String(node.attrs.eyebrowColor ?? '').trim()
-  const titleColor = String(node.attrs.titleColor ?? '').trim()
-  const subtitleColor = String(node.attrs.subtitleColor ?? '').trim()
+  const onHeaderPointer = (event: React.MouseEvent | React.KeyboardEvent) => {
+    const target = event.target as HTMLElement
+    if (target.closest('input')) return
+    if ('key' in event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return
+      event.preventDefault()
+    }
+    updateAttributes({ open: !open })
+  }
 
   return (
     <NodeViewWrapper className="leaf-toggle-card-node" data-drag-handle="">
@@ -714,39 +729,46 @@ function ToggleCardView({ node, updateAttributes }: NodeViewProps) {
         className={`leaf-toggle-card leaf-toggle-card--accent-${accent}`}
         data-open={open ? 'true' : 'false'}
       >
-        <div className="leaf-toggle-card-header">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={open}
+          className="leaf-toggle-card-header"
+          onClick={onHeaderPointer}
+          onKeyDown={onHeaderPointer}
+        >
           <div className="leaf-toggle-card-eyebrow">
-            <ToggleCardHeaderField
-              value={String(node.attrs.eyebrow ?? '')}
-              placeholder="Label"
-              ariaLabel="Card label"
+            <input
+              type="text"
               className="leaf-toggle-card-input leaf-toggle-card-input-eyebrow"
-              style={eyebrowColor ? { color: eyebrowColor } : undefined}
+              value={node.attrs.eyebrow ?? ''}
+              placeholder="Label"
+              aria-label="Card label"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
-              onChange={(html) => updateAttributes({ eyebrow: html })}
+              onChange={(e) => updateAttributes({ eyebrow: e.target.value })}
             />
           </div>
           <div className="leaf-toggle-card-meta">
-            <ToggleCardHeaderField
-              value={String(node.attrs.title ?? '')}
-              placeholder="Title"
-              ariaLabel="Card title"
+            <input
+              type="text"
               className="leaf-toggle-card-input leaf-toggle-card-input-title"
-              style={titleColor ? { color: titleColor } : undefined}
+              value={node.attrs.title ?? ''}
+              placeholder="Title"
+              aria-label="Card title"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
-              onChange={(html) => updateAttributes({ title: html })}
+              onChange={(e) => updateAttributes({ title: e.target.value })}
             />
-            <ToggleCardHeaderField
-              value={String(node.attrs.subtitle ?? '')}
-              placeholder="Subtitle — type / for flags & marks"
-              ariaLabel="Card subtitle"
+            <input
+              type="text"
               className="leaf-toggle-card-input leaf-toggle-card-input-subtitle"
-              style={subtitleColor ? { color: subtitleColor } : undefined}
+              value={node.attrs.subtitle ?? ''}
+              placeholder="Subtitle"
+              aria-label="Card subtitle"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
-              onChange={(html) => updateAttributes({ subtitle: html })}
+              onChange={(e) => updateAttributes({ subtitle: e.target.value })}
             />
           </div>
           <button
@@ -757,7 +779,7 @@ function ToggleCardView({ node, updateAttributes }: NodeViewProps) {
             onMouseDown={(e) => e.preventDefault()}
             onClick={(e) => {
               e.stopPropagation()
-              toggleOpen()
+              updateAttributes({ open: !open })
             }}
           >
             ▾
@@ -932,6 +954,53 @@ const StatStrip = Node.create({
     return ReactNodeViewRenderer(StatStripView as never)
   },
 })
+
+/* ── Callout node view — renders content with an inline colour picker ─────── */
+function CalloutView({ node, updateAttributes, selected }: NodeViewProps) {
+  const variant = (node.attrs.variant as CalloutVariant) || 'gray'
+  const [showPicker, setShowPicker] = useState(false)
+  return (
+    <NodeViewWrapper
+      className={`leaf-callout leaf-callout--${variant}`}
+      data-type="callout"
+      data-variant={variant}
+      data-drag-handle=""
+    >
+      {/* Colour dot — click to open picker */}
+      <button
+        type="button"
+        className="leaf-callout-color-dot"
+        title="Change callout colour"
+        contentEditable={false}
+        style={{ background: CALLOUT_VARIANT_META[variant].dot }}
+        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setShowPicker(!showPicker) }}
+      />
+      {showPicker && (
+        <div
+          className="leaf-callout-picker"
+          contentEditable={false}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {CALLOUT_VARIANTS.map((v) => (
+            <button
+              key={v}
+              type="button"
+              title={CALLOUT_VARIANT_META[v].label}
+              className={`leaf-callout-picker-swatch${v === variant ? ' active' : ''}`}
+              style={{ background: CALLOUT_VARIANT_META[v].dot }}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                updateAttributes({ variant: v })
+                setShowPicker(false)
+              }}
+            />
+          ))}
+        </div>
+      )}
+      <NodeViewContent className="leaf-callout-content" />
+    </NodeViewWrapper>
+  )
+}
 
 function BlockDropdown({ onSelect, onClose }: { onSelect: (action: string) => void; onClose: () => void }) {
   const groups = ['Text', 'Style', 'Structure', 'Insert', 'Toggle Cards'] as const
@@ -1201,13 +1270,14 @@ export default function LeafEditor({
     }),
     TextStyle,
     Color,
-    TextAlign.configure({ types: ['heading', 'paragraph', 'blockquote'] }),
+    TextAlign.configure({ types: ['heading', 'paragraph', 'blockquote', 'callout'] }),
     WikilinkNode,
     HashtagNode,
     StoryTag,
     Column,
     ColumnList,
     ToggleCard,
+    Callout.extend({ addNodeView() { return ReactNodeViewRenderer(CalloutView as never) } }),
     StatStrip,
     PageEmbed,
     DatabaseEmbed,
@@ -1286,7 +1356,6 @@ export default function LeafEditor({
     attributes: { class: 'leaf-prose max-w-none min-h-[50vh] focus:outline-none' },
     handleClick: (_view: unknown, _pos: number, event: MouseEvent) => {
       const target = event.target as HTMLElement
-      if (target.closest('.leaf-toggle-card-field-shell')) return false
 
       // Wikilink click
       const wikilink = target.closest('[data-type="wikilink"]') as HTMLElement | null
@@ -1450,6 +1519,31 @@ export default function LeafEditor({
     editorProps,
     onUpdate: handleEditorUpdate,
   }, [extensions, editorProps, handleEditorUpdate])
+
+  useEffect(() => {
+    if (!editor) return
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ ordinal?: number }>).detail
+      if (typeof detail?.ordinal !== 'number') return
+      let i = 0
+      let foundPos: number | null = null
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'heading') {
+          if (i === detail.ordinal) {
+            foundPos = pos
+            return false
+          }
+          i++
+        }
+        return true
+      })
+      if (foundPos === null) return
+      const inner = foundPos + 1
+      editor.chain().focus().setTextSelection(inner).scrollIntoView().run()
+    }
+    window.addEventListener('leaf-outline-jump', handler as EventListener)
+    return () => window.removeEventListener('leaf-outline-jump', handler as EventListener)
+  }, [editor])
 
   useEffect(() => {
     let cancelled = false
@@ -1760,6 +1854,17 @@ export default function LeafEditor({
           { type: 'paragraph' },
         ]).run()
         return
+      case 'callout': {
+        const $posCallout = editor.state.doc.resolve(selectionPos)
+        for (let d = $posCallout.depth; d > 0; d--) {
+          if ($posCallout.node(d).type.name === 'column') return
+        }
+        editor.chain().focus().insertContentAt(selectionPos, [
+          { type: 'callout', attrs: { variant: 'gray' }, content: [{ type: 'paragraph' }] },
+          { type: 'paragraph' },
+        ]).run()
+        return
+      }
     }
 
     const storyVariant = parseStoryTagAction(action)
@@ -1956,6 +2061,7 @@ export default function LeafEditor({
       if (targetNode && (
         targetNode.type.name === 'columnList' ||
         targetNode.type.name === 'toggleCard' ||
+        targetNode.type.name === 'callout' ||
         targetNode.type.name === 'statStrip' ||
         targetNode.type.name === 'databaseEmbed' ||
         targetNode.type.name === 'pageEmbed'

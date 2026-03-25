@@ -34,7 +34,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigationProgress } from '@/components/NavigationProgress'
 import { warmEditorRoute } from '@/lib/warmEditorRoute'
-import type { DatabaseRow, PropertyDefinition, ViewType } from '@/lib/api'
+import type { DatabaseRow, LeafHeaderBanner, PropertyDefinition, ViewType } from '@/lib/api'
 
 function parseTagValues(value: unknown): string[] {
   if (Array.isArray(value)) return value as string[]
@@ -53,6 +53,59 @@ function parseNumberValue(value: unknown): number | null {
   return null
 }
 
+function formatDateCellDisplay(value: unknown): string {
+  if (value == null || value === '') return '—'
+  const s = String(value).trim()
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const d = new Date(`${s.slice(0, 10)}T12:00:00`)
+    return Number.isNaN(d.getTime()) ? s : d.toLocaleDateString()
+  }
+  return s
+}
+
+function hashTone(id: string, palette: readonly string[]) {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0
+  return palette[h % palette.length]
+}
+
+const DB_CARD_COVER_TONES = [
+  'var(--leaf-db-gallery-cover-0)',
+  'var(--leaf-db-gallery-cover-1)',
+  'var(--leaf-db-gallery-cover-2)',
+  'var(--leaf-db-gallery-cover-3)',
+] as const
+
+function GalleryCover({
+  banner,
+  fallbackTone,
+}: {
+  banner?: LeafHeaderBanner | null
+  fallbackTone: string
+}) {
+  if (banner?.src) {
+    return (
+      <div className="h-[88px] w-full overflow-hidden" style={{ background: 'var(--leaf-bg-subtle)' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={banner.src}
+          alt=""
+          className="h-full w-full object-cover"
+          style={{ objectPosition: banner.objectPosition ?? '50% 50%' }}
+        />
+      </div>
+    )
+  }
+  return (
+    <div className="flex h-[88px] items-center justify-center" style={{ background: fallbackTone }}>
+      <svg width="24" height="24" viewBox="0 0 16 16" fill="none" className="opacity-30" style={{ color: 'var(--leaf-db-icon-muted)' }}>
+        <path d="M4.5 2.75H9.1L11.75 5.38V13.25H4.5V2.75Z" stroke="currentColor" strokeWidth="1.15" strokeLinejoin="round" />
+        <path d="M8.9 2.75V5.55H11.75" stroke="currentColor" strokeWidth="1.15" strokeLinejoin="round" />
+      </svg>
+    </div>
+  )
+}
+
 function getColumnByMatcher(columns: PropertyDefinition[], matcher: (column: PropertyDefinition) => boolean) {
   return columns.find(matcher) ?? null
 }
@@ -67,6 +120,14 @@ function getTagColumn(columns: PropertyDefinition[]) {
 
 function getEstimateColumn(columns: PropertyDefinition[]) {
   return getColumnByMatcher(columns, (column) => /estimate|est|points/i.test(column.key) || /estimate|est|points/i.test(column.label))
+}
+
+/** List/Gallery use status + tags slots; a "Status" column with type `tags` matches both and would render twice. */
+function statusColumnSameAsTagColumn(
+  status: PropertyDefinition | null,
+  tag: PropertyDefinition | null,
+): boolean {
+  return Boolean(status && tag && status.key === tag.key)
 }
 
 function classifyTone(raw: string): 'green' | 'amber' | 'red' | 'muted' {
@@ -147,10 +208,21 @@ function ProgressValue({ value }: { value: unknown }) {
 
 function renderPropertyValue(column: PropertyDefinition, value: unknown, compact = false) {
   if (column.type === 'tags') return <TagChips value={value} compact={compact} />
+  if (column.type === 'number') {
+    const n = parseNumberValue(value)
+    return (
+      <span className="text-sm" style={{ color: 'var(--leaf-text-sidebar)', fontSize: compact ? 11 : undefined }}>
+        {n == null || Number.isNaN(n) ? '—' : String(n)}
+      </span>
+    )
+  }
+  if (column.type === 'date') {
+    return <span style={{ color: 'var(--leaf-text-muted)', fontSize: compact ? 11 : 12 }}>{formatDateCellDisplay(value)}</span>
+  }
   if (/status/i.test(column.key) || /status/i.test(column.label)) return <StatusValue value={value} compact={compact} />
   if (/progress/i.test(column.key) || /progress/i.test(column.label)) return <ProgressValue value={value} />
   if (/date|due/i.test(column.key) || /date|due/i.test(column.label)) {
-    return <span style={{ color: 'var(--leaf-text-muted)', fontSize: 12 }}>{String(value || '—')}</span>
+    return <span style={{ color: 'var(--leaf-text-muted)', fontSize: 12 }}>{formatDateCellDisplay(value)}</span>
   }
   return <span className="text-sm" style={{ color: 'var(--leaf-text-sidebar)' }}>{String(value || '—')}</span>
 }
@@ -189,9 +261,12 @@ function Cell({
     )
   }
 
+  const inputType = propDef.type === 'date' ? 'date' : propDef.type === 'number' ? 'number' : 'text'
+
   return (
     <input
       ref={inputRef}
+      type={inputType}
       className="w-full rounded-md px-2 py-1 text-sm focus:outline-none"
       style={{
         border: '1px solid color-mix(in srgb, var(--leaf-green) 26%, transparent)',
@@ -283,11 +358,13 @@ function NameCell({ row, onSave }: { row: DatabaseRow; onSave: (title: string) =
 function RowPreview({
   row,
   columns,
+  coverTone,
   onUpdateName,
   onDeleteRow,
 }: {
   row: DatabaseRow
   columns: PropertyDefinition[]
+  coverTone: string
   onUpdateName: (rowId: string, title: string) => void
   onDeleteRow: (rowId: string) => void
 }) {
@@ -296,13 +373,15 @@ function RowPreview({
 
   return (
     <div
-      className="group rounded-xl border px-3.5 py-3 transition-colors duration-150"
+      className="group overflow-hidden rounded-xl border transition-colors duration-150"
       style={{
         borderColor: 'var(--leaf-border-soft)',
         boxShadow: '0 1px 2px color-mix(in srgb, var(--foreground) 4%, transparent)',
         background: 'var(--leaf-bg-elevated)',
       }}
     >
+      <GalleryCover banner={row.leaf_header_banner} fallbackTone={coverTone} />
+      <div className="px-3.5 py-3">
       <div className="mb-2">
         <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
       </div>
@@ -324,6 +403,7 @@ function RowPreview({
       >
         ···
       </button>
+      </div>
     </div>
   )
 }
@@ -366,7 +446,9 @@ export function AddColumnModal({ onAdd, onClose }: { onAdd: (def: PropertyDefini
         >
           <option value="text">Text</option>
           <option value="number">Number</option>
+          <option value="date">Date</option>
           <option value="tags">Tags</option>
+          <option value="select">Select</option>
         </select>
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>Cancel</button>
@@ -378,6 +460,96 @@ export function AddColumnModal({ onAdd, onClose }: { onAdd: (def: PropertyDefini
           >
             Add
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function EditColumnModal({
+  column,
+  onSave,
+  onClose,
+  onDelete,
+}: {
+  column: PropertyDefinition
+  onSave: (patch: { label: string; type: PropertyDefinition['type'] }) => void
+  onClose: () => void
+  onDelete?: () => void
+}) {
+  const [label, setLabel] = useState(column.label)
+  const [type, setType] = useState<PropertyDefinition['type']>(column.type)
+
+  useEffect(() => {
+    setLabel(column.label)
+    setType(column.type)
+  }, [column])
+
+  const submit = () => {
+    if (!label.trim()) return
+    onSave({ label: label.trim(), type })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+      <div
+        className="relative w-72 space-y-3 rounded-xl border p-5 shadow-lg"
+        style={{
+          borderColor: 'var(--leaf-border-strong)',
+          boxShadow: 'var(--leaf-shadow-soft)',
+          background: 'var(--leaf-bg-elevated)',
+        }}
+      >
+        <h2 className="text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>Edit property</h2>
+        <p className="text-[11px] leading-snug" style={{ color: 'var(--leaf-text-muted)' }}>
+          Key &ldquo;{column.key}&rdquo; is fixed. Rename or change type here; use Delete to remove the column and all its cell values.
+        </p>
+        <input
+          autoFocus
+          className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
+          style={{ borderColor: 'var(--leaf-border-strong)' }}
+          placeholder="Column name"
+          value={label}
+          onChange={(event) => setLabel(event.target.value)}
+          onKeyDown={(event) => event.key === 'Enter' && submit()}
+        />
+        <select
+          className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
+          style={{ borderColor: 'var(--leaf-border-strong)' }}
+          value={type}
+          onChange={(event) => setType(event.target.value as PropertyDefinition['type'])}
+        >
+          <option value="text">Text</option>
+          <option value="number">Number</option>
+          <option value="date">Date</option>
+          <option value="tags">Tags</option>
+          <option value="select">Select</option>
+        </select>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {onDelete ? (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="px-2 py-1.5 text-sm"
+              style={{ color: 'var(--leaf-red, #ef4444)' }}
+            >
+              Delete property
+            </button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>Cancel</button>
+            <button
+              type="button"
+              onClick={submit}
+              className="rounded-lg px-3 py-1.5 text-sm transition"
+              style={{ background: 'var(--leaf-green)', color: 'var(--leaf-on-accent)' }}
+            >
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -496,7 +668,7 @@ export function DatabaseToolbar({
 }
 
 export function TableView({
-  rows, columns, onUpdateName, onUpdateCell, onDeleteRow, onAddRow, onAddColumn, highlightedRowId,
+  rows, columns, onUpdateName, onUpdateCell, onDeleteRow, onAddRow, onAddColumn, highlightedRowId, openColumnEditor,
 }: {
   rows: DatabaseRow[]
   columns: PropertyDefinition[]
@@ -506,6 +678,7 @@ export function TableView({
   onAddRow: () => void
   onAddColumn: () => void
   highlightedRowId?: string | null
+  openColumnEditor?: (key: string) => void
 }) {
   return (
     <div className="overflow-x-auto px-2 pb-2">
@@ -521,12 +694,37 @@ export function TableView({
               </span>
             </th>
             {columns.map((column) => (
-              <th key={column.key} className="whitespace-nowrap px-3 py-2 text-left text-[11px] font-medium" style={{ color: 'var(--leaf-text-muted)' }}>
-                <span className="flex items-center gap-1">
+              <th
+                key={column.key}
+                className="group whitespace-nowrap px-3 py-2 text-left text-[11px] font-medium"
+                style={{ color: 'var(--leaf-text-muted)' }}
+                onDoubleClick={(event) => {
+                  if (!openColumnEditor) return
+                  if ((event.target as HTMLElement).closest('button')) return
+                  openColumnEditor(column.key)
+                }}
+              >
+                <span className="flex items-center gap-0.5">
                   {/status/i.test(column.label) && <span style={{ opacity: 0.45, fontSize: 9 }}>●</span>}
                   {column.type === 'tags' && <span style={{ opacity: 0.45, fontSize: 9 }}>⊛</span>}
                   {column.type === 'number' && <span style={{ opacity: 0.45 }}>#</span>}
+                  {column.type === 'date' && <span style={{ opacity: 0.45 }}>◷</span>}
                   {column.label}
+                  {openColumnEditor ? (
+                    <button
+                      type="button"
+                      className="ml-0.5 rounded px-0.5 py-0 text-[10px] opacity-60 transition-opacity hover:opacity-100 group-hover:opacity-100"
+                      style={{ color: 'var(--leaf-text-muted)' }}
+                      title="Edit property name/type"
+                      onClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        openColumnEditor(column.key)
+                      }}
+                    >
+                      ✎
+                    </button>
+                  ) : null}
                 </span>
               </th>
             ))}
@@ -644,7 +842,14 @@ export function BoardView({
           </div>
           <div className="flex flex-col gap-2">
             {groupRows.map((row) => (
-              <RowPreview key={row.id} row={row} columns={columns} onUpdateName={onUpdateName} onDeleteRow={onDeleteRow} />
+              <RowPreview
+                key={row.id}
+                row={row}
+                columns={columns}
+                coverTone={hashTone(row.id, DB_CARD_COVER_TONES)}
+                onUpdateName={onUpdateName}
+                onDeleteRow={onDeleteRow}
+              />
             ))}
             <button
               type="button"
@@ -686,19 +891,13 @@ export function GalleryView({
   const statusColumn = getStatusColumn(columns)
   const tagColumn = getTagColumn(columns)
   const estimateColumn = getEstimateColumn(columns)
-
-  const coverTones = [
-    'var(--leaf-db-gallery-cover-0)',
-    'var(--leaf-db-gallery-cover-1)',
-    'var(--leaf-db-gallery-cover-2)',
-    'var(--leaf-db-gallery-cover-3)',
-  ] as const
+  const sameStatusTag = statusColumnSameAsTagColumn(statusColumn, tagColumn)
 
   return (
     <div className="grid gap-3 px-2 py-3 sm:grid-cols-2 xl:grid-cols-3">
       {rows.map((row, index) => {
         const status = statusColumn ? (row.properties || {})[statusColumn.key] : null
-        const tone = coverTones[index % coverTones.length]
+        const tone = DB_CARD_COVER_TONES[index % DB_CARD_COVER_TONES.length]
         return (
           <div
             key={row.id}
@@ -709,19 +908,24 @@ export function GalleryView({
               background: 'var(--leaf-bg-elevated)',
             }}
           >
-            <div className="flex h-[88px] items-center justify-center" style={{ background: tone }}>
-              <svg width="24" height="24" viewBox="0 0 16 16" fill="none" className="opacity-30" style={{ color: 'var(--leaf-db-icon-muted)' }}>
-                <path d="M4.5 2.75H9.1L11.75 5.38V13.25H4.5V2.75Z" stroke="currentColor" strokeWidth="1.15" strokeLinejoin="round" />
-                <path d="M8.9 2.75V5.55H11.75" stroke="currentColor" strokeWidth="1.15" strokeLinejoin="round" />
-              </svg>
-            </div>
+            <GalleryCover banner={row.leaf_header_banner} fallbackTone={tone} />
             <div className="px-3 py-2.5">
               <div className="mb-1.5">
                 <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
               </div>
               <div className="flex items-center gap-1.5">
-                {status ? <StatusValue value={status} compact /> : null}
-                {tagColumn ? <TagChips value={(row.properties || {})[tagColumn.key]} compact /> : null}
+                {sameStatusTag ? (
+                  statusColumn!.type === 'tags' ? (
+                    <TagChips value={status} compact />
+                  ) : (
+                    status ? <StatusValue value={status} compact /> : null
+                  )
+                ) : (
+                  <>
+                    {status ? <StatusValue value={status} compact /> : null}
+                    {tagColumn ? <TagChips value={(row.properties || {})[tagColumn.key]} compact /> : null}
+                  </>
+                )}
                 {estimateColumn ? (
                   <span className="ml-auto text-[10.5px]" style={{ color: 'var(--leaf-text-muted)' }}>
                     # {String((row.properties || {})[estimateColumn.key] || '—')}
@@ -764,6 +968,7 @@ export function ListView({
   const { startNavigation } = useNavigationProgress()
   const statusColumn = getStatusColumn(columns)
   const tagColumn = getTagColumn(columns)
+  const sameStatusTag = statusColumnSameAsTagColumn(statusColumn, tagColumn)
 
   return (
     <div className="px-2">
@@ -791,8 +996,18 @@ export function ListView({
               {row.leaf_title || 'Untitled'}
             </Link>
             <div className="flex items-center gap-2">
-              {tagColumn ? <TagChips value={(row.properties || {})[tagColumn.key]} compact /> : null}
-              {status ? <StatusValue value={status} compact /> : null}
+              {sameStatusTag ? (
+                statusColumn!.type === 'tags' ? (
+                  <TagChips value={status} compact />
+                ) : (
+                  status ? <StatusValue value={status} compact /> : null
+                )
+              ) : (
+                <>
+                  {tagColumn ? <TagChips value={(row.properties || {})[tagColumn.key]} compact /> : null}
+                  {status ? <StatusValue value={status} compact /> : null}
+                </>
+              )}
             </div>
             <button
               type="button"

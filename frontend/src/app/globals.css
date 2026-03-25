@@ -508,6 +508,131 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--boss {
   color: var(--leaf-text-title, var(--color-text-dark));
 }
 
+/* Callouts — classic (Notion-like) */
+.ProseMirror div[data-type="callout"] {
+  margin: 0.75rem 0;
+  padding: 0.85rem 1rem 0.85rem 2.25rem;
+  border-radius: 6px;
+  border-left: 3px solid #d4d4d8;
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--leaf-text-body, var(--color-text-body));
+  position: relative;
+}
+.ProseMirror div[data-type="callout"] p {
+  margin: 0.25em 0;
+}
+/* Colour dot button */
+.leaf-callout-color-dot {
+  position: absolute;
+  left: 0.6rem;
+  top: 0.95rem;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.3);
+  cursor: pointer;
+  transition: transform 0.1s;
+  z-index: 2;
+}
+.leaf-callout-color-dot:hover { transform: scale(1.25); }
+/* Inline picker */
+.leaf-callout-picker {
+  position: absolute;
+  left: 0.3rem;
+  top: 2.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 8px;
+  background: var(--leaf-bg-elevated, #fff);
+  border: 1px solid var(--leaf-border-strong, #e4e4e7);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 10;
+}
+.leaf-callout-picker-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.leaf-callout-picker-swatch:hover { transform: scale(1.2); }
+.leaf-callout-picker-swatch.active {
+  border-color: var(--leaf-green, #22c55e);
+  box-shadow: 0 0 0 1px var(--leaf-green, #22c55e);
+}
+.ProseMirror div[data-type="callout"].leaf-callout--gray {
+  border-left-color: #a1a1aa;
+  background: rgba(113, 113, 122, 0.08);
+}
+.ProseMirror div[data-type="callout"].leaf-callout--blue {
+  border-left-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+}
+.ProseMirror div[data-type="callout"].leaf-callout--yellow {
+  border-left-color: #eab308;
+  background: rgba(234, 179, 8, 0.1);
+}
+.ProseMirror div[data-type="callout"].leaf-callout--green {
+  border-left-color: #22c55e;
+  background: rgba(34, 197, 94, 0.09);
+}
+.ProseMirror div[data-type="callout"].leaf-callout--red {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+.ProseMirror div[data-type="callout"].leaf-callout--flavor {
+  border-left: none;
+  border: 1px solid rgba(161, 161, 170, 0.35);
+  background: rgba(0, 0, 0, 0.02);
+  font-style: italic;
+  padding-left: 2.25rem;
+  position: relative;
+}
+.ProseMirror div[data-type="callout"].leaf-callout--flavor::before {
+  content: '→';
+  position: absolute;
+  left: 0.85rem;
+  top: 0.85rem;
+  font-style: normal;
+  opacity: 0.45;
+  font-size: 1rem;
+}
+
+html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--green {
+  border-left: 3px solid #4a8a4a;
+  background: rgba(26, 74, 26, 0.2);
+  font-family: var(--font-crimson, 'Crimson Pro', Georgia, serif);
+}
+html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--red {
+  border-left: 3px solid #8b1a1a;
+  background: rgba(74, 10, 10, 0.2);
+  font-family: var(--font-crimson, 'Crimson Pro', Georgia, serif);
+}
+html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--gray,
+html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--blue,
+html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--yellow {
+  border-left: 3px solid rgba(201, 168, 76, 0.45);
+  background: rgba(201, 168, 76, 0.06);
+  font-family: var(--font-crimson, 'Crimson Pro', Georgia, serif);
+}
+html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--flavor {
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  background: rgba(201, 168, 76, 0.05);
+  color: #c9a84c;
+  font-style: italic;
+  padding: 1rem 1.15rem 1rem 2.35rem;
+}
+html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--flavor::before {
+  content: '→';
+  color: #c9a84c;
+  opacity: 0.65;
+  left: 0.95rem;
+  top: 1rem;
+}
+
 /* Code */
 .ProseMirror pre {
   background: #fafafa;
@@ -815,10 +940,15 @@ html[data-leaf-design="campaign"] .ProseMirror pre code {
 .leaf-toggle-card-field-shell {
   width: 100%;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 1.35em;
 }
 
 .leaf-toggle-card-field-pm.ProseMirror {
   width: 100%;
+  flex: 1 1 auto;
+  min-height: 1.35em;
   outline: none;
   background: transparent;
   border: none;

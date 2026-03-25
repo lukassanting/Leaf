@@ -217,7 +217,9 @@ export function useSidebarTreeModel(activeId?: string) {
   }, [nodes])
 
   const handleDelete = useCallback(async (id: string, kind: 'page' | 'database') => {
-    const label = kind === 'database' ? 'database and all its rows' : 'page and all its sub-pages and databases'
+    const label = kind === 'database'
+      ? 'database (moved to Trash; restore from Settings → Trash before it is permanently deleted)'
+      : 'page and its sub-pages (moved to Trash; restore from Settings → Trash)'
     if (!confirm(`Delete this ${label}?`)) return
     try {
       if (kind === 'page') {
@@ -229,6 +231,7 @@ export function useSidebarTreeModel(activeId?: string) {
         await databasesApi.delete(id)
         emitLeafTreeChanged()
         setNodes((prev) => prev.filter((node) => node.id !== id))
+        if (activeId === id) router.push('/')
       }
     } catch {
       console.error('Delete failed')

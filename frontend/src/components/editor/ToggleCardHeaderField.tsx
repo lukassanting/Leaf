@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, MouseEvent } from 'react'
+import type { CSSProperties } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import type { Editor } from '@tiptap/core'
 import { computeSlashMatch, type EditorSlashMatch } from '@/components/editor/slashMatchUtils'
@@ -25,8 +25,6 @@ type Props = {
   className: string
   style?: CSSProperties
   onChange: (html: string) => void
-  onMouseDown?: (e: MouseEvent) => void
-  onClick?: (e: MouseEvent) => void
 }
 
 export function ToggleCardHeaderField({
@@ -36,8 +34,6 @@ export function ToggleCardHeaderField({
   className,
   style,
   onChange,
-  onMouseDown,
-  onClick,
 }: Props) {
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null)
   const slashMatchRef = useRef<EditorSlashMatch | null>(null)
@@ -81,52 +77,42 @@ export function ToggleCardHeaderField({
         class: `leaf-toggle-card-field-pm ${className}`.trim(),
         'aria-label': ariaLabel,
       },
-      handleDOMEvents: {
-        mousedown: (_view, event) => {
-          onMouseDown?.(event as unknown as MouseEvent)
-          return false
-        },
-        click: (_view, event) => {
-          onClick?.(event as unknown as MouseEvent)
-          return false
-        },
-        keydown: (_view, event) => {
+      handleKeyDown: (_view, event) => {
+        if (event.key === 'Escape') {
+          event.stopPropagation()
+        }
+        const active = slashMenuRef.current
+        const ed = editorRef.current
+        if (active && ed) {
+          if (event.key === 'ArrowUp') {
+            event.preventDefault()
+            setSlashMenu((c) => (c ? { ...c, selectedIndex: (c.selectedIndex - 1 + c.items.length) % c.items.length } : c))
+            return true
+          }
+          if (event.key === 'ArrowDown') {
+            event.preventDefault()
+            setSlashMenu((c) => (c ? { ...c, selectedIndex: (c.selectedIndex + 1) % c.items.length } : c))
+            return true
+          }
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            const item = active.items[active.selectedIndex]
+            const match = slashMatchRef.current
+            setSlashMenu(null)
+            slashMatchRef.current = null
+            if (item && match) {
+              applyToggleHeaderSlashAction(ed, item.action, match.range)
+            }
+            return true
+          }
           if (event.key === 'Escape') {
-            event.stopPropagation()
+            event.preventDefault()
+            slashMatchRef.current = null
+            setSlashMenu(null)
+            return true
           }
-          const active = slashMenuRef.current
-          const ed = editorRef.current
-          if (active && ed) {
-            if (event.key === 'ArrowUp') {
-              event.preventDefault()
-              setSlashMenu((c) => (c ? { ...c, selectedIndex: (c.selectedIndex - 1 + c.items.length) % c.items.length } : c))
-              return true
-            }
-            if (event.key === 'ArrowDown') {
-              event.preventDefault()
-              setSlashMenu((c) => (c ? { ...c, selectedIndex: (c.selectedIndex + 1) % c.items.length } : c))
-              return true
-            }
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              const item = active.items[active.selectedIndex]
-              const match = slashMatchRef.current
-              setSlashMenu(null)
-              slashMatchRef.current = null
-              if (item && match) {
-                applyToggleHeaderSlashAction(ed, item.action, match.range)
-              }
-              return true
-            }
-            if (event.key === 'Escape') {
-              event.preventDefault()
-              slashMatchRef.current = null
-              setSlashMenu(null)
-              return true
-            }
-          }
-          return false
-        },
+        }
+        return false
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -140,6 +126,8 @@ export function ToggleCardHeaderField({
     if (!editor) return
     const next = attrStringToToggleHeaderHtml(value)
     if (next === editor.getHTML()) return
+    const dom = editor.view.dom
+    if (typeof document !== 'undefined' && dom.contains(document.activeElement)) return
     if (editor.isFocused) return
     editor.commands.setContent(next, false)
   }, [editor, value])
@@ -170,11 +158,7 @@ export function ToggleCardHeaderField({
 
   return (
     <>
-      <div
-        className="leaf-toggle-card-field-shell"
-        style={style}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
+      <div className="leaf-toggle-card-field-shell" style={style}>
         <EditorContent editor={editor} />
       </div>
       {slashMenu ? (

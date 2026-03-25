@@ -44,7 +44,7 @@ export function useLeafPageData(leafId: string) {
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
   const [tags, setTags] = useState<string[]>([])
   const [icon, setIcon] = useState<LeafIcon | null>(null)
-  const [properties, setProperties] = useState<Record<string, string> | null>(null)
+  const [properties, setProperties] = useState<Record<string, unknown> | null>(null)
   const [createdAt, setCreatedAt] = useState<string | null>(null)
   const [contentTextLength, setContentTextLength] = useState(0)
   const [loadingLeaf, setLoadingLeaf] = useState(true)
@@ -72,6 +72,7 @@ export function useLeafPageData(leafId: string) {
         const cachedContent = parseLeafContent(cached.content)
         setContent(cachedContent)
         setTags(cached.tags ?? [])
+        setProperties(cached.properties ?? null)
         latestContentRef.current = cachedContent
         hasLoadedRef.current = true
       }

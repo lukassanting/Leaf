@@ -5,7 +5,7 @@
 BACKEND_DIR = backend
 FRONTEND_DIR = frontend
 
-.PHONY: api frontend install test env down
+.PHONY: api frontend install test env down down-api down-frontend
 
 # ── Setup ────────────────────────────────────────────────────────────────────
 
@@ -28,11 +28,18 @@ api: env
 frontend:
 	cd $(FRONTEND_DIR) && npm run dev
 
-# Kill all backend + frontend processes.
-down:
-	-@taskkill //F //IM python.exe 2>/dev/null || pkill -f uvicorn 2>/dev/null || true
-	-@taskkill //F //IM node.exe 2>/dev/null || pkill -f "next dev" 2>/dev/null || true
-	@echo "All stopped."
+# Stop the backend (kills the process on port 8000).
+down-api:
+	-@python -c "import subprocess,re; [subprocess.run(['taskkill','//F','//PID',m.group(1)]) for l in subprocess.check_output('netstat -ano | findstr :8000',shell=True).decode().splitlines() if 'LISTENING' in l for m in [re.search(r'(\d+)\s*$$',l)] if m]" 2>/dev/null || lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+	@echo "API stopped."
+
+# Stop the frontend (kills the process on port 3000).
+down-frontend:
+	-@python -c "import subprocess,re; [subprocess.run(['taskkill','//F','//PID',m.group(1)]) for l in subprocess.check_output('netstat -ano | findstr :3000',shell=True).decode().splitlines() if 'LISTENING' in l for m in [re.search(r'(\d+)\s*$$',l)] if m]" 2>/dev/null || lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+	@echo "Frontend stopped."
+
+# Stop both.
+down: down-api down-frontend
 
 # ── Test ─────────────────────────────────────────────────────────────────────
 

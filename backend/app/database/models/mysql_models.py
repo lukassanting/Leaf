@@ -55,6 +55,7 @@ class LeafModel(Base):
     icon = Column(MySQLJSON, nullable=True, default=None)  # {"type": "emoji"|"svg"|"image", "value": "..."}
     properties = Column(MySQLJSON, nullable=True, default=None)  # {"key": "value", ...}
     database_id = Column(String(36), ForeignKey("databases.id", ondelete="SET NULL"), nullable=True)
+    deleted_at = Column(DateTime, nullable=True)  # soft-delete → Trash; null = active
 
     children = relationship("LeafModel", back_populates="parent")
     parent = relationship("LeafModel", back_populates="children", remote_side=[id])
@@ -77,6 +78,7 @@ class DatabaseModel(Base):
     parent_leaf_id = Column(String(36), ForeignKey("leaves.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    deleted_at = Column(DateTime, nullable=True)  # soft-delete; null = active
 
 
 class DatabaseRowModel(Base):

@@ -85,6 +85,8 @@ class MySQLDatabaseConnector:
             # (table, column, SQL type + default)
             ("leaves", "icon", "TEXT DEFAULT NULL"),
             ("leaves", "properties", "TEXT DEFAULT NULL"),
+            ("databases", "deleted_at", "DATETIME DEFAULT NULL"),
+            ("leaves", "deleted_at", "DATETIME DEFAULT NULL"),
         ]
         with self.engine.connect() as conn:
             for table, column, col_type in migrations:

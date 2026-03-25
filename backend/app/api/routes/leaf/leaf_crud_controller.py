@@ -78,6 +78,11 @@ async def get_leaf_graph(
 ):
     return await leaf_ops.get_leaf_graph()
 
+@router.post("/leaves/{leaf_id}/restore", response_model=Leaf)
+async def restore_leaf(leaf_id: UUID, leaf_ops: LeafOperations = Depends(LeafOperations)):
+    """Restore a page/project from Trash (and trashed ancestors/descendants as needed)."""
+    return await leaf_ops.restore_leaf(leaf_id)
+
 @router.get("/leaves/{leaf_id}", response_model=Leaf)
 async def read_leaf(leaf_id: UUID, leaf_ops: LeafOperations = Depends(LeafOperations)):
     return await leaf_ops.get_leaf(leaf_id)

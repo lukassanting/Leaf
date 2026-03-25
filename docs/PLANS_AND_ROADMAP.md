@@ -35,7 +35,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 
 - [x] Schema-first `LeafDocument` content model with HTML migration support.
 - [x] Stable TipTap editor rebuild with `gapcursor`/`dropcursor` disabled.
-- [x] Slash commands and block insertion menu for headings, lists, todos, quotes, sub-pages, databases, and column layouts.
+- [x] Slash commands and block insertion menu for headings, lists, todos, quotes, sub-pages, databases, column layouts, and **callouts** (classic Notion-like + campaign-themed variants).
 - [x] Text alignment (paragraph, heading, blockquote) and palette text colours (`TextAlign`, `TextStyle`, `Color`); selection bubble + slash **Style** group (no static toolbar).
 - [x] Inline **story flag** atoms (variant + editable label; slash menu group **Flags**; distinct from page **tags** metadata) and **stat strip** block (three kicker/title pairs); presets in `lib/editorRichText.ts`.
 - [x] **Toggle cards**: eyebrow/title/subtitle are small TipTap fields with a **filtered slash menu** (text marks, alignment, colours, **Flags**); values persist as string/HTML node attrs. Collapsible body is normal editor content — **full** slash commands (headings, lists, embeds, flags, etc.) work inside the card body.
@@ -47,7 +47,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 
 - [x] Three-pane shell: left sidebar (navigation), center canvas, right sidebar (context).
 - [x] Left sidebar with KNOWLEDGE BASE, Personal, and PROJECTS sections.
-- [x] Right sidebar with METADATA, PAGE OUTLINE (hierarchical numbering), and LINKED MENTIONS sections.
+- [x] Right sidebar with METADATA, PAGE OUTLINE (hierarchical numbering; **click heading to jump** in editor), and LINKED MENTIONS sections.
 - [x] Icon picker with SVG shapes, uploaded images, and emoji as user-selected content.
 - [x] Width modes (`normal`, `wide`, `full`) and focus mode.
 - [x] Bottom status bar with sync state and mode label.
@@ -60,7 +60,8 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Standalone database pages with shared toolbar and table/board/gallery/list views.
 - [x] Embedded databases render the same shared surface inline inside editor pages.
 - [x] Database metadata parity with pages: title, description, tags, icon.
-- [x] Row-backed pages, inline cell editing, schema-driven columns, and add-column flows.
+- [x] Row-backed pages, inline cell editing, schema-driven columns, **date** property type, **edit column** (label + type; table header ✎ or double-click; wired for embedded DBs), add-column flows, and **gallery card cover** from linked leaf `properties.headerBanner` (API field `leaf_header_banner`).
+- [x] **Trash** for deleted pages and databases: soft-delete with **7-day** retention (`TRASH_RETENTION_DAYS`), automatic purge on startup and when opening `GET /trash`; restore via Settings UI (`POST /leaves/{id}/restore`, `POST /databases/{id}/restore`).
 
 ### Layout blocks
 

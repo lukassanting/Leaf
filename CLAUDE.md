@@ -22,6 +22,7 @@ You are helping build **Leaf**, a Notion-inspired personal knowledge manager. St
 - **Rich text extensions:** `TextStyle` + `Color` + `TextAlign` on `paragraph`, `heading`, `blockquote`; inline `storyTag` (variant pill) and block `statStrip` (three kicker/title fields). Shared presets/swatches: `frontend/src/lib/editorRichText.ts`. No static formatting bar — use slash `/` and the gutter **+** menu for blocks/marks; alignment + colours use TipTap `BubbleMenu` (`EditorSelectionBubble.tsx`) when text is selected. Wire new slash actions in `SlashCommands.tsx` + `LeafEditor` `applyAction`.
 
 - **Database rows ARE pages.** Each `database_rows` row has a `leaf_id` FK auto-created on insert. The linked leaf is the full page (title + content). `leaves.database_id` marks a leaf as a database entry — these are filtered out of the sidebar tree. The "Name" column in the database view is always the leaf title, edited via `leavesApi.update`, not `databasesApi.updateRow`.
+- **Trash.** Deleted pages (`leaves.deleted_at`) and databases (`databases.deleted_at`) are retained for `TRASH_RETENTION_DAYS` (default 7), then purged by `TrashOperations` on API startup and on `GET /trash`. Restore: `POST /leaves/{id}/restore`, `POST /databases/{id}/restore`; Settings UI lists Trash.
 
 - **Tags on leaves.** `leaves.tags` is a JSON array. The editor page exposes a chip input below the title. Always include `tags` in `leavesApi.update` calls to avoid clearing them.
 

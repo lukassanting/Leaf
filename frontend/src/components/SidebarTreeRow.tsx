@@ -82,13 +82,14 @@ export function SidebarTreeRow({
   onDragLeave,
   onDrop,
 }: SidebarTreeRowProps) {
-  const isActive = node.id === activeId
   const hasChildren = node.children.length > 0
   const isEditing = renameId === node.id
   const isDropTarget = dropTargetId === node.id
   const isHovered = hoverNodeId === node.id
   const isDatabase = node.kind === 'database'
   const isDbRow = node.isDbRow === true
+  const rowLeafId = isDbRow ? node.id.replace(/^dbrow:/, '') : node.id
+  const isActive = isDbRow ? rowLeafId === activeId : node.id === activeId
   const href = isDatabase ? `/databases/${node.id}` : isDbRow ? `/editor/${node.id.replace('dbrow:', '')}` : `/editor/${node.id}`
 
   return (

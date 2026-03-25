@@ -34,7 +34,7 @@ Debug:
 import asyncio
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import Depends
@@ -216,13 +216,14 @@ class LeafOperations:
         direct_id_match = (
             db_session.query(LeafModel)
             .filter(LeafModel.id == target_name)
+            .filter(LeafModel.deleted_at.is_(None))
             .first()
         )
         if direct_id_match:
             return direct_id_match
 
         if "/" in target_name:
-            leaves = db_session.query(LeafModel).all()
+            leaves = db_session.query(LeafModel).filter(LeafModel.deleted_at.is_(None)).all()
             path_map = self._build_leaf_path_map(leaves)
             normalized_target = re.sub(r"\s+", "-", target_name.lower())
             normalized_target = re.sub(r"[^a-z0-9\-_/]", "", normalized_target)
@@ -234,6 +235,7 @@ class LeafOperations:
         matches = (
             db_session.query(LeafModel)
             .filter(LeafModel.title == target_name)
+            .filter(LeafModel.deleted_at.is_(None))
             .all()
         )
         if len(matches) == 1:
@@ -261,10 +263,18 @@ class LeafOperations:
     def _delete_leaf_file(self, leaf_id: str, database_id: str | None) -> None:
         get_file_storage().delete_page(leaf_id, database_id=database_id)
 
-    def _get_leaf_or_404(self, db_session, leaf_id: UUID | str) -> LeafModel:
+    def _get_leaf_or_404(
+        self,
+        db_session,
+        leaf_id: UUID | str,
+        *,
+        include_deleted: bool = False,
+    ) -> LeafModel:
         lookup_id = str(leaf_id)
         leaf = db_session.query(LeafModel).filter(LeafModel.id == lookup_id).first()
         if not leaf:
+            raise LeafNotFound(leaf_id=lookup_id)
+        if not include_deleted and leaf.deleted_at is not None:
             raise LeafNotFound(leaf_id=lookup_id)
         return leaf
 
@@ -337,7 +347,9 @@ class LeafOperations:
                 db_session.commit()
                 db_session.refresh(db_leaf)
                 payload = self._leaf_storage_payload(db_leaf)
-                path_map = self._build_leaf_path_map(db_session.query(LeafModel).all())
+                path_map = self._build_leaf_path_map(
+                    db_session.query(LeafModel).filter(LeafModel.deleted_at.is_(None)).all()
+                )
                 result = self._leaf_to_dto(db_leaf, path_map.get(db_leaf.id, ""))
 
             self._schedule_leaf_sync(payload)
@@ -353,7 +365,9 @@ class LeafOperations:
         try:
             with self.db.get_db_session() as db_session:
                 leaf = self._get_leaf_or_404(db_session, leaf_id)
-                path_map = self._build_leaf_path_map(db_session.query(LeafModel).all())
+                path_map = self._build_leaf_path_map(
+                    db_session.query(LeafModel).filter(LeafModel.deleted_at.is_(None)).all()
+                )
                 return self._leaf_to_dto(leaf, path_map.get(leaf.id, ""))
         except LeafException:
             raise
@@ -364,7 +378,7 @@ class LeafOperations:
     async def get_all_leaves(self) -> list[Leaf]:
         try:
             with self.db.get_db_session() as db_session:
-                leaves = db_session.query(LeafModel).all()
+                leaves = db_session.query(LeafModel).filter(LeafModel.deleted_at.is_(None)).all()
                 path_map = self._build_leaf_path_map(leaves)
                 return [self._leaf_to_dto(leaf, path_map.get(leaf.id, "")) for leaf in leaves]
         except Exception as e:
@@ -381,7 +395,7 @@ class LeafOperations:
     ) -> list[LeafTreeItem]:
         try:
             with self.db.get_db_session() as db_session:
-                all_leaves = db_session.query(LeafModel).all()
+                all_leaves = db_session.query(LeafModel).filter(LeafModel.deleted_at.is_(None)).all()
                 path_map = self._build_leaf_path_map(all_leaves)
                 q = db_session.query(LeafModel).with_entities(
                     LeafModel.id,
@@ -391,7 +405,7 @@ class LeafOperations:
                     LeafModel.children_ids,
                     LeafModel.order,
                     LeafModel.tags,
-                )
+                ).filter(LeafModel.deleted_at.is_(None))
                 if type_filter is not None:
                     q = q.filter(LeafModel.type == type_filter)
                 if parent_id is not None:
@@ -420,7 +434,9 @@ class LeafOperations:
                 db_session.commit()
                 db_session.refresh(db_leaf)
                 payload = self._leaf_storage_payload(db_leaf)
-                path_map = self._build_leaf_path_map(db_session.query(LeafModel).all())
+                path_map = self._build_leaf_path_map(
+                    db_session.query(LeafModel).filter(LeafModel.deleted_at.is_(None)).all()
+                )
                 result = self._leaf_to_dto(db_leaf, path_map.get(db_leaf.id, ""))
             self._schedule_leaf_sync(payload)
             logger.info("Leaf content patched: %s", result.id)
@@ -437,12 +453,19 @@ class LeafOperations:
                 parent = self._get_leaf_or_404(db_session, parent_id)
                 parent.children_ids = list(child_ids)
                 for i, cid in enumerate(child_ids):
-                    child = db_session.query(LeafModel).filter(LeafModel.id == cid).first()
+                    child = (
+                        db_session.query(LeafModel)
+                        .filter(LeafModel.id == cid)
+                        .filter(LeafModel.deleted_at.is_(None))
+                        .first()
+                    )
                     if child:
                         child.order = i
                 db_session.commit()
                 db_session.refresh(parent)
-                path_map = self._build_leaf_path_map(db_session.query(LeafModel).all())
+                path_map = self._build_leaf_path_map(
+                    db_session.query(LeafModel).filter(LeafModel.deleted_at.is_(None)).all()
+                )
                 return self._leaf_to_dto(parent, path_map.get(parent.id, ""))
         except LeafNotFound:
             raise
@@ -459,7 +482,9 @@ class LeafOperations:
                 db_session.commit()
                 db_session.refresh(db_leaf)
                 payload = self._leaf_storage_payload(db_leaf)
-                path_map = self._build_leaf_path_map(db_session.query(LeafModel).all())
+                path_map = self._build_leaf_path_map(
+                    db_session.query(LeafModel).filter(LeafModel.deleted_at.is_(None)).all()
+                )
                 result = self._leaf_to_dto(db_leaf, path_map.get(db_leaf.id, ""))
             self._schedule_leaf_sync(payload)
             logger.info(f"Leaf updated: {result.id}")
@@ -491,9 +516,12 @@ class LeafOperations:
                         LeafModel.order, LeafModel.tags,
                     )
                     .filter(LeafModel.id.in_(ids))
+                    .filter(LeafModel.deleted_at.is_(None))
                     .all()
                 )
-                path_map = self._build_leaf_path_map(db_session.query(LeafModel).all())
+                path_map = self._build_leaf_path_map(
+                    db_session.query(LeafModel).filter(LeafModel.deleted_at.is_(None)).all()
+                )
                 return [self._leaf_tree_item(row, path_map.get(row[0], "")) for row in rows]
         except Exception as e:
             logger.exception(f"get_backlinks failed for {leaf_id}")
@@ -502,7 +530,7 @@ class LeafOperations:
     async def get_leaf_graph(self) -> LeafGraph:
         try:
             with self.db.get_db_session() as db_session:
-                leaves = db_session.query(LeafModel).all()
+                leaves = db_session.query(LeafModel).filter(LeafModel.deleted_at.is_(None)).all()
                 path_map = self._build_leaf_path_map(leaves)
                 nodes = [
                     LeafGraphNode(
@@ -555,46 +583,179 @@ class LeafOperations:
                 )
                 db_session.add(link)
 
-    async def delete_leaf(self, leaf_id: UUID):
+    async def restore_leaf(self, leaf_id: UUID) -> Leaf:
+        """Clear soft-delete for this leaf, its trashed descendants, ancestor chain, and nested DBs."""
         try:
+            db_payloads: list[dict] = []
+            with self.db.get_db_session() as db_session:
+                db_leaf = (
+                    db_session.query(LeafModel)
+                    .filter(LeafModel.id == str(leaf_id))
+                    .first()
+                )
+                if db_leaf is None or db_leaf.deleted_at is None:
+                    raise LeafNotFound(leaf_id=str(leaf_id))
+
+                ancestors: list[str] = []
+                cur: LeafModel | None = db_leaf
+                while cur is not None and cur.deleted_at is not None:
+                    ancestors.append(cur.id)
+                    if not cur.parent_id:
+                        break
+                    cur = (
+                        db_session.query(LeafModel)
+                        .filter(LeafModel.id == cur.parent_id)
+                        .first()
+                    )
+
+                subtree: set[str] = set()
+                stack = [str(leaf_id)]
+                while stack:
+                    cid = stack.pop()
+                    if cid in subtree:
+                        continue
+                    node = db_session.query(LeafModel).filter(LeafModel.id == cid).first()
+                    if node is None or node.deleted_at is None:
+                        continue
+                    subtree.add(cid)
+                    for ch in node.children_ids or []:
+                        stack.append(ch)
+
+                to_revive = set(ancestors) | subtree
+                revived_models = (
+                    db_session.query(LeafModel)
+                    .filter(LeafModel.id.in_(to_revive))
+                    .all()
+                )
+                by_id = {n.id: n for n in revived_models}
+
+                def trash_depth(nid: str) -> int:
+                    d = 0
+                    cur_n = by_id.get(nid)
+                    while cur_n and cur_n.parent_id:
+                        if cur_n.parent_id not in to_revive:
+                            break
+                        p = by_id.get(cur_n.parent_id)
+                        if p is None or p.deleted_at is None:
+                            break
+                        d += 1
+                        cur_n = p
+                    return d
+
+                for nid in sorted(to_revive, key=trash_depth):
+                    node = by_id.get(nid)
+                    if node is None:
+                        continue
+                    node.deleted_at = None
+                    if node.parent_id:
+                        p = db_session.query(LeafModel).filter(LeafModel.id == node.parent_id).first()
+                        if p is not None and p.deleted_at is None:
+                            self._append_child_id(p, node.id)
+
+                dbs = (
+                    db_session.query(DatabaseModel)
+                    .filter(DatabaseModel.parent_leaf_id.in_(to_revive))
+                    .filter(DatabaseModel.deleted_at.isnot(None))
+                    .all()
+                )
+                for d in dbs:
+                    d.deleted_at = None
+                    db_payloads.append(
+                        {
+                            "db_id": d.id,
+                            "title": d.title,
+                            "schema": d.schema or {},
+                            "view_type": d.view_type or "table",
+                            "parent_leaf_id": d.parent_leaf_id,
+                            "created_at": d.created_at,
+                            "updated_at": d.updated_at,
+                        }
+                    )
+
+                db_session.commit()
+
+                restored = self._get_leaf_or_404(db_session, leaf_id)
+                path_map = self._build_leaf_path_map(
+                    db_session.query(LeafModel).filter(LeafModel.deleted_at.is_(None)).all()
+                )
+                result = self._leaf_to_dto(restored, path_map.get(restored.id, ""))
+                sync_payload = self._leaf_storage_payload(restored)
+
+            for p in db_payloads:
+                get_file_storage().write_database(**p)
+            self._schedule_leaf_sync(sync_payload)
+            logger.info("Leaf restored: %s", leaf_id)
+            return result
+        except LeafNotFound:
+            raise
+        except Exception as e:
+            logger.exception("restore_leaf failed for %s", leaf_id)
+            raise LeafException(status_code=500, detail=str(e))
+
+    async def delete_leaf(self, leaf_id: UUID):
+        """Soft-delete: subtree + nested databases go to Trash (see Trash retention)."""
+        try:
+            now = datetime.now(timezone.utc)
+            db_payloads: list[dict] = []
             with self.db.get_db_session() as db_session:
                 db_leaf = self._get_leaf_or_404(db_session, leaf_id)
-                child_leaf_ids = list(db_leaf.children_ids or [])
-                leaf_file_database_id = db_leaf.database_id
 
-                child_databases = db_session.query(DatabaseModel).filter(
-                    DatabaseModel.parent_leaf_id == str(leaf_id)
-                ).all()
-                deleted_database_ids: list[str] = []
-                for child_db in child_databases:
-                    row_leaves = db_session.query(LeafModel).filter(
-                        LeafModel.database_id == child_db.id
-                    ).all()
-                    for row_leaf in row_leaves:
-                        db_session.delete(row_leaf)
-                    deleted_database_ids.append(child_db.id)
-                    db_session.delete(child_db)
+                def collect_subtree_leaf_ids(root_id: str) -> list[str]:
+                    ordered: list[str] = []
+                    stack = [root_id]
+                    seen: set[str] = set()
+                    while stack:
+                        cid = stack.pop(0)
+                        if cid in seen:
+                            continue
+                        seen.add(cid)
+                        ordered.append(cid)
+                        node = db_session.query(LeafModel).filter(LeafModel.id == cid).first()
+                        if not node:
+                            continue
+                        for ch in node.children_ids or []:
+                            if ch not in seen:
+                                stack.append(ch)
+                    return ordered
+
+                subtree = collect_subtree_leaf_ids(str(leaf_id))
+                for lid in subtree:
+                    leaf = db_session.query(LeafModel).filter(LeafModel.id == lid).first()
+                    if leaf is not None and leaf.deleted_at is None:
+                        leaf.deleted_at = now
+
+                child_dbs = (
+                    db_session.query(DatabaseModel)
+                    .filter(DatabaseModel.parent_leaf_id.in_(subtree))
+                    .filter(DatabaseModel.deleted_at.is_(None))
+                    .all()
+                )
+                for d in child_dbs:
+                    d.deleted_at = now
+                    db_payloads.append(
+                        {
+                            "db_id": d.id,
+                            "title": d.title,
+                            "schema": d.schema or {},
+                            "view_type": d.view_type or "table",
+                            "parent_leaf_id": d.parent_leaf_id,
+                            "created_at": d.created_at,
+                            "updated_at": d.updated_at,
+                        }
+                    )
 
                 if db_leaf.parent_id:
                     parent = self._get_leaf_or_404(db_session, db_leaf.parent_id)
                     self._remove_child_id(parent, db_leaf.id)
 
-                db_session.delete(db_leaf)
                 db_session.commit()
 
-            self._delete_leaf_file(str(leaf_id), leaf_file_database_id)
-            for database_id in deleted_database_ids:
-                get_file_storage().delete_database(database_id)
+            for p in db_payloads:
+                get_file_storage().write_database(**p)
 
-            logger.info(f"Leaf deleted: {leaf_id}")
-
-            for child_id in child_leaf_ids:
-                try:
-                    await self.delete_leaf(child_id)
-                except Exception:
-                    logger.exception("delete_leaf failed for child %s", child_id)
+            logger.info("Leaf moved to trash: %s", leaf_id)
         except LeafNotFound:
             raise
         except Exception as e:
-            logger.exception(f"delete_leaf failed for {leaf_id}")
+            logger.exception("delete_leaf failed for %s", leaf_id)
             raise LeafException(status_code=500, detail=str(e))

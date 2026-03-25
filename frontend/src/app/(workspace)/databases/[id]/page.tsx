@@ -68,6 +68,11 @@ export default function DatabaseViewPage() {
     updateCell,
     addColumn,
     setViewType,
+    columnBeingEdited,
+    openColumnEditor,
+    closeColumnEditor,
+    saveColumnDefinition,
+    deleteColumn,
   } = useDatabasePage(id)
 
   if (loading || !db) {
@@ -167,6 +172,11 @@ export default function DatabaseViewPage() {
               setShowAddCol={setShowAddCol}
               addColumn={addColumn}
               highlightedRowId={highlightedRowId}
+              columnBeingEdited={columnBeingEdited}
+              openColumnEditor={openColumnEditor}
+              closeColumnEditor={closeColumnEditor}
+              saveColumnDefinition={saveColumnDefinition}
+              deleteColumn={deleteColumn}
             />
           </div>
         </div>

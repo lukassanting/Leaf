@@ -1,8 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { databasesApi, leavesApi, trashApi } from '@/lib/api'
+import { emitLeafTreeChanged } from '@/lib/appEvents'
 import { syncApi } from '@/lib/api/sync'
 import type { SyncConfig, SyncConflict, SyncMode, SyncStatus } from '@/lib/api/syncTypes'
+import type { TrashDatabaseItem, TrashLeafItem } from '@/lib/api/types'
 
 function StatusDot({ state }: { state: SyncStatus['state'] }) {
   const color =
@@ -41,6 +44,15 @@ function Label({ children }: { children: React.ReactNode }) {
   )
 }
 
+function trashPurgeLabel(purgeAt: string): string {
+  const ms = new Date(purgeAt).getTime() - Date.now()
+  if (!Number.isFinite(ms)) return ''
+  if (ms <= 0) return 'Permanent delete soon'
+  const days = Math.max(1, Math.ceil(ms / 86_400_000))
+  if (days === 1) return 'Permanent delete in about 1 day'
+  return `Permanent delete in about ${days} days`
+}
+
 export default function SettingsPage() {
   const [status, setStatus] = useState<SyncStatus | null>(null)
   const [config, setConfig] = useState<SyncConfig | null>(null)
@@ -49,6 +61,14 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [testing, setTesting] = useState(false)
+
+  const [trash, setTrash] = useState<{
+    leaves: TrashLeafItem[]
+    databases: TrashDatabaseItem[]
+    retention_days: number
+  } | null>(null)
+  const [trashLoading, setTrashLoading] = useState(false)
+  const [trashBusy, setTrashBusy] = useState<string | null>(null)
 
   // Draft state for editable config
   const [draftMode, setDraftMode] = useState<SyncMode>('off')
@@ -80,6 +100,22 @@ export default function SettingsPage() {
     const id = setInterval(() => { void refresh() }, 10_000)
     return () => clearInterval(id)
   }, [refresh])
+
+  const refreshTrash = useCallback(async () => {
+    setTrashLoading(true)
+    try {
+      const t = await trashApi.list()
+      setTrash(t)
+    } catch {
+      setTrash(null)
+    } finally {
+      setTrashLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void refreshTrash()
+  }, [refreshTrash])
 
   const handleSave = async () => {
     setSaving(true)
@@ -154,7 +190,23 @@ export default function SettingsPage() {
     { value: 1800, label: '30 minutes' },
   ]
 
+  const trashRows: { kind: 'page' | 'database'; id: string; title: string; purge_at: string }[] = [
+    ...(trash?.databases ?? []).map((d) => ({
+      kind: 'database' as const,
+      id: d.id,
+      title: d.title,
+      purge_at: d.purge_at,
+    })),
+    ...(trash?.leaves ?? []).map((l) => ({
+      kind: 'page' as const,
+      id: l.id,
+      title: l.title,
+      purge_at: l.purge_at,
+    })),
+  ].sort((a, b) => new Date(b.purge_at).getTime() - new Date(a.purge_at).getTime())
+
   return (
+    <div className="flex-1 overflow-y-auto">
     <div className="mx-auto w-full max-w-[640px] px-6 py-10">
       <h1
         className="mb-1 text-xl font-semibold tracking-tight"
@@ -163,8 +215,89 @@ export default function SettingsPage() {
         Settings
       </h1>
       <p className="mb-8 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>
-        Configure sync and other workspace preferences.
+        Configure sync, Trash, and other workspace preferences.
       </p>
+
+      {/* ─── Trash ──────────────────────────────────────────────────── */}
+      <SectionTitle>Trash</SectionTitle>
+      <p className="mb-3 text-xs leading-relaxed" style={{ color: 'var(--leaf-text-muted)' }}>
+        Deleted pages and databases appear here for {trash?.retention_days ?? 7} days, then are permanently removed.
+        Opening Settings runs cleanup for anything past that window.
+      </p>
+      <div className="mb-4 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => { void refreshTrash() }}
+          disabled={trashLoading}
+          className="rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
+          style={{
+            background: 'var(--leaf-bg-elevated)',
+            color: 'var(--leaf-text-body)',
+            border: '1px solid var(--leaf-border-soft)',
+          }}
+        >
+          {trashLoading ? 'Refreshing…' : 'Refresh trash'}
+        </button>
+      </div>
+      {trashLoading && trashRows.length === 0 ? (
+        <p className="mb-8 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>
+          Loading trash…
+        </p>
+      ) : trashRows.length === 0 ? (
+        <p className="mb-8 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>
+          Trash is empty.
+        </p>
+      ) : (
+        <ul className="mb-8 flex flex-col gap-2">
+          {trashRows.map((row) => (
+            <li
+              key={`${row.kind}-${row.id}`}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2.5"
+              style={{
+                background: 'var(--leaf-bg-elevated)',
+                border: '1px solid var(--leaf-border-soft)',
+              }}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium" style={{ color: 'var(--leaf-text-body)' }}>
+                  {row.title || 'Untitled'}
+                </div>
+                <div className="text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
+                  {row.kind === 'database' ? 'Database' : 'Page'} · {trashPurgeLabel(row.purge_at)}
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={trashBusy !== null}
+                onClick={() => {
+                  setTrashBusy(`${row.kind}:${row.id}`)
+                  const p =
+                    row.kind === 'database'
+                      ? databasesApi.restore(row.id)
+                      : leavesApi.restore(row.id)
+                  void p
+                    .then(() => {
+                      emitLeafTreeChanged()
+                      return refreshTrash()
+                    })
+                    .catch(console.error)
+                    .finally(() => setTrashBusy(null))
+                }}
+                className="shrink-0 rounded-md px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50"
+                style={{
+                  background: 'color-mix(in srgb, var(--leaf-green) 12%, transparent)',
+                  color: 'var(--leaf-green)',
+                  border: '1px solid color-mix(in srgb, var(--leaf-green) 35%, transparent)',
+                }}
+              >
+                Restore
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Divider />
 
       {/* ─── Sync Configuration ─────────────────────────────────────── */}
       <SectionTitle>Sync Mode</SectionTitle>
@@ -477,6 +610,7 @@ export default function SettingsPage() {
           </div>
         </>
       )}
+    </div>
     </div>
   )
 }

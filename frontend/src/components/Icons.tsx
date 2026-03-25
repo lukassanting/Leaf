@@ -189,4 +189,10 @@ export const BLOCK_ICONS: Record<string, React.ReactNode> = {
     </span>
   ),
   toggleCard: <BlockIcon label="▾" />,
+  callout_gray: <BlockIcon label="▢" />,
+  callout_blue: <BlockIcon label="▢" />,
+  callout_red: <BlockIcon label="▢" />,
+  callout_yellow: <BlockIcon label="▢" />,
+  callout_green: <BlockIcon label="▢" />,
+  callout_flavor: <BlockIcon label="→" />,
 }

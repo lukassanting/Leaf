@@ -21,6 +21,7 @@ Debug:
   - the JSON storage in `DatabaseRowModel.properties`
 """
 
+import json
 from datetime import datetime
 from typing import Any, Optional
 
@@ -84,11 +85,24 @@ class RowUpdate(BaseModel):
     properties: Optional[dict[str, Any]] = None
 
 
+class LeafHeaderBanner(BaseModel):
+    src: str
+    objectPosition: str = "50% 50%"
+
+
 class Row(BaseModel):
     id: str
     database_id: str
     leaf_id: Optional[str] = None
     leaf_title: str = "Untitled"
     properties: dict[str, Any]
+    leaf_header_banner: Optional[LeafHeaderBanner] = None
     created_at: datetime
     updated_at: datetime
+
+
+class RemovePropertyResponse(BaseModel):
+    """Returned by DELETE /databases/{id}/properties/{key} — updated schema + all rows."""
+
+    database: Database
+    rows: list[Row]

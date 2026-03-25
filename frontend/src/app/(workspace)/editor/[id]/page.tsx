@@ -47,7 +47,28 @@ import { warmDatabaseRoute } from '@/lib/warmEditorRoute'
 import { ensureTagEntries } from '@/lib/workspaceDefaults'
 import { useContentWidth } from '@/app/(workspace)/layout'
 import type { EditorActions } from '@/components/Editor'
-import type { LeafIcon } from '@/lib/api'
+import type { LeafHeaderBanner, LeafIcon } from '@/lib/api'
+
+function parseHeaderBanner(raw: Record<string, unknown> | null | undefined): LeafHeaderBanner | null {
+  if (!raw) return null
+  const hb = raw.headerBanner
+  let o: unknown = hb
+  if (typeof hb === 'string') {
+    try {
+      o = JSON.parse(hb)
+    } catch {
+      return null
+    }
+  }
+  if (!o || typeof o !== 'object') return null
+  const rec = o as Record<string, unknown>
+  const src = rec.src
+  if (typeof src !== 'string' || !src.trim()) return null
+  return {
+    src: src.trim(),
+    objectPosition: typeof rec.objectPosition === 'string' ? rec.objectPosition : '50% 50%',
+  }
+}
 
 const Editor = dynamic(() => import(/* webpackPrefetch: true */ '@/components/Editor'), { ssr: false })
 
@@ -77,6 +98,8 @@ export default function EditorPage() {
     setTags,
     icon,
     setIcon,
+    properties,
+    setProperties,
     contentTextLength,
     loadingLeaf,
     savedTitleRef,
@@ -154,6 +177,27 @@ export default function EditorPage() {
       console.error('Failed to save tags', error)
     }
   }, [leafId, title, parentId, databaseId, childrenIds, content, setTags])
+
+  const handleHeaderBannerSave = useCallback(async (next: LeafHeaderBanner | null) => {
+    const merged: Record<string, unknown> = { ...(properties ?? {}) }
+    if (next) merged.headerBanner = next
+    else delete merged.headerBanner
+    try {
+      const updated = await updateLeafAndPrimeCache(leafId, {
+        title,
+        description: description || null,
+        parent_id: parentId ?? undefined,
+        database_id: databaseId ?? undefined,
+        children_ids: childrenIds,
+        tags,
+        icon: icon ?? undefined,
+        properties: merged,
+      }, content)
+      setProperties((updated.properties as Record<string, unknown> | null) ?? merged)
+    } catch (error) {
+      console.error('Failed to save cover image', error)
+    }
+  }, [leafId, title, description, parentId, databaseId, childrenIds, tags, icon, content, properties, setProperties])
 
   const handleIconSave = useCallback(async (nextIcon: LeafIcon | null) => {
     setIcon(nextIcon)
@@ -240,6 +284,8 @@ export default function EditorPage() {
             tags={tags}
             onTagsChange={(nextTags) => { void handleTagsSave(nextTags) }}
             showTags
+            headerBanner={parseHeaderBanner(properties)}
+            onHeaderBannerChange={(next) => { void handleHeaderBannerSave(next) }}
           />
           <div style={{ marginTop: 6, marginBottom: 8, fontSize: 11, color: 'var(--leaf-text-muted)' }}>
             Indexed content length: {contentTextLength} chars

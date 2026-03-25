@@ -65,6 +65,7 @@ type OutlineItem = {
   id: string
   label: string
   level: 1 | 2 | 3
+  ordinal: number
 }
 
 function SmallIdentityIcon({
@@ -227,8 +228,12 @@ export function Sidebar({ activeId }: { activeId?: string }) {
                   id: `heading-${headingCounter++}-${text}`,
                   label: text,
                   level: node.attrs.level,
+                  ordinal: nextOutline.length,
                 })
               }
+            } else if (node.type === 'callout' && 'content' in node) {
+              const inner = (node as { content?: typeof document.content }).content
+              if (inner) walkNodes(inner)
             } else if (node.type === 'columnList' && 'content' in node) {
               for (const col of (node as { content: { content: typeof document.content }[] }).content) {
                 if (col.content) walkNodes(col.content as typeof document.content)
@@ -525,10 +530,21 @@ export function Sidebar({ activeId }: { activeId?: string }) {
                   return (
                   <div
                     key={item.id}
+                    role="button"
+                    tabIndex={0}
                     className="flex items-start gap-2 rounded-md px-1.5 py-1 transition-colors duration-150"
                     style={{
                       marginLeft: (item.level - minLevel) * 12,
-                      cursor: 'default',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('leaf-outline-jump', { detail: { ordinal: item.ordinal } }))
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        window.dispatchEvent(new CustomEvent('leaf-outline-jump', { detail: { ordinal: item.ordinal } }))
+                      }
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-hover)' }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = '' }}

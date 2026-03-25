@@ -44,6 +44,7 @@ export function useDatabasePage(id: string) {
   const [rows, setRows] = useState<DatabaseRow[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddCol, setShowAddCol] = useState(false)
+  const [columnEditKey, setColumnEditKey] = useState<string | null>(null)
   const [titleDraft, setTitleDraft] = useState('')
   const [descriptionDraft, setDescriptionDraft] = useState('')
   const [tagsDraft, setTagsDraft] = useState<string[]>([])
@@ -152,6 +153,11 @@ export function useDatabasePage(id: string) {
 
   const columns: PropertyDefinition[] = useMemo(() => db?.schema?.properties ?? [], [db])
 
+  const columnBeingEdited = useMemo(
+    () => (columnEditKey ? columns.find((c) => c.key === columnEditKey) ?? null : null),
+    [columns, columnEditKey],
+  )
+
   const addRow = useCallback(async () => {
     try {
       const row = await createDatabaseRow(id)
@@ -186,14 +192,53 @@ export function useDatabasePage(id: string) {
     const row = rows.find((item) => item.id === rowId)
     if (!row) return
     const column = columns.find((item) => item.key === key)
-    const parsedValue: unknown = column?.type === 'tags'
-      ? value.split(',').map((tag) => tag.trim()).filter(Boolean)
-      : value
+    let parsedValue: unknown = value
+    if (column?.type === 'tags') {
+      parsedValue = value.split(',').map((tag) => tag.trim()).filter(Boolean)
+    } else if (column?.type === 'number') {
+      const t = value.trim()
+      parsedValue = t === '' ? null : Number(t)
+    } else if (column?.type === 'date') {
+      parsedValue = value.trim() === '' ? null : value.trim()
+    }
     const updated = await databasesApi.updateRow(id, rowId, {
       properties: { ...row.properties, [key]: parsedValue },
     })
     setRows((prev) => prev.map((item) => (item.id === rowId ? updated : item)))
   }, [id, rows, columns])
+
+  const saveColumnDefinition = useCallback(async (
+    key: string,
+    patch: { label: string; type: PropertyDefinition['type'] },
+  ) => {
+    if (!db) return
+    const label = patch.label.trim()
+    const next = db.schema.properties.map((c) =>
+      c.key === key ? { ...c, label: label || c.label, type: patch.type } : c,
+    )
+    try {
+      const updated = await saveDatabase({ schema: { properties: next } })
+      if (updated) setDb(updated)
+      setColumnEditKey(null)
+    } catch (error) {
+      console.error(error)
+    }
+  }, [db, saveDatabase])
+
+  const deleteColumn = useCallback(async (key: string) => {
+    if (!db) return
+    const col = db.schema.properties.find((c) => c.key === key)
+    const label = col?.label ?? key
+    if (!confirm(`Delete property "${label}"? Values in this column will be removed from all rows.`)) return
+    try {
+      const { database: nextDb, rows: nextRows } = await databasesApi.removeProperty(id, key)
+      setDb(nextDb)
+      setRows(nextRows)
+      setColumnEditKey(null)
+    } catch (error) {
+      console.error(error)
+    }
+  }, [db, id])
 
   const addColumn = useCallback(async (definition: PropertyDefinition) => {
     if (!db) return
@@ -244,5 +289,10 @@ export function useDatabasePage(id: string) {
     updateCell,
     addColumn,
     setViewType,
+    columnBeingEdited,
+    openColumnEditor: setColumnEditKey,
+    closeColumnEditor: () => setColumnEditKey(null),
+    saveColumnDefinition,
+    deleteColumn,
   }
 }

@@ -81,6 +81,7 @@ export type LeafNode =
   | { type: 'paragraph'; attrs?: { textAlign?: string | null }; content?: LeafInlineNode[] }
   | { type: 'heading'; attrs: { level: 1 | 2 | 3; textAlign?: string | null }; content?: LeafInlineNode[] }
   | { type: 'blockquote'; attrs?: { textAlign?: string | null }; content: LeafNode[] }
+  | { type: 'callout'; attrs?: { variant?: string }; content: LeafNode[] }
   | { type: 'bulletList'; content: { type: 'listItem'; content: LeafNode[] }[] }
   | { type: 'orderedList'; content: { type: 'listItem'; content: LeafNode[] }[] }
   | { type: 'taskList'; content: { type: 'taskItem'; attrs: { checked: boolean }; content: LeafNode[] }[] }
@@ -140,7 +141,8 @@ export interface Leaf {
   children_ids: string[]
   tags: string[]
   icon?: LeafIcon | null
-  properties?: Record<string, string> | null
+  /** Custom page metadata (e.g. `headerBanner` object with `src` + `objectPosition`). */
+  properties?: Record<string, unknown> | null
   content_text_length: number
   created_at: string
   updated_at: string
@@ -185,7 +187,7 @@ export interface LeafCreate {
   children_ids?: string[]
   tags?: string[]
   icon?: LeafIcon | null
-  properties?: Record<string, string> | null
+  properties?: Record<string, unknown> | null
   /** Sidebar ordering (root pages and siblings); optional on PATCH-style updates */
   order?: number
 }
@@ -201,7 +203,7 @@ export interface LeafReorderChildren {
 
 // ─── Databases ───────────────────────────────────────────────────────────────
 
-export type PropertyType = 'text' | 'number' | 'tags' | 'select'
+export type PropertyType = 'text' | 'number' | 'tags' | 'select' | 'date'
 
 export interface PropertyDefinition {
   key: string
@@ -238,14 +240,26 @@ export interface DatabaseCreate {
   icon?: LeafIcon | null
 }
 
+/** Optional cover from linked leaf `properties.headerBanner` (for gallery cards). */
+export type LeafHeaderBanner = {
+  src: string
+  objectPosition?: string
+}
+
 export interface DatabaseRow {
   id: string
   database_id: string
   leaf_id?: string | null
   leaf_title: string
   properties: Record<string, unknown>
+  leaf_header_banner?: LeafHeaderBanner | null
   created_at: string
   updated_at: string
+}
+
+export interface RemovePropertyResponse {
+  database: Database
+  rows: DatabaseRow[]
 }
 
 export interface RowCreate {
@@ -254,4 +268,26 @@ export interface RowCreate {
 
 export interface RowUpdate {
   properties?: Record<string, unknown>
+}
+
+// ─── Trash ───────────────────────────────────────────────────────────────────
+
+export interface TrashLeafItem {
+  id: string
+  title: string
+  deleted_at: string
+  purge_at: string
+}
+
+export interface TrashDatabaseItem {
+  id: string
+  title: string
+  deleted_at: string
+  purge_at: string
+}
+
+export interface TrashListResponse {
+  leaves: TrashLeafItem[]
+  databases: TrashDatabaseItem[]
+  retention_days: number
 }

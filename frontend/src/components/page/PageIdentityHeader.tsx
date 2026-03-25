@@ -33,10 +33,10 @@
 
 import type { ReactNode } from 'react'
 import Image from 'next/image'
-import type { LeafIcon as LeafIconValue } from '@/lib/api'
+import type { LeafHeaderBanner, LeafIcon as LeafIconValue } from '@/lib/api'
 import { TagsInput } from '@/components/editor/TagsInput'
 import { DatabaseIcon, LeafIcon, type LeafShapeIcon, ShapeIcon } from '@/components/Icons'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 type Props = {
   kind: 'page' | 'database'
@@ -56,6 +56,154 @@ type Props = {
   iconPicker?: ReactNode
   extraContent?: ReactNode
   showTags?: boolean
+  /** Optional cover image (stored on leaf `properties.headerBanner`). */
+  headerBanner?: LeafHeaderBanner | null
+  onHeaderBannerChange?: (next: LeafHeaderBanner | null) => void
+}
+
+function parseObjectPosition(pos: string | undefined): { x: number; y: number } {
+  if (!pos || typeof pos !== 'string') return { x: 50, y: 50 }
+  const m = pos.trim().match(/^([\d.]+)%\s+([\d.]+)%$/)
+  if (m) {
+    return {
+      x: Math.max(0, Math.min(100, parseFloat(m[1]))),
+      y: Math.max(0, Math.min(100, parseFloat(m[2]))),
+    }
+  }
+  return { x: 50, y: 50 }
+}
+
+function formatObjectPosition(f: { x: number; y: number }): string {
+  return `${Math.round(f.x)}% ${Math.round(f.y)}%`
+}
+
+function HeaderBannerEditor({
+  banner,
+  onChange,
+}: {
+  banner: LeafHeaderBanner | null
+  onChange: (next: LeafHeaderBanner | null) => void
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
+  const focalRef = useRef<{ x: number; y: number }>({ x: 50, y: 50 })
+  const [local, setLocal] = useState<{ x: number; y: number }>(() => parseObjectPosition(banner?.objectPosition))
+
+  useEffect(() => {
+    const p = parseObjectPosition(banner?.objectPosition)
+    focalRef.current = p
+    setLocal(p)
+  }, [banner?.objectPosition, banner?.src])
+
+  const onPointerDown = useCallback(
+    (event: React.PointerEvent) => {
+      if (!banner?.src || !boxRef.current) return
+      event.preventDefault()
+      const startX = event.clientX
+      const startY = event.clientY
+      const fx = focalRef.current.x
+      const fy = focalRef.current.y
+      const src = banner.src
+
+      const onMove = (e: PointerEvent) => {
+        const r = boxRef.current!.getBoundingClientRect()
+        const dx = ((e.clientX - startX) / Math.max(r.width, 1)) * 100
+        const dy = ((e.clientY - startY) / Math.max(r.height, 1)) * 100
+        const next = {
+          x: Math.max(0, Math.min(100, fx - dx)),
+          y: Math.max(0, Math.min(100, fy - dy)),
+        }
+        focalRef.current = next
+        setLocal(next)
+      }
+
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointercancel', onUp)
+        onChange({ src, objectPosition: formatObjectPosition(focalRef.current) })
+      }
+
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointercancel', onUp)
+    },
+    [banner?.src, onChange],
+  )
+
+  const onFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const src = String(reader.result ?? '')
+      if (src) {
+        setLocal({ x: 50, y: 50 })
+        onChange({ src, objectPosition: '50% 50%' })
+      }
+    }
+    reader.readAsDataURL(file)
+    event.target.value = ''
+  }
+
+  return (
+    <div style={{ width: '100%' }}>
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+      {banner?.src ? (
+        <div
+          ref={boxRef}
+          className="group relative overflow-hidden"
+          style={{
+            width: '100%',
+            height: 200,
+            cursor: 'grab',
+            touchAction: 'none',
+          }}
+          onPointerDown={onPointerDown}
+          title="Drag to reposition the visible area"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={banner.src}
+            alt=""
+            draggable={false}
+            className="h-full w-full select-none object-cover"
+            style={{ objectPosition: formatObjectPosition(local) }}
+          />
+          {/* Hover controls */}
+          <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); fileRef.current?.click() }}
+              className="rounded-md px-2 py-1 text-[11px] font-medium backdrop-blur-sm"
+              style={{ background: 'rgba(0,0,0,0.55)', color: '#fff' }}
+            >
+              Change cover
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onChange(null) }}
+              className="rounded-md px-2 py-1 text-[11px] font-medium backdrop-blur-sm"
+              style={{ background: 'rgba(0,0,0,0.55)', color: '#fff' }}
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ paddingTop: 8 }}>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="rounded-md px-2 py-1 text-xs transition-opacity opacity-0 hover:opacity-100"
+            style={{ color: 'var(--leaf-text-muted)' }}
+          >
+            + Add cover image
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function DefaultHeaderIcon({ kind }: { kind: 'page' | 'database' }) {
@@ -111,12 +259,15 @@ export function PageIdentityHeader({
   iconPicker,
   extraContent,
   showTags = true,
+  headerBanner,
+  onHeaderBannerChange,
 }: Props) {
   const canEditDescription = typeof onDescriptionChange === 'function'
   const canEditTags = Array.isArray(tags) && typeof onTagsChange === 'function'
+  const canEditBanner = typeof onHeaderBannerChange === 'function'
   const iconButtonRef = useRef<HTMLButtonElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
-  const descriptionInputRef = useRef<HTMLInputElement>(null)
+  const descriptionInputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -133,14 +284,31 @@ export function PageIdentityHeader({
   return (
     <div
       style={{
-        padding: '28px 0 20px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'flex-start',
         borderBottom: '1px solid var(--leaf-border-soft)',
       }}
     >
-      <div style={{ position: 'relative', display: 'inline-block', marginBottom: 14 }}>
+      {/* Cover image — full-width above everything */}
+      {canEditBanner ? (
+        <HeaderBannerEditor banner={headerBanner ?? null} onChange={onHeaderBannerChange!} />
+      ) : headerBanner?.src ? (
+        <div
+          className="overflow-hidden"
+          style={{ width: '100%', height: 200 }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={headerBanner.src}
+            alt=""
+            className="h-full w-full object-cover"
+            style={{ objectPosition: headerBanner.objectPosition ?? '50% 50%' }}
+          />
+        </div>
+      ) : null}
+
+      <div style={{ position: 'relative', display: 'inline-block', marginTop: headerBanner?.src ? 16 : 28, marginBottom: 14 }}>
         <button
           ref={iconButtonRef}
           type="button"
@@ -216,7 +384,7 @@ export function PageIdentityHeader({
 
       {description !== undefined && (
         <textarea
-          ref={descriptionInputRef as React.RefObject<HTMLTextAreaElement>}
+          ref={descriptionInputRef}
           className="bg-transparent border-none outline-none resize-none"
           rows={1}
           style={{
@@ -226,10 +394,10 @@ export function PageIdentityHeader({
             maxWidth: 680,
             width: '100%',
             lineHeight: 1.6,
+            overflow: 'hidden',
             caretColor: canEditDescription ? 'var(--leaf-green)' : undefined,
             cursor: canEditDescription ? 'text' : 'default',
-            overflow: 'hidden',
-            fieldSizing: 'content' as any,
+            ...({ fieldSizing: 'content' } as Record<string, string>),
           }}
           value={description}
           onChange={(event) => onDescriptionChange?.(event.target.value)}

@@ -49,6 +49,11 @@ export function EmbeddedDatabaseBlock({ id }: { id: string }) {
     updateCell,
     addColumn,
     setViewType,
+    columnBeingEdited,
+    openColumnEditor,
+    closeColumnEditor,
+    saveColumnDefinition,
+    deleteColumn,
   } = useDatabasePage(id)
 
   if (loading) {
@@ -112,6 +117,11 @@ export function EmbeddedDatabaseBlock({ id }: { id: string }) {
         showAddCol={showAddCol}
         setShowAddCol={setShowAddCol}
         addColumn={addColumn}
+        columnBeingEdited={columnBeingEdited}
+        openColumnEditor={openColumnEditor}
+        closeColumnEditor={closeColumnEditor}
+        saveColumnDefinition={saveColumnDefinition}
+        deleteColumn={deleteColumn}
       />
     </div>
   )

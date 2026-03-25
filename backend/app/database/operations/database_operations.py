@@ -26,6 +26,8 @@ Debug:
 - Row leaf linkage: check where `leaf_id` is assigned/removed in `create_row` and `delete_row`.
 """
 
+import json
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import Depends
@@ -37,6 +39,7 @@ from app.dtos.database_dtos import (
     DatabaseCreate,
     DatabaseSchema,
     DatabaseUpdate,
+    LeafHeaderBanner,
     Row,
     RowCreate,
     RowUpdate,
@@ -93,13 +96,38 @@ class DatabaseOperations:
             "updated_at": database.updated_at,
         }
 
-    def _row_to_dto(self, row: DatabaseRowModel, leaf_title: str = "Untitled") -> Row:
+    @staticmethod
+    def _leaf_header_banner(leaf_properties) -> LeafHeaderBanner | None:
+        if not leaf_properties or not isinstance(leaf_properties, dict):
+            return None
+        raw = leaf_properties.get("headerBanner")
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except Exception:
+                raw = None
+        if not isinstance(raw, dict):
+            return None
+        src = raw.get("src")
+        if not isinstance(src, str) or not src.strip():
+            return None
+        pos = raw.get("objectPosition") or "50% 50%"
+        return LeafHeaderBanner(src=src.strip(), objectPosition=str(pos))
+
+    def _row_to_dto(
+        self,
+        row: DatabaseRowModel,
+        leaf_title: str = "Untitled",
+        leaf_properties: dict | None = None,
+    ) -> Row:
+        banner = self._leaf_header_banner(leaf_properties) if leaf_properties is not None else None
         return Row(
             id=row.id,
             database_id=row.database_id,
             leaf_id=row.leaf_id,
             leaf_title=leaf_title,
             properties=row.properties or {},
+            leaf_header_banner=banner,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -124,8 +152,17 @@ class DatabaseOperations:
     def _sync_row_leaf_file(self, payload: dict) -> None:
         get_file_storage().write_page(**payload)
 
-    def _get_database(self, session, database_id: UUID | str) -> DatabaseModel | None:
-        return session.query(DatabaseModel).filter(DatabaseModel.id == str(database_id)).first()
+    def _get_database(
+        self,
+        session,
+        database_id: UUID | str,
+        *,
+        include_deleted: bool = False,
+    ) -> DatabaseModel | None:
+        q = session.query(DatabaseModel).filter(DatabaseModel.id == str(database_id))
+        if not include_deleted:
+            q = q.filter(DatabaseModel.deleted_at.is_(None))
+        return q.first()
 
     def create_database(self, body: DatabaseCreate) -> Database:
         with self.db.get_db_session() as session:
@@ -155,7 +192,11 @@ class DatabaseOperations:
 
     def get_all_databases(self) -> list[Database]:
         with self.db.get_db_session() as session:
-            rows = session.query(DatabaseModel).all()
+            rows = (
+                session.query(DatabaseModel)
+                .filter(DatabaseModel.deleted_at.is_(None))
+                .all()
+            )
             return [self._database_to_dto(database) for database in rows]
 
     def update_database(self, database_id: UUID, body: DatabaseUpdate) -> Database | None:
@@ -196,26 +237,92 @@ class DatabaseOperations:
         self._sync_database_file(payload)
         return result
 
+    def remove_schema_property(self, database_id: UUID, property_key: str) -> tuple[Database, list[Row]] | None:
+        """Remove one column from schema and drop that key from every row's properties JSON."""
+        pk = (property_key or "").strip()
+        if not pk:
+            return None
+        with self.db.get_db_session() as session:
+            database = self._get_database(session, database_id)
+            if not database:
+                return None
+
+            schema_payload, meta = self._split_database_schema(database.schema)
+            raw_props = schema_payload.get("properties")
+            if not isinstance(raw_props, list):
+                raw_props = []
+            new_props_raw = [
+                p for p in raw_props
+                if not (isinstance(p, dict) and str(p.get("key", "")) == pk)
+            ]
+            if len(new_props_raw) == len(raw_props):
+                return None
+
+            schema_payload["properties"] = new_props_raw
+            database.schema = self._compose_database_schema(
+                schema_payload,
+                meta.get("description"),
+                meta.get("tags"),
+                meta.get("icon"),
+            )
+
+            db_rows = (
+                session.query(DatabaseRowModel)
+                .filter(DatabaseRowModel.database_id == str(database_id))
+                .all()
+            )
+            for row in db_rows:
+                props = dict(row.properties or {})
+                if pk in props:
+                    del props[pk]
+                    row.properties = props
+
+            session.commit()
+            session.refresh(database)
+
+            results = (
+                session.query(DatabaseRowModel, LeafModel.title, LeafModel.properties)
+                .outerjoin(LeafModel, DatabaseRowModel.leaf_id == LeafModel.id)
+                .filter(DatabaseRowModel.database_id == str(database_id))
+                .all()
+            )
+            row_dtos = [
+                self._row_to_dto(r, t or "Untitled", lp if isinstance(lp, dict) else None)
+                for r, t, lp in results
+            ]
+            payload = self._database_storage_payload(database)
+            db_dto = self._database_to_dto(database)
+
+        self._sync_database_file(payload)
+        return db_dto, row_dtos
+
     def delete_database(self, database_id: UUID) -> bool:
+        """Soft-delete: hides from list/get; rows and pages stay for restore."""
         with self.db.get_db_session() as session:
             database = self._get_database(session, database_id)
             if not database:
                 return False
 
-            row_leaf_ids = [
-                row_leaf_id for (row_leaf_id,) in session.query(DatabaseRowModel.leaf_id).filter(
-                    DatabaseRowModel.database_id == str(database_id),
-                    DatabaseRowModel.leaf_id.isnot(None),
-                ).all()
-            ]
-            if row_leaf_ids:
-                session.query(LeafModel).filter(LeafModel.id.in_(row_leaf_ids)).delete(synchronize_session=False)
-
-            session.delete(database)
+            database.deleted_at = datetime.now(timezone.utc)
             session.commit()
-
-        get_file_storage().delete_database(str(database_id))
+            session.refresh(database)
+            payload = self._database_storage_payload(database)
+        self._sync_database_file(payload)
         return True
+
+    def restore_database(self, database_id: UUID) -> Database | None:
+        with self.db.get_db_session() as session:
+            database = self._get_database(session, database_id, include_deleted=True)
+            if not database or database.deleted_at is None:
+                return None
+
+            database.deleted_at = None
+            session.commit()
+            session.refresh(database)
+            payload = self._database_storage_payload(database)
+            result = self._database_to_dto(database)
+        self._sync_database_file(payload)
+        return result
 
     def create_row(self, database_id: UUID, body: RowCreate) -> Row | None:
         with self.db.get_db_session() as session:
@@ -241,15 +348,18 @@ class DatabaseOperations:
             session.refresh(row)
             session.refresh(leaf)
             row_payload = self._row_leaf_storage_payload(leaf)
-            result = self._row_to_dto(row, leaf.title)
+            lp = leaf.properties if isinstance(leaf.properties, dict) else None
+            result = self._row_to_dto(row, leaf.title, lp)
 
         self._sync_row_leaf_file(row_payload)
         return result
 
     def get_row(self, database_id: UUID, row_id: UUID) -> Row | None:
         with self.db.get_db_session() as session:
+            if not self._get_database(session, database_id):
+                return None
             result = (
-                session.query(DatabaseRowModel, LeafModel.title)
+                session.query(DatabaseRowModel, LeafModel.title, LeafModel.properties)
                 .outerjoin(LeafModel, DatabaseRowModel.leaf_id == LeafModel.id)
                 .filter(
                     DatabaseRowModel.database_id == str(database_id),
@@ -259,21 +369,28 @@ class DatabaseOperations:
             )
             if not result:
                 return None
-            row, leaf_title = result
-            return self._row_to_dto(row, leaf_title or "Untitled")
+            row, leaf_title, leaf_props = result
+            return self._row_to_dto(row, leaf_title or "Untitled", leaf_props if isinstance(leaf_props, dict) else None)
 
-    def get_rows(self, database_id: UUID) -> list[Row]:
+    def get_rows(self, database_id: UUID) -> list[Row] | None:
         with self.db.get_db_session() as session:
+            if not self._get_database(session, database_id):
+                return None
             results = (
-                session.query(DatabaseRowModel, LeafModel.title)
+                session.query(DatabaseRowModel, LeafModel.title, LeafModel.properties)
                 .outerjoin(LeafModel, DatabaseRowModel.leaf_id == LeafModel.id)
                 .filter(DatabaseRowModel.database_id == str(database_id))
                 .all()
             )
-            return [self._row_to_dto(row, leaf_title or "Untitled") for row, leaf_title in results]
+            return [
+                self._row_to_dto(row, leaf_title or "Untitled", leaf_props if isinstance(leaf_props, dict) else None)
+                for row, leaf_title, leaf_props in results
+            ]
 
     def update_row(self, database_id: UUID, row_id: UUID, body: RowUpdate) -> Row | None:
         with self.db.get_db_session() as session:
+            if not self._get_database(session, database_id):
+                return None
             row = (
                 session.query(DatabaseRowModel)
                 .filter(
@@ -287,16 +404,20 @@ class DatabaseOperations:
             if body.properties is not None:
                 row.properties = body.properties
             leaf_title = "Untitled"
+            leaf_props: dict | None = None
             if row.leaf_id:
                 leaf = session.query(LeafModel).filter(LeafModel.id == row.leaf_id).first()
                 if leaf:
                     leaf_title = leaf.title
+                    leaf_props = leaf.properties if isinstance(leaf.properties, dict) else None
             session.commit()
             session.refresh(row)
-            return self._row_to_dto(row, leaf_title)
+            return self._row_to_dto(row, leaf_title, leaf_props)
 
     def delete_row(self, database_id: UUID, row_id: UUID) -> bool:
         with self.db.get_db_session() as session:
+            if not self._get_database(session, database_id):
+                return False
             row = (
                 session.query(DatabaseRowModel)
                 .filter(

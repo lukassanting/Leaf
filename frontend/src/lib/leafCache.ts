@@ -48,6 +48,7 @@ export type CachedLeaf = {
   parent_id: string | null
   database_id?: string | null
   children_ids: string[]
+  properties?: Record<string, unknown> | null
   tags?: string[]
 }
 

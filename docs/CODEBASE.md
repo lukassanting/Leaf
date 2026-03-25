@@ -102,8 +102,11 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | Path | Purpose |
 |------|---------|
 | `app/api/routes/api.py` | Aggregates routers (leaf + database) |
-| `app/api/routes/leaf/leaf_crud_controller.py` | REST endpoints for leaves, tree, content patch, backlinks, graph |
-| `app/api/routes/database/database_controller.py` | REST endpoints for databases and rows |
+| `app/api/routes/leaf/leaf_crud_controller.py` | REST endpoints for leaves, tree, content patch, backlinks, graph; soft-delete to Trash; `POST /leaves/{id}/restore` |
+| `app/api/routes/database/database_controller.py` | REST for databases and rows; soft-delete + restore; `DELETE /databases/{id}/properties/{key}` removes a column and strips that key from all rows |
+| `app/api/routes/trash/trash_controller.py` | `GET /trash` (purge expired, then list) |
+| `app/database/operations/trash_operations.py` | Permanent delete + purge after retention; used by trash API and startup |
+| `app/dtos/trash_dtos.py` | Trash list response DTOs |
 
 ### Domain & persistence
 
@@ -167,7 +170,8 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | Path | Purpose |
 |------|---------|
 | `src/components/Editor.tsx` | Re-exports main editor (TipTap) |
-| `src/components/editor/LeafEditor.tsx` | Main document TipTap (`TextStyle`, `Color`, `TextAlign`, `storyTagExtension`, `statStrip`), slash menu (full commands in nested toggle **body**), `ToggleCardHeaderField` for toggle **headers**, selection bubble, embeds, `toggleCard`, columns, document model |
+| `src/components/editor/LeafEditor.tsx` | Main document TipTap (`TextStyle`, `Color`, `TextAlign`, `storyTagExtension`, `statStrip`, `calloutExtension`), slash menu (full commands in nested toggle **body**), `ToggleCardHeaderField` for toggle **headers**, selection bubble, embeds, `toggleCard`, columns, document model; listens for `leaf-outline-jump` to scroll to headings |
+| `src/components/editor/calloutExtension.ts` | TipTap `callout` block (`data-type="callout"`, `data-variant`); classic + campaign styling in `globals.css` |
 | `src/components/editor/ToggleCardHeaderField.tsx` | One-line TipTap per toggle header (eyebrow/title/subtitle); `SlashMenuPanel` + `rankToggleHeaderSlashItems`; syncs attrs when unfocused |
 | `src/components/editor/toggleCardHeaderFieldExtensions.ts` | StarterKit subset + single-paragraph doc, marks, hard break on Enter, placeholder |
 | `src/components/editor/toggleCardHeaderSlash.ts` | Allowed slash actions for headers (no block inserts); `applyToggleHeaderSlashAction` |
@@ -192,7 +196,7 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | `src/components/page/IconPicker.tsx` | Icon selection UI |
 | `src/components/editor/TagsInput.tsx` | Tag chips / suggestions |
 | `src/components/database/DatabaseSurface.tsx` | Shared database canvas |
-| `src/components/database/DatabaseViews.tsx` | View switcher and view implementations |
+| `src/components/database/DatabaseViews.tsx` | View switcher and view implementations; date column type; edit-column modal; gallery cover from `row.leaf_header_banner` |
 | `src/components/database/EmbeddedDatabaseBlock.tsx` | Database block inside editor |
 | `src/components/AIAssistant.tsx` | AI assistant entry UI |
 | `src/components/Icons.tsx` | Shared icon components |
@@ -219,7 +223,7 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | `src/lib/api/index.ts` | Re-exports API clients and types |
 | `src/lib/api/types.ts` | Shared TypeScript types (Leaf, Database, document nodes) |
 | `src/lib/api/leaves.ts` | `leavesApi` HTTP client |
-| `src/lib/api/databases.ts` | `databasesApi` HTTP client |
+| `src/lib/api/databases.ts` | `databasesApi` HTTP client (`restore` for undo) |
 | `src/lib/leafCache.ts` | IndexedDB + localStorage cache, pending save queue |
 | `src/lib/cacheMappers.ts` | Maps API leaf → `CachedLeaf` |
 | `src/lib/leafDocument.ts` | Parse/normalize `LeafDocument` JSON for TipTap |

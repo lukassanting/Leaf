@@ -66,3 +66,6 @@ class ConfigSettings():
         self.GIT_REMOTE_URL = self.config("GIT_REMOTE_URL", cast=str, default="")
         self.GIT_AUTH_TOKEN = self.config("GIT_AUTH_TOKEN", cast=str, default="")
         self.GIT_SYNC_INTERVAL = self.config("GIT_SYNC_INTERVAL", cast=int, default=300)
+
+        # Trash: soft-deleted pages/databases are purged after this many days
+        self.TRASH_RETENTION_DAYS = self.config("TRASH_RETENTION_DAYS", cast=int, default=7)

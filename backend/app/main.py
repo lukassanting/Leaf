@@ -74,7 +74,10 @@ async def on_startup(_app: FastAPI):
     logging.info("Starting up…")
     # Tables are created in MySQLDatabaseConnector.__init__ via create_all.
     # Calling get_db_connector() here ensures they exist before the first request.
-    get_db_connector()
+    connector = get_db_connector()
+    from app.database.operations.trash_operations import TrashOperations
+
+    TrashOperations(connector).purge_expired(config.TRASH_RETENTION_DAYS)
 
     # ── Sync subsystem ──────────────────────────────────────────────────────
     _load_persisted_sync_config(config)

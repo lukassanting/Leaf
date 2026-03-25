@@ -27,6 +27,7 @@ type CachedLeafSource = Pick<
   description?: string | null
   tags?: string[]
   content_text_length?: number
+  properties?: Record<string, unknown> | null
 }
 
 export function toCachedLeaf(source: CachedLeafSource): CachedLeaf {
@@ -41,5 +42,6 @@ export function toCachedLeaf(source: CachedLeafSource): CachedLeaf {
     database_id: source.database_id ?? null,
     children_ids: source.children_ids ?? [],
     tags: source.tags ?? [],
+    properties: source.properties ?? null,
   }
 }

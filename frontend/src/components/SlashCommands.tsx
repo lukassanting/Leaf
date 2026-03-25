@@ -71,6 +71,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   { label: 'Link to page',  description: 'Link an existing page or database', action: 'link', group: 'Insert', keywords: ['link', 'page', 'wikilink', 'mention'] },
   { label: 'Sub-page',      description: 'New child page',          action: 'subpage', group: 'Insert',    keywords: ['page', 'subpage'] },
   { label: 'Database',      description: 'New table database',      action: 'database',group: 'Insert',    keywords: ['database', 'db', 'table'] },
+  { label: 'Callout', description: 'Highlighted panel — change colour after inserting', action: 'callout', group: 'Structure', keywords: ['callout', 'panel', 'note', 'aside', 'box', 'info', 'warning', 'danger'] },
   { label: 'Toggle Cards', description: 'Full-width card, collapsible body', action: 'toggleCard', group: 'Toggle Cards', keywords: ['toggle', 'card', 'collapse', 'accordion', 'episode', 'dnd', 'campaign'] },
   ...STORY_TAG_SLASH_ITEMS,
 ]
