@@ -91,4 +91,5 @@ class SyncConfigUpdate(BaseModel):
     mode: Optional[SyncMode] = None
     watch_enabled: Optional[bool] = None
     git_remote_url: Optional[str] = None
+    git_auth_token: Optional[str] = None
     git_sync_interval: Optional[int] = None

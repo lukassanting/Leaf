@@ -10,7 +10,10 @@ import logging
 import shutil
 from pathlib import Path
 
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
 
 from app.dtos.sync_dtos import (
     ConflictResolution,
@@ -132,7 +135,12 @@ async def update_sync_config(body: SyncConfigUpdate, request: Request):
     if body.watch_enabled is not None:
         config.SYNC_WATCH_ENABLED = body.watch_enabled
     if body.git_remote_url is not None:
-        config.GIT_REMOTE_URL = body.git_remote_url
+        # Strip any embedded credentials from the URL — token goes in GIT_AUTH_TOKEN
+        import re
+        clean_url = re.sub(r"^https://[^@]+@", "https://", body.git_remote_url)
+        config.GIT_REMOTE_URL = clean_url
+    if body.git_auth_token is not None:
+        config.GIT_AUTH_TOKEN = body.git_auth_token
     if body.git_sync_interval is not None:
         config.GIT_SYNC_INTERVAL = body.git_sync_interval
 
@@ -212,9 +220,15 @@ async def rebuild_index(request: Request):
 
 # ─── Git ────────────────────────────────────────────────────────────────
 
+class GitTestRequest(BaseModel):
+    """Optional body for test-connection so the frontend can test a draft URL/token before saving."""
+    git_remote_url: Optional[str] = None
+    git_auth_token: Optional[str] = None
+
+
 @router.post("/git/test-connection")
-async def test_git_connection(request: Request):
-    """Test the git remote connection."""
+async def test_git_connection(request: Request, body: GitTestRequest = GitTestRequest()):
+    """Test the git remote connection. Accepts optional URL/token to test before saving."""
     sync = _get_sync_state(request)
     if sync is None:
         raise HTTPException(status_code=503, detail="Sync service not initialized")
@@ -223,7 +237,7 @@ async def test_git_connection(request: Request):
     if git_sync is None:
         raise HTTPException(status_code=400, detail="Git sync not available")
 
-    return git_sync.test_connection()
+    return await git_sync.test_connection(url_override=body.git_remote_url, token_override=body.git_auth_token)
 
 
 @router.get("/git/status")
@@ -315,6 +329,7 @@ def _persist_sync_config(config) -> None:
         "SYNC_MODE": config.SYNC_MODE,
         "SYNC_WATCH_ENABLED": config.SYNC_WATCH_ENABLED,
         "GIT_REMOTE_URL": config.GIT_REMOTE_URL,
+        "GIT_AUTH_TOKEN": config.GIT_AUTH_TOKEN,
         "GIT_SYNC_INTERVAL": config.GIT_SYNC_INTERVAL,
     }
     config_path.write_text(json.dumps(data, indent=2), encoding="utf-8")

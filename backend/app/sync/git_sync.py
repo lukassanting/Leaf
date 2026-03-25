@@ -15,6 +15,7 @@ Sync cycle (one call to `sync_now()`):
   4. Push:               git push origin main
 """
 
+import asyncio
 import logging
 import os
 import re
@@ -207,25 +208,51 @@ class GitSyncService:
 
         return status
 
-    def test_connection(self) -> dict:
-        """Test the remote connection. Returns {ok, message}."""
-        if not self.is_configured:
+    async def test_connection(self, url_override: Optional[str] = None, token_override: Optional[str] = None) -> dict:
+        """Test the remote connection (runs in a thread so it won't block the event loop).
+        Accepts optional URL/token overrides to test before saving. Returns {ok, message}."""
+        test_url = url_override or self._remote_url
+        token = token_override or self._auth_token
+        if not test_url:
             return {"ok": False, "message": "Git remote URL not configured"}
 
+        authed_url = self._build_authed_url(test_url, token)
+        return await asyncio.to_thread(self._test_connection_sync, authed_url)
+
+    @staticmethod
+    def _build_authed_url(url: str, token: str = "") -> str:
+        """Build an authenticated URL from a clean URL + token.
+        Handles URLs that already have credentials embedded."""
+        if not url.startswith("https://"):
+            return url
+        # Strip any existing credentials
+        clean = re.sub(r"^https://[^@]+@", "https://", url)
+        if token:
+            return re.sub(r"^https://", f"https://x-access-token:{token}@", clean)
+        return clean
+
+    def _test_connection_sync(self, authed_url: str) -> dict:
+        """Synchronous git ls-remote, meant to be called via asyncio.to_thread."""
+        env = {
+            **os.environ,
+            "GIT_TERMINAL_PROMPT": "0",       # no interactive prompts
+            "GCM_INTERACTIVE": "never",        # suppress Windows Git Credential Manager browser popup
+            "GIT_ASKPASS": "",                  # disable askpass helpers
+        }
         try:
-            authed_url = self._authenticated_url()
             result = subprocess.run(
                 ["git", "ls-remote", "--heads", authed_url],
                 cwd=str(self.data_dir),
                 capture_output=True,
                 text=True,
-                timeout=15,
+                timeout=30,
+                env=env,
             )
             if result.returncode == 0:
                 return {"ok": True, "message": "Connection successful"}
             return {"ok": False, "message": result.stderr.strip() or "Connection failed"}
         except subprocess.TimeoutExpired:
-            return {"ok": False, "message": "Connection timed out (15s)"}
+            return {"ok": False, "message": "Connection timed out (30s)"}
         except FileNotFoundError:
             return {"ok": False, "message": "git is not installed or not in PATH"}
 
@@ -262,15 +289,18 @@ class GitSyncService:
             raise GitSyncError("git is not installed or not in PATH")
 
     def _authenticated_url(self) -> str:
-        """Embed PAT token into HTTPS remote URL for authentication."""
+        """Embed PAT token into HTTPS remote URL for authentication.
+        Uses x-access-token:TOKEN@ format for GitHub compatibility."""
         url = self._remote_url
         if not self._auth_token or not url:
             return url
 
         # Only embed token in HTTPS URLs
         if url.startswith("https://"):
-            # https://github.com/user/repo.git → https://TOKEN@github.com/user/repo.git
-            return re.sub(r"^https://", f"https://{self._auth_token}@", url)
+            # Strip any existing credentials first
+            clean = re.sub(r"^https://[^@]+@", "https://", url)
+            # https://github.com/user/repo.git → https://x-access-token:TOKEN@github.com/user/repo.git
+            return re.sub(r"^https://", f"https://x-access-token:{self._auth_token}@", clean)
 
         return url
 

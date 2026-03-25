@@ -56,6 +56,8 @@ def _load_persisted_sync_config(cfg: ConfigSettings) -> None:
             cfg.SYNC_WATCH_ENABLED = data["SYNC_WATCH_ENABLED"]
         if "GIT_REMOTE_URL" in data:
             cfg.GIT_REMOTE_URL = data["GIT_REMOTE_URL"]
+        if "GIT_AUTH_TOKEN" in data:
+            cfg.GIT_AUTH_TOKEN = data["GIT_AUTH_TOKEN"]
         if "GIT_SYNC_INTERVAL" in data:
             cfg.GIT_SYNC_INTERVAL = data["GIT_SYNC_INTERVAL"]
     except Exception:

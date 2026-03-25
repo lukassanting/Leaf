@@ -74,6 +74,7 @@ export default function SettingsPage() {
   const [draftMode, setDraftMode] = useState<SyncMode>('off')
   const [draftWatch, setDraftWatch] = useState(true)
   const [draftGitUrl, setDraftGitUrl] = useState('')
+  const [draftGitToken, setDraftGitToken] = useState('')
   const [draftInterval, setDraftInterval] = useState(300)
   const [draftInitialized, setDraftInitialized] = useState(false)
 
@@ -132,6 +133,7 @@ export default function SettingsPage() {
         mode: draftMode,
         watch_enabled: draftWatch,
         git_remote_url: draftGitUrl || undefined,
+        git_auth_token: draftGitToken || undefined,
         git_sync_interval: draftInterval,
       })
       setConfig(updated)
@@ -168,7 +170,7 @@ export default function SettingsPage() {
     setTesting(true)
     setTestResult(null)
     try {
-      const result = await syncApi.testGitConnection()
+      const result = await syncApi.testGitConnection(draftGitUrl || undefined, draftGitToken || undefined)
       setTestResult(result)
     } catch {
       setTestResult({ ok: false, message: 'Failed to reach API' })
@@ -430,8 +432,23 @@ export default function SettingsPage() {
                 {testResult.ok ? '✓ ' : '✗ '}{testResult.message}
               </div>
             )}
+          </div>
+          <div>
+            <Label>Personal Access Token (PAT)</Label>
+            <input
+              type="password"
+              value={draftGitToken}
+              onChange={(e) => { setDraftGitToken(e.target.value); setTestResult(null) }}
+              placeholder="ghp_xxxx or github_pat_xxxx"
+              className="w-full rounded-md px-3 py-2 text-sm outline-none"
+              style={{
+                background: 'var(--leaf-bg-elevated)',
+                color: 'var(--leaf-text-body)',
+                border: '1px solid var(--leaf-border-soft)',
+              }}
+            />
             <p className="mt-1 text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
-              For private repos, use a URL with a Personal Access Token: https://TOKEN@github.com/user/repo.git
+              Required for private repos. GitHub: Settings → Developer settings → Fine-grained tokens → Contents read/write.
             </p>
           </div>
           <div>
