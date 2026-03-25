@@ -75,6 +75,7 @@ export default function SettingsPage() {
   const [draftWatch, setDraftWatch] = useState(true)
   const [draftGitUrl, setDraftGitUrl] = useState('')
   const [draftInterval, setDraftInterval] = useState(300)
+  const [draftInitialized, setDraftInitialized] = useState(false)
 
   const refresh = useCallback(async () => {
     try {
@@ -86,10 +87,17 @@ export default function SettingsPage() {
       setStatus(s)
       setConflicts(conflictList)
       setConfig(conf)
-      setDraftMode(conf.mode)
-      setDraftWatch(conf.watch_enabled)
-      setDraftGitUrl(conf.git_remote_url ?? '')
-      setDraftInterval(conf.git_sync_interval)
+      // Only populate draft fields on first load — not on every poll,
+      // otherwise the 10s poll overwrites unsaved user edits.
+      setDraftInitialized((prev) => {
+        if (!prev) {
+          setDraftMode(conf.mode)
+          setDraftWatch(conf.watch_enabled)
+          setDraftGitUrl(conf.git_remote_url ?? '')
+          setDraftInterval(conf.git_sync_interval)
+        }
+        return true
+      })
     } catch {
       // API may not have sync endpoints yet
     }
@@ -127,6 +135,8 @@ export default function SettingsPage() {
         git_sync_interval: draftInterval,
       })
       setConfig(updated)
+      // Re-sync draft from server on next poll so it reflects saved state
+      setDraftInitialized(false)
     } catch {
       // handle error
     } finally {
