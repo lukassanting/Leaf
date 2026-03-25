@@ -306,6 +306,7 @@ function EmbeddedDatabaseView({
   const { id, title, status, view } = node.attrs
 
   const handleDelete = useCallback(() => {
+    if (!confirm('Move this database to Trash? You can restore it from Settings → Trash.')) return
     if (id) {
       void databasesApi.delete(id).then(() => {
         deleteNode()
@@ -358,23 +359,8 @@ function EmbeddedDatabaseView({
 
   return (
     <NodeViewWrapper className="group my-2" data-drag-handle="">
-      <div contentEditable={false} className="relative">
-        <div className="absolute right-14 top-3 z-10">
-          <button
-            type="button"
-            onMouseDown={(event) => { event.preventDefault(); event.stopPropagation() }}
-            onClick={(event) => { event.stopPropagation(); handleDelete() }}
-            className="rounded-md px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100"
-            style={{
-              color: 'var(--leaf-text-muted)',
-              background: 'var(--leaf-glass)',
-              border: '1px solid var(--leaf-border-soft)',
-            }}
-          >
-            Remove
-          </button>
-        </div>
-        <EmbeddedDatabaseBlock id={id} />
+      <div contentEditable={false}>
+        <EmbeddedDatabaseBlock id={id} onDeleteDatabase={handleDelete} />
       </div>
     </NodeViewWrapper>
   )

@@ -68,11 +68,11 @@ export default function DatabaseViewPage() {
     updateCell,
     addColumn,
     setViewType,
-    columnBeingEdited,
-    openColumnEditor,
-    closeColumnEditor,
     saveColumnDefinition,
     deleteColumn,
+    gallerySize,
+    setGallerySize,
+    deleteDatabase,
   } = useDatabasePage(id)
 
   if (loading || !db) {
@@ -132,6 +132,7 @@ export default function DatabaseViewPage() {
               void saveMeta({ tags: nextTags })
             }}
             showTags={false}
+            databaseMenu={{ onDelete: () => { void deleteDatabase() } }}
             extraContent={(
               <div className="flex items-center gap-2" style={{ fontSize: 11.5, color: 'var(--leaf-text-muted)' }}>
                 <span
@@ -172,11 +173,10 @@ export default function DatabaseViewPage() {
               setShowAddCol={setShowAddCol}
               addColumn={addColumn}
               highlightedRowId={highlightedRowId}
-              columnBeingEdited={columnBeingEdited}
-              openColumnEditor={openColumnEditor}
-              closeColumnEditor={closeColumnEditor}
               saveColumnDefinition={saveColumnDefinition}
               deleteColumn={deleteColumn}
+              gallerySize={gallerySize}
+              setGallerySize={setGallerySize}
             />
           </div>
         </div>

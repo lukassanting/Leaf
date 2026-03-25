@@ -59,6 +59,8 @@ type Props = {
   /** Optional cover image (stored on leaf `properties.headerBanner`). */
   headerBanner?: LeafHeaderBanner | null
   onHeaderBannerChange?: (next: LeafHeaderBanner | null) => void
+  /** With `kind="database"`, title becomes a control that opens rename + delete (Notion-style). */
+  databaseMenu?: { onDelete: () => void }
 }
 
 function parseObjectPosition(pos: string | undefined): { x: number; y: number } {
@@ -261,25 +263,54 @@ export function PageIdentityHeader({
   showTags = true,
   headerBanner,
   onHeaderBannerChange,
+  databaseMenu,
 }: Props) {
   const canEditDescription = typeof onDescriptionChange === 'function'
   const canEditTags = Array.isArray(tags) && typeof onTagsChange === 'function'
   const canEditBanner = typeof onHeaderBannerChange === 'function'
   const iconButtonRef = useRef<HTMLButtonElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const titlePopoverInputRef = useRef<HTMLInputElement>(null)
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null)
+  const dbTitleWrapRef = useRef<HTMLDivElement>(null)
+  const [dbTitleMenuOpen, setDbTitleMenuOpen] = useState(false)
+  const titleLiveRef = useRef(title)
+  titleLiveRef.current = title
+
+  const useDbTitlePopover = kind === 'database' && Boolean(databaseMenu)
 
   useEffect(() => {
     const handler = (event: Event) => {
       const target = (event as CustomEvent<'icon' | 'title' | 'description'>).detail
       if (target === 'icon') iconButtonRef.current?.focus()
-      if (target === 'title') titleInputRef.current?.focus()
+      if (target === 'title') {
+        if (useDbTitlePopover) setDbTitleMenuOpen(true)
+        else titleInputRef.current?.focus()
+      }
       if (target === 'description') descriptionInputRef.current?.focus()
     }
 
     window.addEventListener('leaf-focus-header-field', handler)
     return () => window.removeEventListener('leaf-focus-header-field', handler)
-  }, [])
+  }, [useDbTitlePopover])
+
+  useEffect(() => {
+    if (!useDbTitlePopover || !dbTitleMenuOpen) return
+    titlePopoverInputRef.current?.focus()
+    titlePopoverInputRef.current?.select()
+  }, [useDbTitlePopover, dbTitleMenuOpen])
+
+  useEffect(() => {
+    if (!useDbTitlePopover) return
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (dbTitleWrapRef.current && !dbTitleWrapRef.current.contains(e.target as Node)) {
+        setDbTitleMenuOpen(false)
+        onTitleBlur?.(titleLiveRef.current)
+      }
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [useDbTitlePopover, onTitleBlur])
 
   return (
     <div
@@ -356,31 +387,101 @@ export function PageIdentityHeader({
 
       {iconPicker ?? null}
 
-      <input
-        ref={titleInputRef}
-        className="bg-transparent border-none outline-none font-medium leading-tight"
-        style={{
-          fontSize: 30,
-          fontWeight: 500,
-          color: 'var(--leaf-text-title)',
-          letterSpacing: '-0.02em',
-          lineHeight: 1.2,
-          width: '100%',
-          maxWidth: 680,
-          caretColor: 'var(--leaf-green)',
-        }}
-        value={title}
-        onChange={(event) => onTitleChange(event.target.value)}
-        onBlur={(event) => onTitleBlur?.(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault()
-            onTitleEnter?.()
-            ;(event.target as HTMLInputElement).blur()
-          }
-        }}
-        placeholder={titlePlaceholder}
-      />
+      {useDbTitlePopover && databaseMenu ? (
+        <div ref={dbTitleWrapRef} className="relative w-full" style={{ maxWidth: 680 }}>
+          <button
+            type="button"
+            className="w-full bg-transparent text-left font-medium leading-tight outline-none transition-opacity hover:opacity-90"
+            style={{
+              fontSize: 30,
+              fontWeight: 500,
+              color: 'var(--leaf-text-title)',
+              letterSpacing: '-0.02em',
+              lineHeight: 1.2,
+              cursor: 'pointer',
+            }}
+            onClick={() => setDbTitleMenuOpen((open) => !open)}
+          >
+            {title || titlePlaceholder}
+          </button>
+          {dbTitleMenuOpen ? (
+            <div
+              className="absolute left-0 top-full z-50 mt-2 w-full min-w-[280px] max-w-md rounded-xl border p-3 shadow-lg"
+              style={{
+                background: 'var(--leaf-bg-elevated)',
+                borderColor: 'var(--leaf-border-strong)',
+                boxShadow: 'var(--leaf-shadow-soft)',
+              }}
+            >
+              <div className="mb-1.5 text-[11px] font-medium" style={{ color: 'var(--leaf-text-muted)' }}>
+                Database name
+              </div>
+              <input
+                ref={titlePopoverInputRef}
+                className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                style={{
+                  borderColor: 'var(--leaf-border-strong)',
+                  background: 'var(--leaf-bg-subtle)',
+                  color: 'var(--leaf-text-title)',
+                  caretColor: 'var(--leaf-green)',
+                }}
+                value={title}
+                onChange={(event) => onTitleChange(event.target.value)}
+                onBlur={(event) => onTitleBlur?.(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    onTitleEnter?.()
+                    ;(event.target as HTMLInputElement).blur()
+                    setDbTitleMenuOpen(false)
+                  }
+                  if (event.key === 'Escape') setDbTitleMenuOpen(false)
+                }}
+                placeholder={titlePlaceholder}
+              />
+              <button
+                type="button"
+                className="mt-3 w-full rounded-lg px-2 py-2 text-left text-[13px] transition-colors"
+                style={{ color: '#dc2626' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--leaf-db-chrome-hover)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
+                onClick={() => {
+                  databaseMenu.onDelete()
+                  setDbTitleMenuOpen(false)
+                }}
+              >
+                Delete database…
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <input
+          ref={titleInputRef}
+          className="bg-transparent border-none outline-none font-medium leading-tight"
+          style={{
+            fontSize: 30,
+            fontWeight: 500,
+            color: 'var(--leaf-text-title)',
+            letterSpacing: '-0.02em',
+            lineHeight: 1.2,
+            width: '100%',
+            maxWidth: 680,
+            caretColor: 'var(--leaf-green)',
+          }}
+          value={title}
+          onChange={(event) => onTitleChange(event.target.value)}
+          onBlur={(event) => onTitleBlur?.(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              onTitleEnter?.()
+              ;(event.target as HTMLInputElement).blur()
+            }
+          }}
+          placeholder={titlePlaceholder}
+        />
+      )}
 
       {description !== undefined && (
         <textarea

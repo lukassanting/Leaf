@@ -213,6 +213,8 @@ export interface PropertyDefinition {
   key: string
   label: string
   type: PropertyType
+  /** When true, table cells for this column wrap text instead of staying on one line. */
+  wrap?: boolean
 }
 
 export interface DatabaseSchema {
@@ -220,6 +222,8 @@ export interface DatabaseSchema {
 }
 
 export type ViewType = 'table' | 'list' | 'gallery' | 'board'
+
+export type GallerySize = 'small' | 'medium' | 'large'
 
 export interface Database {
   id: string

@@ -74,8 +74,12 @@
   --leaf-db-pill-muted-border: rgba(0, 0, 0, 0.06);
   --leaf-db-dot-green: #10b981;
   --leaf-db-dot-amber: #f59e0b;
+  --leaf-db-dot-blue: #2563eb;
   --leaf-db-dot-red: #ef4444;
   --leaf-db-dot-muted: #a1a1aa;
+  --leaf-db-pill-blue-bg: #e8f1fe;
+  --leaf-db-pill-blue-fg: #1e40af;
+  --leaf-db-pill-blue-border: #bfdbfe;
   --leaf-db-progress-track: #f4f4f5;
   --leaf-db-row-hover: rgba(0, 0, 0, 0.018);
   --leaf-db-chrome-hover: rgba(0, 0, 0, 0.04);
@@ -207,8 +211,12 @@ html[data-leaf-design="campaign"] {
   --leaf-db-pill-muted-border: var(--leaf-border-soft);
   --leaf-db-dot-green: #34d399;
   --leaf-db-dot-amber: #fbbf24;
+  --leaf-db-dot-blue: #60a5fa;
   --leaf-db-dot-red: #f87171;
   --leaf-db-dot-muted: #7a7569;
+  --leaf-db-pill-blue-bg: color-mix(in srgb, #3b82f6 18%, transparent);
+  --leaf-db-pill-blue-fg: #93c5fd;
+  --leaf-db-pill-blue-border: color-mix(in srgb, #3b82f6 40%, transparent);
   --leaf-db-progress-track: color-mix(in srgb, var(--leaf-border-soft) 75%, transparent);
   --leaf-db-row-hover: color-mix(in srgb, var(--leaf-green) 10%, transparent);
   --leaf-db-chrome-hover: color-mix(in srgb, var(--leaf-green) 12%, transparent);
@@ -861,8 +869,10 @@ html[data-leaf-design="campaign"] .ProseMirror pre code {
   outline-offset: 2px;
   border-radius: 6px;
 }
-/* Suppress heavy outline on embeds — they already have their own border */
-.ProseMirror [data-type="databaseEmbed"].ProseMirror-selectednode,
+/* Database embed: no selection outline (table is large; green ring is noisy). Page embed keeps a light ring. */
+.ProseMirror [data-type="databaseEmbed"].ProseMirror-selectednode {
+  outline: none;
+}
 .ProseMirror [data-type="pageEmbed"].ProseMirror-selectednode {
   outline: 2px solid color-mix(in srgb, var(--leaf-green) 38%, transparent);
 }
@@ -1068,6 +1078,15 @@ html[data-leaf-design="campaign"] .leaf-toggle-card-title {
 .leaf-workspace-shell {
   position: relative;
   z-index: 1;
+}
+
+/* Database table — grid lines, no focus ring on the table itself */
+.leaf-database-surface .leaf-db-table {
+  outline: none;
+}
+.leaf-database-surface .leaf-db-table th,
+.leaf-database-surface .leaf-db-table td {
+  border: 1px solid var(--leaf-border-soft);
 }
 
 /* Database surface — toolbar / row action hovers (theme via --leaf-db-chrome-hover*) */

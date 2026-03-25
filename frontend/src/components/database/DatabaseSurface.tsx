@@ -29,8 +29,8 @@
 
 'use client'
 
-import type { DatabaseRow, PropertyDefinition, ViewType } from '@/lib/api'
-import { AddColumnModal, BoardView, DatabaseToolbar, EditColumnModal, GalleryView, ListView, TableView } from '@/components/database/DatabaseViews'
+import type { DatabaseRow, GallerySize, PropertyDefinition, ViewType } from '@/lib/api'
+import { AddColumnModal, BoardView, DatabaseToolbar, GalleryView, ListView, TableView } from '@/components/database/DatabaseViews'
 
 type Props = {
   activeView: ViewType
@@ -45,11 +45,13 @@ type Props = {
   setShowAddCol: (value: boolean) => void
   addColumn: (definition: PropertyDefinition) => void | Promise<void>
   highlightedRowId?: string | null
-  columnBeingEdited?: PropertyDefinition | null
-  openColumnEditor?: (key: string) => void
-  closeColumnEditor?: () => void
-  saveColumnDefinition?: (key: string, patch: { label: string; type: PropertyDefinition['type'] }) => void | Promise<void>
+  saveColumnDefinition?: (
+    key: string,
+    patch: { label: string; type: PropertyDefinition['type']; wrap?: boolean },
+  ) => void | Promise<void>
   deleteColumn?: (key: string) => void | Promise<void>
+  gallerySize?: GallerySize
+  setGallerySize?: (size: GallerySize) => void
 }
 
 export function DatabaseSurface({
@@ -65,25 +67,22 @@ export function DatabaseSurface({
   setShowAddCol,
   addColumn,
   highlightedRowId,
-  columnBeingEdited = null,
-  openColumnEditor,
-  closeColumnEditor,
   saveColumnDefinition,
   deleteColumn,
+  gallerySize,
+  setGallerySize,
 }: Props) {
   return (
     <div className="leaf-database-surface">
       {showAddCol && <AddColumnModal onAdd={(definition) => { void addColumn(definition) }} onClose={() => setShowAddCol(false)} />}
-      {columnBeingEdited && closeColumnEditor && saveColumnDefinition ? (
-        <EditColumnModal
-          column={columnBeingEdited}
-          onClose={closeColumnEditor}
-          onSave={(patch) => { void saveColumnDefinition(columnBeingEdited.key, patch) }}
-          onDelete={deleteColumn ? () => { void deleteColumn(columnBeingEdited.key) } : undefined}
-        />
-      ) : null}
 
-      <DatabaseToolbar activeView={activeView} onSetView={(view) => { void setViewType(view) }} onAddRow={() => { void addRow() }} />
+      <DatabaseToolbar
+        activeView={activeView}
+        onSetView={(view) => { void setViewType(view) }}
+        onAddRow={() => { void addRow() }}
+        gallerySize={gallerySize}
+        onSetGallerySize={setGallerySize}
+      />
 
       {activeView === 'table' && (
         <TableView
@@ -95,7 +94,8 @@ export function DatabaseSurface({
           onAddRow={() => { void addRow() }}
           onAddColumn={() => setShowAddCol(true)}
           highlightedRowId={highlightedRowId}
-          openColumnEditor={openColumnEditor}
+          saveColumnDefinition={saveColumnDefinition}
+          deleteColumn={deleteColumn}
         />
       )}
       {activeView === 'board' && (
@@ -114,6 +114,7 @@ export function DatabaseSurface({
           onUpdateName={(rowId, title) => { void updateName(rowId, title) }}
           onDeleteRow={(rowId) => { void deleteRow(rowId) }}
           onAddRow={() => { void addRow() }}
+          gallerySize={gallerySize}
         />
       )}
       {activeView === 'list' && (

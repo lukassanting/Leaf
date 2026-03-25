@@ -34,7 +34,9 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigationProgress } from '@/components/NavigationProgress'
 import { warmEditorRoute } from '@/lib/warmEditorRoute'
-import type { DatabaseRow, LeafHeaderBanner, PropertyDefinition, ViewType } from '@/lib/api'
+import type { DatabaseRow, GallerySize, LeafHeaderBanner, PropertyDefinition, ViewType } from '@/lib/api'
+
+export type { GallerySize }
 
 function parseTagValues(value: unknown): string[] {
   if (Array.isArray(value)) return value as string[]
@@ -58,7 +60,7 @@ function formatDateCellDisplay(value: unknown): string {
   const s = String(value).trim()
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
     const d = new Date(`${s.slice(0, 10)}T12:00:00`)
-    return Number.isNaN(d.getTime()) ? s : d.toLocaleDateString()
+    return Number.isNaN(d.getTime()) ? s : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
   }
   return s
 }
@@ -79,13 +81,15 @@ const DB_CARD_COVER_TONES = [
 function GalleryCover({
   banner,
   fallbackTone,
+  height = 88,
 }: {
   banner?: LeafHeaderBanner | null
   fallbackTone: string
+  height?: number
 }) {
   if (banner?.src) {
     return (
-      <div className="h-[88px] w-full overflow-hidden" style={{ background: 'var(--leaf-bg-subtle)' }}>
+      <div className="w-full overflow-hidden" style={{ height, background: 'var(--leaf-bg-subtle)' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={banner.src}
@@ -97,7 +101,7 @@ function GalleryCover({
     )
   }
   return (
-    <div className="flex h-[88px] items-center justify-center" style={{ background: fallbackTone }}>
+    <div className="flex items-center justify-center" style={{ height, background: fallbackTone }}>
       <svg width="24" height="24" viewBox="0 0 16 16" fill="none" className="opacity-30" style={{ color: 'var(--leaf-db-icon-muted)' }}>
         <path d="M4.5 2.75H9.1L11.75 5.38V13.25H4.5V2.75Z" stroke="currentColor" strokeWidth="1.15" strokeLinejoin="round" />
         <path d="M8.9 2.75V5.55H11.75" stroke="currentColor" strokeWidth="1.15" strokeLinejoin="round" />
@@ -111,7 +115,7 @@ function getColumnByMatcher(columns: PropertyDefinition[], matcher: (column: Pro
 }
 
 function getStatusColumn(columns: PropertyDefinition[]) {
-  return getColumnByMatcher(columns, (column) => column.key === 'status' || column.label.toLowerCase() === 'status')
+  return getColumnByMatcher(columns, (column) => column.key === 'status' || column.label.toLowerCase() === 'status' || column.type === 'select')
 }
 
 function getTagColumn(columns: PropertyDefinition[]) {
@@ -130,44 +134,83 @@ function statusColumnSameAsTagColumn(
   return Boolean(status && tag && status.key === tag.key)
 }
 
-function classifyTone(raw: string): 'green' | 'amber' | 'red' | 'muted' {
+function classifyTone(raw: string): 'green' | 'blue' | 'amber' | 'red' | 'muted' {
   const value = raw.toLowerCase()
-  if (/(done|complete|completed|published|active)/.test(value)) return 'green'
-  if (/(progress|doing|review|blocked|soon)/.test(value)) return 'amber'
+  if (/(done|complete|completed|published)/.test(value)) return 'green'
+  if (/(in progress|progress|doing|review|blocked)/.test(value)) return 'blue'
+  if (/(soon|planned|todo|to do)/.test(value)) return 'amber'
   if (/(risk|urgent|stuck|bug|ai|cancelled)/.test(value)) return 'red'
   return 'muted'
 }
 
-function Pill({ label, tone = 'muted', compact = false }: { label: string; tone?: 'green' | 'amber' | 'red' | 'muted'; compact?: boolean }) {
+/** Pastel chip colours per tag label (reference: varied tag hues in table view). */
+function tagChipPalette(label: string): { background: string; color: string; borderColor: string } {
+  const palettes = [
+    { background: '#e0f2fe', color: '#0369a1', borderColor: '#bae6fd' },
+    { background: '#ede9fe', color: '#5b21b6', borderColor: '#ddd6fe' },
+    { background: '#d1fae5', color: '#047857', borderColor: '#a7f3d0' },
+    { background: '#fce7f3', color: '#9d174d', borderColor: '#fbcfe8' },
+    { background: '#fef3c7', color: '#b45309', borderColor: '#fde68a' },
+    { background: '#ffedd5', color: '#9a3412', borderColor: '#fed7aa' },
+    { background: '#e0e7ff', color: '#4338ca', borderColor: '#c7d2fe' },
+    { background: '#ccfbf1', color: '#0f766e', borderColor: '#99f6e4' },
+  ]
+  let h = 0
+  for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) >>> 0
+  return palettes[h % palettes.length]
+}
+
+/* ── StatusPill: round with colored dot (single-select status) ────────────── */
+function StatusPill({ label, tone = 'muted', compact = false }: { label: string; tone?: 'green' | 'blue' | 'amber' | 'red' | 'muted'; compact?: boolean }) {
   const styles = {
     green: { background: 'var(--leaf-db-pill-green-bg)', color: 'var(--leaf-db-pill-green-fg)', borderColor: 'var(--leaf-db-pill-green-border)' },
+    blue: { background: 'var(--leaf-db-pill-blue-bg)', color: 'var(--leaf-db-pill-blue-fg)', borderColor: 'var(--leaf-db-pill-blue-border)' },
     amber: { background: 'var(--leaf-db-pill-amber-bg)', color: 'var(--leaf-db-pill-amber-fg)', borderColor: 'var(--leaf-db-pill-amber-border)' },
     red: { background: 'var(--leaf-db-pill-red-bg)', color: 'var(--leaf-db-pill-red-fg)', borderColor: 'var(--leaf-db-pill-red-border)' },
     muted: { background: 'var(--leaf-db-pill-muted-bg)', color: 'var(--leaf-db-pill-muted-fg)', borderColor: 'var(--leaf-db-pill-muted-border)' },
   }[tone]
 
+  const dotColor = {
+    green: 'var(--leaf-db-dot-green)',
+    blue: 'var(--leaf-db-dot-blue)',
+    amber: 'var(--leaf-db-dot-amber)',
+    red: 'var(--leaf-db-dot-red)',
+    muted: 'var(--leaf-db-dot-muted)',
+  }[tone]
+
   return (
     <span
-      className="inline-flex items-center rounded-full border"
+      className="inline-flex items-center gap-1.5 rounded-full border"
       style={{
         ...styles,
         fontSize: compact ? 10 : 10.5,
-        padding: compact ? '1px 7px' : '2px 8px',
+        padding: compact ? '1px 8px 1px 6px' : '2px 10px 2px 7px',
       }}
     >
+      <span className="inline-block rounded-full" style={{ width: 6, height: 6, background: dotColor, flexShrink: 0 }} />
       {label}
     </span>
   )
 }
 
-function StatusDot({ tone }: { tone: 'green' | 'amber' | 'red' | 'muted' }) {
-  const color = {
-    green: 'var(--leaf-db-dot-green)',
-    amber: 'var(--leaf-db-dot-amber)',
-    red: 'var(--leaf-db-dot-red)',
-    muted: 'var(--leaf-db-dot-muted)',
-  }[tone]
-  return <span className="inline-block rounded-full" style={{ width: 6, height: 6, background: color }} />
+/* ── TagPill: squared-off tag chip (multi-select tags) ────────────────────── */
+function TagPill({ label, compact = false }: { label: string; compact?: boolean }) {
+  const p = tagChipPalette(label)
+  return (
+    <span
+      className="inline-flex items-center border"
+      style={{
+        background: p.background,
+        color: p.color,
+        borderColor: p.borderColor,
+        fontSize: compact ? 10 : 10.5,
+        padding: compact ? '1px 6px' : '2px 8px',
+        borderRadius: 4,
+      }}
+    >
+      {label}
+    </span>
+  )
 }
 
 function TagChips({ value, compact = false }: { value: unknown; compact?: boolean }) {
@@ -177,7 +220,7 @@ function TagChips({ value, compact = false }: { value: unknown; compact?: boolea
   return (
     <div className="flex flex-wrap gap-1">
       {tags.map((tag) => (
-        <Pill key={tag} label={tag} tone={classifyTone(tag)} compact={compact} />
+        <TagPill key={tag} label={tag} compact={compact} />
       ))}
     </div>
   )
@@ -187,12 +230,7 @@ function StatusValue({ value, compact = false }: { value: unknown; compact?: boo
   if (!value) return <span className="text-xs" style={{ color: 'var(--leaf-text-hint)' }}>—</span>
   const label = String(value)
   const tone = classifyTone(label)
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <StatusDot tone={tone} />
-      <Pill label={label} tone={tone} compact={compact} />
-    </span>
-  )
+  return <StatusPill label={label} tone={tone} compact={compact} />
 }
 
 function ProgressValue({ value }: { value: unknown }) {
@@ -208,6 +246,7 @@ function ProgressValue({ value }: { value: unknown }) {
 
 function renderPropertyValue(column: PropertyDefinition, value: unknown, compact = false) {
   if (column.type === 'tags') return <TagChips value={value} compact={compact} />
+  if (column.type === 'select') return <StatusValue value={value} compact={compact} />
   if (column.type === 'number') {
     const n = parseNumberValue(value)
     return (
@@ -227,6 +266,199 @@ function renderPropertyValue(column: PropertyDefinition, value: unknown, compact
   return <span className="text-sm" style={{ color: 'var(--leaf-text-sidebar)' }}>{String(value || '—')}</span>
 }
 
+function isoDatePrefix(s: string): string | null {
+  const t = String(s || '').trim()
+  return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : null
+}
+
+/* ── DatePicker: text field + month grid (incl. faded adjacent-month days) ─── */
+function DatePicker({
+  value,
+  onSave,
+  onClose,
+}: {
+  value: string
+  onSave: (val: string) => void
+  onClose: () => void
+}) {
+  const today = new Date()
+  const parsed = isoDatePrefix(value)
+  const initial = parsed ? new Date(`${parsed}T12:00:00`) : today
+  const [viewYear, setViewYear] = useState(initial.getFullYear())
+  const [viewMonth, setViewMonth] = useState(initial.getMonth())
+  const [selected, setSelected] = useState(parsed || '')
+  const [textField, setTextField] = useState(() => (parsed ? formatDateCellDisplay(parsed) : ''))
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const p = isoDatePrefix(value)
+    setSelected(p || '')
+    setTextField(p ? formatDateCellDisplay(p) : '')
+  }, [value])
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onClose])
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1) }
+    else setViewMonth((m) => m - 1)
+  }
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1) }
+    else setViewMonth((m) => m + 1)
+  }
+  const goToday = () => {
+    setViewYear(today.getFullYear())
+    setViewMonth(today.getMonth())
+  }
+
+  const applyIso = (iso: string) => {
+    setSelected(iso)
+    setTextField(formatDateCellDisplay(iso))
+    onSave(iso)
+    onClose()
+  }
+
+  const tryParseTextField = () => {
+    const raw = textField.trim()
+    if (!raw) return
+    const tryD = new Date(raw)
+    if (!Number.isNaN(tryD.getTime())) {
+      const iso = `${tryD.getFullYear()}-${String(tryD.getMonth() + 1).padStart(2, '0')}-${String(tryD.getDate()).padStart(2, '0')}`
+      applyIso(iso)
+      return
+    }
+    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (m) applyIso(`${m[1]}-${m[2]}-${m[3]}`)
+  }
+
+  const clear = () => { onSave(''); onClose() }
+
+  const firstDow = new Date(viewYear, viewMonth, 1).getDay()
+  const dim = new Date(viewYear, viewMonth + 1, 0).getDate()
+  const prevDim = new Date(viewYear, viewMonth, 0).getDate()
+
+  type Cell = { day: number; y: number; m: number; inMonth: boolean }
+  const cells: Cell[] = []
+  for (let i = 0; i < 42; i++) {
+    const offset = i - firstDow + 1
+    if (offset < 1) {
+      const pm = viewMonth === 0 ? 11 : viewMonth - 1
+      const py = viewMonth === 0 ? viewYear - 1 : viewYear
+      cells.push({ day: prevDim + offset, y: py, m: pm, inMonth: false })
+    } else if (offset > dim) {
+      const nm = viewMonth === 11 ? 0 : viewMonth + 1
+      const ny = viewMonth === 11 ? viewYear + 1 : viewYear
+      cells.push({ day: offset - dim, y: ny, m: nm, inMonth: false })
+    } else {
+      cells.push({ day: offset, y: viewYear, m: viewMonth, inMonth: true })
+    }
+  }
+
+  const cellIso = (c: Cell) =>
+    `${c.y}-${String(c.m + 1).padStart(2, '0')}-${String(c.day).padStart(2, '0')}`
+
+  const isTodayCell = (c: Cell) =>
+    c.y === today.getFullYear() && c.m === today.getMonth() && c.day === today.getDate()
+
+  const monthShortYear = new Date(viewYear, viewMonth).toLocaleString(undefined, { month: 'short', year: 'numeric' })
+  const weekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+  const primary = 'var(--color-primary)'
+  const onPrimary = 'var(--leaf-on-accent)'
+
+  return (
+    <div
+      ref={ref}
+      className="absolute z-50 mt-1 w-[280px] rounded-xl border py-2.5 pl-3 pr-3 shadow-lg"
+      style={{
+        background: 'var(--leaf-bg-elevated)',
+        borderColor: 'var(--leaf-border-strong)',
+        boxShadow: 'var(--leaf-shadow-soft)',
+      }}
+    >
+      <input
+        className="mb-2.5 w-full rounded-lg border px-2.5 py-2 text-[13px] focus:outline-none"
+        style={{
+          borderColor: 'var(--leaf-border-soft)',
+          background: 'color-mix(in srgb, var(--color-primary) 8%, var(--leaf-bg-subtle))',
+          color: 'var(--leaf-text-title)',
+        }}
+        value={textField}
+        placeholder="Mar 25, 2026"
+        onChange={(e) => setTextField(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') tryParseTextField()
+          if (e.key === 'Escape') onClose()
+        }}
+      />
+
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-[12px] font-medium" style={{ color: 'var(--leaf-text-title)' }}>{monthShortYear}</span>
+        <div className="flex items-center gap-0.5">
+          <button type="button" onClick={goToday} className="rounded px-1.5 py-0.5 text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>Today</button>
+          <button type="button" onClick={prevMonth} className="rounded px-1 py-0.5 text-sm" style={{ color: 'var(--leaf-text-muted)' }} aria-label="Previous month">‹</button>
+          <button type="button" onClick={nextMonth} className="rounded px-1 py-0.5 text-sm" style={{ color: 'var(--leaf-text-muted)' }} aria-label="Next month">›</button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-0 mb-0.5">
+        {weekdays.map((d) => (
+          <div key={d} className="py-1 text-center text-[10px] font-medium" style={{ color: 'var(--leaf-text-muted)' }}>{d}</div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-0">
+        {cells.map((c, idx) => {
+          const iso = cellIso(c)
+          const sel = selected === iso
+          return (
+            <button
+              key={`${idx}-${iso}`}
+              type="button"
+              onClick={() => applyIso(iso)}
+              className="flex h-[32px] w-full items-center justify-center rounded-md text-[12px] transition-colors"
+              style={{
+                background: sel ? primary : isTodayCell(c) && c.inMonth ? 'var(--leaf-bg-subtle)' : undefined,
+                color: sel ? onPrimary : c.inMonth ? 'var(--leaf-text-body)' : 'var(--leaf-text-hint)',
+                opacity: c.inMonth ? 1 : 0.45,
+                fontWeight: isTodayCell(c) && !sel ? 600 : 400,
+              }}
+              onMouseEnter={(e) => {
+                if (!sel) e.currentTarget.style.background = 'var(--leaf-db-chrome-hover)'
+              }}
+              onMouseLeave={(e) => {
+                if (!sel) {
+                  e.currentTarget.style.background = isTodayCell(c) && c.inMonth ? 'var(--leaf-bg-subtle)' : ''
+                }
+              }}
+            >
+              {c.day}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="mt-2 border-t pt-2" style={{ borderColor: 'var(--leaf-border-soft)' }}>
+        <button
+          type="button"
+          onClick={clear}
+          className="w-full rounded-md px-2 py-1.5 text-left text-[12px] transition-colors"
+          style={{ color: 'var(--leaf-text-muted)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--leaf-db-chrome-hover)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
+        >
+          Clear
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function Cell({
   value,
   propDef,
@@ -238,14 +470,46 @@ function Cell({
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(String(value ?? ''))
+  const [showDatePicker, setShowDatePicker] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const cellRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setDraft(String(value ?? '')) }, [value])
-  useEffect(() => { if (editing) inputRef.current?.select() }, [editing])
+  useEffect(() => { if (editing && propDef.type !== 'date') inputRef.current?.select() }, [editing, propDef.type])
 
   const commit = () => {
     setEditing(false)
     if (draft !== String(value ?? '')) onSave(draft)
+  }
+
+  if (propDef.type === 'date') {
+    return (
+      <div ref={cellRef} className="relative">
+        <button
+          type="button"
+          className="flex min-h-[28px] w-full cursor-pointer items-center gap-2 rounded-md border px-2 py-1 text-left transition-colors"
+          style={{
+            borderColor: 'var(--leaf-border-soft)',
+            background: 'var(--leaf-bg-subtle)',
+            color: 'var(--leaf-text-body)',
+          }}
+          onClick={() => setShowDatePicker(true)}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0 opacity-50" aria-hidden>
+            <rect x="2.5" y="3.5" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+            <path d="M2.5 6.5h11M5.5 2v2M10.5 2v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+          <span className="min-w-0 flex-1 truncate text-[13px]">{formatDateCellDisplay(value)}</span>
+        </button>
+        {showDatePicker && (
+          <DatePicker
+            value={String(value ?? '')}
+            onSave={onSave}
+            onClose={() => setShowDatePicker(false)}
+          />
+        )}
+      </div>
+    )
   }
 
   if (!editing) {
@@ -261,7 +525,7 @@ function Cell({
     )
   }
 
-  const inputType = propDef.type === 'date' ? 'date' : propDef.type === 'number' ? 'number' : 'text'
+  const inputType = propDef.type === 'number' ? 'number' : 'text'
 
   return (
     <input
@@ -269,8 +533,7 @@ function Cell({
       type={inputType}
       className="w-full rounded-md px-2 py-1 text-sm focus:outline-none"
       style={{
-        border: '1px solid color-mix(in srgb, var(--leaf-green) 26%, transparent)',
-        boxShadow: '0 0 0 1px color-mix(in srgb, var(--leaf-green) 10%, transparent)',
+        border: '1px solid var(--leaf-border-strong)',
         background: 'var(--leaf-bg-elevated)',
       }}
       value={draft}
@@ -308,7 +571,7 @@ function NameCell({ row, onSave }: { row: DatabaseRow; onSave: (title: string) =
         ref={inputRef}
         className="w-full rounded px-1 py-0 text-sm font-medium focus:outline-none"
         style={{
-          border: '1px solid color-mix(in srgb, var(--leaf-green) 26%, transparent)',
+          border: '1px solid var(--leaf-border-strong)',
           background: 'var(--leaf-bg-elevated)',
         }}
         value={draft}
@@ -359,12 +622,14 @@ function RowPreview({
   row,
   columns,
   coverTone,
+  coverHeight,
   onUpdateName,
   onDeleteRow,
 }: {
   row: DatabaseRow
   columns: PropertyDefinition[]
   coverTone: string
+  coverHeight?: number
   onUpdateName: (rowId: string, title: string) => void
   onDeleteRow: (rowId: string) => void
 }) {
@@ -380,7 +645,7 @@ function RowPreview({
         background: 'var(--leaf-bg-elevated)',
       }}
     >
-      <GalleryCover banner={row.leaf_header_banner} fallbackTone={coverTone} />
+      <GalleryCover banner={row.leaf_header_banner} fallbackTone={coverTone} height={coverHeight} />
       <div className="px-3.5 py-3">
       <div className="mb-2">
         <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
@@ -444,11 +709,11 @@ export function AddColumnModal({ onAdd, onClose }: { onAdd: (def: PropertyDefini
           value={type}
           onChange={(event) => setType(event.target.value as PropertyDefinition['type'])}
         >
+          <option value="select">Status</option>
+          <option value="tags">Tags</option>
           <option value="text">Text</option>
           <option value="number">Number</option>
           <option value="date">Date</option>
-          <option value="tags">Tags</option>
-          <option value="select">Select</option>
         </select>
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>Cancel</button>
@@ -466,92 +731,233 @@ export function AddColumnModal({ onAdd, onClose }: { onAdd: (def: PropertyDefini
   )
 }
 
-export function EditColumnModal({
+function PropertyHeaderGlyph({ type }: { type: PropertyDefinition['type'] }) {
+  const muted = 'var(--leaf-text-muted)'
+  if (type === 'tags') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ color: muted, flexShrink: 0 }} aria-hidden>
+        <path d="M3 4.5h1.5v1H3V4.5zm0 3h1.5v1H3V7.5zm0 3h1.5v1H3v-1zM6.5 4h7M6.5 8h7M6.5 12h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    )
+  }
+  if (type === 'select') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ color: muted, flexShrink: 0 }} aria-hidden>
+        <path d="M8 2.5L9.2 5.8l3.5.4-2.7 2.4.8 3.4L8 10.1 4.2 12l.8-3.4-2.7-2.4 3.5-.4L8 2.5z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+      </svg>
+    )
+  }
+  if (type === 'date') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ color: muted, flexShrink: 0 }} aria-hidden>
+        <rect x="2.5" y="3.5" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+        <path d="M2.5 6.5h11M5.5 2v2M10.5 2v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    )
+  }
+  if (type === 'number') {
+    return <span style={{ color: muted, fontSize: 12, width: 14, textAlign: 'center', flexShrink: 0 }}>#</span>
+  }
+  return <span style={{ color: muted, fontSize: 11, width: 14, textAlign: 'center', flexShrink: 0 }}>Aa</span>
+}
+
+export type ColumnDefinitionPatch = { label: string; type: PropertyDefinition['type']; wrap?: boolean }
+
+/* ── ColumnHeaderMenu: property menu (rename, type, wrap, delete) ─────────── */
+export function ColumnHeaderMenu({
   column,
   onSave,
   onClose,
   onDelete,
 }: {
   column: PropertyDefinition
-  onSave: (patch: { label: string; type: PropertyDefinition['type'] }) => void
+  onSave: (patch: ColumnDefinitionPatch) => void
   onClose: () => void
   onDelete?: () => void
 }) {
   const [label, setLabel] = useState(column.label)
-  const [type, setType] = useState<PropertyDefinition['type']>(column.type)
+  const [localType, setLocalType] = useState(column.type)
+  const [localWrap, setLocalWrap] = useState(column.wrap ?? false)
+  const [showTypeMenu, setShowTypeMenu] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setLabel(column.label)
-    setType(column.type)
+    setLocalType(column.type)
+    setLocalWrap(column.wrap ?? false)
+    setShowTypeMenu(false)
   }, [column])
 
-  const submit = () => {
-    if (!label.trim()) return
-    onSave({ label: label.trim(), type })
+  useEffect(() => { inputRef.current?.select() }, [])
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        if (label.trim() && label.trim() !== column.label) {
+          onSave({ label: label.trim(), type: localType, wrap: localWrap })
+        }
+        onClose()
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [label, column.label, column.key, localType, localWrap, onSave, onClose])
+
+  const typeOptions: { value: PropertyDefinition['type']; label: string }[] = [
+    { value: 'select', label: 'Status' },
+    { value: 'tags', label: 'Tags' },
+    { value: 'text', label: 'Text' },
+    { value: 'number', label: 'Number' },
+    { value: 'date', label: 'Date' },
+  ]
+
+  const menuItemClass = 'flex w-full items-center gap-2.5 rounded-md px-2.5 py-[7px] text-left text-[12px] transition-colors'
+  const menuItemStyle = { color: 'var(--leaf-text-body)' }
+
+  const flushRename = () => {
+    if (label.trim()) onSave({ label: label.trim(), type: localType, wrap: localWrap })
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div
-        className="relative w-72 space-y-3 rounded-xl border p-5 shadow-lg"
-        style={{
-          borderColor: 'var(--leaf-border-strong)',
-          boxShadow: 'var(--leaf-shadow-soft)',
-          background: 'var(--leaf-bg-elevated)',
-        }}
-      >
-        <h2 className="text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>Edit property</h2>
-        <p className="text-[11px] leading-snug" style={{ color: 'var(--leaf-text-muted)' }}>
-          Key &ldquo;{column.key}&rdquo; is fixed. Rename or change type here; use Delete to remove the column and all its cell values.
-        </p>
+    <div
+      ref={ref}
+      className="absolute left-0 top-full z-50 mt-1 w-[min(280px,calc(100vw-24px))] rounded-xl border py-1.5 shadow-lg"
+      style={{
+        background: 'var(--leaf-bg-elevated)',
+        borderColor: 'var(--leaf-border-strong)',
+        boxShadow: 'var(--leaf-shadow-soft)',
+      }}
+    >
+      <div className="flex items-center gap-2 px-2.5 pb-2 pt-1">
+        <PropertyHeaderGlyph type={localType} />
         <input
+          ref={inputRef}
           autoFocus
-          className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
-          style={{ borderColor: 'var(--leaf-border-strong)' }}
-          placeholder="Column name"
+          className="min-w-0 flex-1 rounded-md border px-2 py-1.5 text-[13px] focus:outline-none"
+          style={{
+            borderColor: 'var(--color-primary)',
+            background: 'var(--leaf-bg-subtle)',
+            color: 'var(--leaf-text-title)',
+          }}
+          placeholder="Property name"
           value={label}
-          onChange={(event) => setLabel(event.target.value)}
-          onKeyDown={(event) => event.key === 'Enter' && submit()}
+          onChange={(e) => setLabel(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              flushRename()
+              onClose()
+            }
+            if (e.key === 'Escape') onClose()
+          }}
         />
-        <select
-          className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
-          style={{ borderColor: 'var(--leaf-border-strong)' }}
-          value={type}
-          onChange={(event) => setType(event.target.value as PropertyDefinition['type'])}
+        <span
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold"
+          style={{ color: 'var(--leaf-text-muted)', border: '1px solid var(--leaf-border-soft)' }}
+          title={`Stored key: ${column.key}`}
         >
-          <option value="text">Text</option>
-          <option value="number">Number</option>
-          <option value="date">Date</option>
-          <option value="tags">Tags</option>
-          <option value="select">Select</option>
-        </select>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          {onDelete ? (
-            <button
-              type="button"
-              onClick={onDelete}
-              className="px-2 py-1.5 text-sm"
-              style={{ color: 'var(--leaf-red, #ef4444)' }}
-            >
-              Delete property
-            </button>
-          ) : (
-            <span />
-          )}
-          <div className="flex gap-2">
-            <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>Cancel</button>
-            <button
-              type="button"
-              onClick={submit}
-              className="rounded-lg px-3 py-1.5 text-sm transition"
-              style={{ background: 'var(--leaf-green)', color: 'var(--leaf-on-accent)' }}
-            >
-              Save
-            </button>
-          </div>
-        </div>
+          i
+        </span>
       </div>
+
+      <div className="mx-2 border-t" style={{ borderColor: 'var(--leaf-border-soft)' }} />
+
+      <div className="relative px-1 py-0.5">
+        <button
+          type="button"
+          className={menuItemClass}
+          style={menuItemStyle}
+          onClick={() => setShowTypeMenu(!showTypeMenu)}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--leaf-db-chrome-hover)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.45 }} aria-hidden>
+            <path d="M4 5.5A4.5 4.5 0 0 1 11.2 4M12 2.5v2.5H9.5M12 10.5A4.5 4.5 0 0 1 4.8 12M4 13.5V11h2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="flex-1">Change type</span>
+          <span className="text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
+            {typeOptions.find((t) => t.value === localType)?.label}
+          </span>
+          <span style={{ color: 'var(--leaf-text-muted)', fontSize: 11 }}>›</span>
+        </button>
+        {showTypeMenu && (
+          <div
+            className="absolute left-full top-0 z-[60] ml-1 w-[168px] rounded-lg border py-1 shadow-lg"
+            style={{
+              background: 'var(--leaf-bg-elevated)',
+              borderColor: 'var(--leaf-border-strong)',
+              boxShadow: 'var(--leaf-shadow-soft)',
+            }}
+          >
+            {typeOptions.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={menuItemClass}
+                style={{
+                  ...menuItemStyle,
+                  fontWeight: localType === opt.value ? 500 : 400,
+                  background: localType === opt.value ? 'var(--leaf-db-chrome-hover)' : undefined,
+                }}
+                onClick={() => {
+                  setLocalType(opt.value)
+                  onSave({ label: label.trim() || column.label, type: opt.value, wrap: localWrap })
+                  setShowTypeMenu(false)
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--leaf-db-chrome-hover)' }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = localType === opt.value ? 'var(--leaf-db-chrome-hover)' : ''
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="px-1 pb-0.5">
+        <button
+          type="button"
+          className={menuItemClass}
+          style={{
+            ...menuItemStyle,
+            background: localWrap ? 'var(--leaf-db-chrome-hover)' : undefined,
+          }}
+          onClick={() => {
+            const next = !localWrap
+            setLocalWrap(next)
+            onSave({ label: label.trim() || column.label, type: localType, wrap: next })
+          }}
+          onMouseEnter={(e) => { if (!localWrap) e.currentTarget.style.background = 'var(--leaf-db-chrome-hover)' }}
+          onMouseLeave={(e) => { if (!localWrap) e.currentTarget.style.background = '' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.45 }} aria-hidden>
+            <path d="M4 3.5h6a2 2 0 0 1 0 4H4M4 7.5l-2 2 2 2M12 12.5H6a2 2 0 0 1 0-4h6M12 8.5l2-2-2-2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Wrap text
+        </button>
+      </div>
+
+      <div className="mx-2 border-t" style={{ borderColor: 'var(--leaf-border-soft)' }} />
+
+      {onDelete ? (
+        <div className="px-1 pt-0.5">
+          <button
+            type="button"
+            className={menuItemClass}
+            style={{ color: 'var(--leaf-red, #ef4444)' }}
+            onClick={() => { onDelete(); onClose() }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--leaf-db-chrome-hover)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.55 }} aria-hidden>
+              <path d="M5 3V2h6v1M3 4h10M4.5 4v8.5h7V4" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+            </svg>
+            Delete property
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -560,10 +966,14 @@ export function DatabaseToolbar({
   activeView,
   onSetView,
   onAddRow,
+  gallerySize,
+  onSetGallerySize,
 }: {
   activeView: ViewType
   onSetView: (view: ViewType) => void
   onAddRow: () => void
+  gallerySize?: GallerySize
+  onSetGallerySize?: (size: GallerySize) => void
 }) {
   const viewIcons: Record<ViewType, React.ReactNode> = {
     table: (
@@ -602,6 +1012,8 @@ export function DatabaseToolbar({
     { key: 'list', label: 'List' },
   ]
 
+  const gallerySizes: GallerySize[] = ['small', 'medium', 'large']
+
   return (
     <div
       className="mb-0 flex items-center justify-between border-b px-2"
@@ -630,6 +1042,26 @@ export function DatabaseToolbar({
 
       {/* Action buttons */}
       <div className="flex items-center gap-0.5 pb-1">
+        {/* Gallery size selector */}
+        {activeView === 'gallery' && onSetGallerySize && (
+          <div className="mr-2 flex items-center gap-0.5 rounded-md border px-1 py-0.5" style={{ borderColor: 'var(--leaf-border-soft)' }}>
+            {gallerySizes.map((size) => (
+              <button
+                key={size}
+                type="button"
+                onClick={() => onSetGallerySize(size)}
+                className="rounded px-1.5 py-0.5 text-[10px] capitalize transition-colors"
+                style={{
+                  background: gallerySize === size ? 'var(--leaf-db-chrome-hover-strong)' : undefined,
+                  color: gallerySize === size ? 'var(--leaf-text-title)' : 'var(--leaf-text-muted)',
+                  fontWeight: gallerySize === size ? 500 : 400,
+                }}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        )}
         <button
           type="button"
           className="leaf-db-toolbar-btn flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors"
@@ -668,7 +1100,7 @@ export function DatabaseToolbar({
 }
 
 export function TableView({
-  rows, columns, onUpdateName, onUpdateCell, onDeleteRow, onAddRow, onAddColumn, highlightedRowId, openColumnEditor,
+  rows, columns, onUpdateName, onUpdateCell, onDeleteRow, onAddRow, onAddColumn, highlightedRowId, saveColumnDefinition, deleteColumn,
 }: {
   rows: DatabaseRow[]
   columns: PropertyDefinition[]
@@ -678,11 +1110,18 @@ export function TableView({
   onAddRow: () => void
   onAddColumn: () => void
   highlightedRowId?: string | null
-  openColumnEditor?: (key: string) => void
+  saveColumnDefinition?: (key: string, patch: ColumnDefinitionPatch) => void | Promise<void>
+  deleteColumn?: (key: string) => void | Promise<void>
 }) {
+  const [headerMenuKey, setHeaderMenuKey] = useState<string | null>(null)
+
+  const openHeaderMenu = (key: string) => {
+    setHeaderMenuKey((current) => (current === key ? null : key))
+  }
+
   return (
     <div className="overflow-x-auto px-2 pb-2">
-      <table className="w-full border-collapse text-sm">
+      <table className="leaf-db-table w-full border-collapse text-sm">
         <thead>
           <tr style={{ borderBottom: '1px solid var(--leaf-border-soft)' }}>
             <th className="w-56 whitespace-nowrap px-3 py-2 text-left text-[11px] font-medium" style={{ color: 'var(--leaf-text-muted)' }}>
@@ -696,36 +1135,42 @@ export function TableView({
             {columns.map((column) => (
               <th
                 key={column.key}
-                className="group whitespace-nowrap px-3 py-2 text-left text-[11px] font-medium"
-                style={{ color: 'var(--leaf-text-muted)' }}
-                onDoubleClick={(event) => {
-                  if (!openColumnEditor) return
-                  if ((event.target as HTMLElement).closest('button')) return
-                  openColumnEditor(column.key)
+                className={`group relative px-3 py-2 text-left text-[11px] font-medium ${column.wrap ? 'align-top' : 'whitespace-nowrap'}`}
+                style={{ color: 'var(--leaf-text-muted)', cursor: 'pointer', maxWidth: column.wrap ? 280 : undefined }}
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest('.leaf-col-menu')) return
+                  if ((event.target as HTMLElement).closest('.leaf-col-header-menu-btn')) return
+                  openHeaderMenu(column.key)
                 }}
               >
-                <span className="flex items-center gap-0.5">
-                  {/status/i.test(column.label) && <span style={{ opacity: 0.45, fontSize: 9 }}>●</span>}
-                  {column.type === 'tags' && <span style={{ opacity: 0.45, fontSize: 9 }}>⊛</span>}
-                  {column.type === 'number' && <span style={{ opacity: 0.45 }}>#</span>}
-                  {column.type === 'date' && <span style={{ opacity: 0.45 }}>◷</span>}
-                  {column.label}
-                  {openColumnEditor ? (
-                    <button
-                      type="button"
-                      className="ml-0.5 rounded px-0.5 py-0 text-[10px] opacity-60 transition-opacity hover:opacity-100 group-hover:opacity-100"
-                      style={{ color: 'var(--leaf-text-muted)' }}
-                      title="Edit property name/type"
-                      onClick={(event) => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                        openColumnEditor(column.key)
-                      }}
-                    >
-                      ✎
-                    </button>
-                  ) : null}
-                </span>
+                <div className="flex items-center justify-between gap-1">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <PropertyHeaderGlyph type={column.type} />
+                    <span className="truncate">{column.label}</span>
+                  </span>
+                  <button
+                    type="button"
+                    className="leaf-col-header-menu-btn shrink-0 rounded px-0.5 text-[15px] leading-none opacity-0 transition-opacity group-hover:opacity-100"
+                    style={{ color: 'var(--leaf-text-muted)' }}
+                    aria-label="Column options"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      openHeaderMenu(column.key)
+                    }}
+                  >
+                    ⋯
+                  </button>
+                </div>
+                {headerMenuKey === column.key && saveColumnDefinition && (
+                  <div className="leaf-col-menu">
+                    <ColumnHeaderMenu
+                      column={column}
+                      onSave={(patch) => { void saveColumnDefinition(column.key, patch) }}
+                      onClose={() => setHeaderMenuKey(null)}
+                      onDelete={deleteColumn ? () => { void deleteColumn(column.key) } : undefined}
+                    />
+                  </div>
+                )}
               </th>
             ))}
             <th className="px-3 py-2 text-left" style={{ color: 'var(--leaf-text-muted)' }}>
@@ -759,7 +1204,11 @@ export function TableView({
                   <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
                 </td>
                 {columns.map((column) => (
-                  <td key={column.key} className="px-3 py-2 align-middle" style={{ color: 'var(--leaf-text-body)' }}>
+                  <td
+                    key={column.key}
+                    className={`px-3 py-2 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap'}`}
+                    style={{ color: 'var(--leaf-text-body)', maxWidth: column.wrap ? 280 : undefined }}
+                  >
                     <Cell value={(row.properties || {})[column.key]} propDef={column} onSave={(value) => onUpdateCell(row.id, column.key, value)} />
                   </td>
                 ))}
@@ -829,10 +1278,7 @@ export function BoardView({
         <div key={group} className="w-[240px] min-w-[240px] shrink-0">
           <div className="flex items-center justify-between px-0.5 pb-2.5">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5">
-                <StatusDot tone={classifyTone(group)} />
-                <Pill label={group} tone={classifyTone(group)} compact />
-              </span>
+              <StatusPill label={group} tone={classifyTone(group)} compact />
               <span className="text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>{groupRows.length}</span>
             </div>
             <div className="flex items-center gap-1">
@@ -876,25 +1322,34 @@ export function BoardView({
   )
 }
 
+const GALLERY_CONFIG: Record<GallerySize, { cols: string; coverH: number; minH: number }> = {
+  small: { cols: 'sm:grid-cols-3 xl:grid-cols-4', coverH: 60, minH: 120 },
+  medium: { cols: 'sm:grid-cols-2 xl:grid-cols-3', coverH: 88, minH: 152 },
+  large: { cols: 'sm:grid-cols-1 xl:grid-cols-2', coverH: 140, minH: 200 },
+}
+
 export function GalleryView({
   rows,
   columns,
   onUpdateName,
   onAddRow,
+  gallerySize = 'medium',
 }: {
   rows: DatabaseRow[]
   columns: PropertyDefinition[]
   onUpdateName: (rowId: string, title: string) => void
   onDeleteRow: (rowId: string) => void
   onAddRow: () => void
+  gallerySize?: GallerySize
 }) {
   const statusColumn = getStatusColumn(columns)
   const tagColumn = getTagColumn(columns)
   const estimateColumn = getEstimateColumn(columns)
   const sameStatusTag = statusColumnSameAsTagColumn(statusColumn, tagColumn)
+  const config = GALLERY_CONFIG[gallerySize]
 
   return (
-    <div className="grid gap-3 px-2 py-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div className={`grid gap-3 px-2 py-3 ${config.cols}`}>
       {rows.map((row, index) => {
         const status = statusColumn ? (row.properties || {})[statusColumn.key] : null
         const tone = DB_CARD_COVER_TONES[index % DB_CARD_COVER_TONES.length]
@@ -908,7 +1363,7 @@ export function GalleryView({
               background: 'var(--leaf-bg-elevated)',
             }}
           >
-            <GalleryCover banner={row.leaf_header_banner} fallbackTone={tone} />
+            <GalleryCover banner={row.leaf_header_banner} fallbackTone={tone} height={config.coverH} />
             <div className="px-3 py-2.5">
               <div className="mb-1.5">
                 <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
@@ -939,8 +1394,8 @@ export function GalleryView({
       <button
         type="button"
         onClick={onAddRow}
-        className="flex min-h-[152px] items-center justify-center rounded-xl border border-dashed"
-        style={{ borderColor: 'var(--leaf-border-soft)', background: 'var(--leaf-bg-app)' }}
+        className="flex items-center justify-center rounded-xl border border-dashed"
+        style={{ minHeight: config.minH, borderColor: 'var(--leaf-border-soft)', background: 'var(--leaf-bg-app)' }}
       >
         <div className="flex flex-col items-center gap-1 text-[11.5px]" style={{ color: 'var(--leaf-text-muted)' }}>
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">

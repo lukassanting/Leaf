@@ -29,8 +29,9 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { databasesApi } from '@/lib/api'
-import type { Database, DatabaseRow, LeafIcon, PropertyDefinition, ViewType } from '@/lib/api'
+import type { Database, DatabaseRow, GallerySize, LeafIcon, PropertyDefinition, ViewType } from '@/lib/api'
 import {
   createDatabaseRow,
   updateDatabaseAndEmitTitle,
@@ -40,11 +41,12 @@ import {
 import { useDatabaseBreadcrumbs } from './useDatabaseBreadcrumbs'
 
 export function useDatabasePage(id: string) {
+  const router = useRouter()
   const [db, setDb] = useState<Database | null>(null)
   const [rows, setRows] = useState<DatabaseRow[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddCol, setShowAddCol] = useState(false)
-  const [columnEditKey, setColumnEditKey] = useState<string | null>(null)
+  const [gallerySize, setGallerySizeState] = useState<GallerySize>('medium')
   const [titleDraft, setTitleDraft] = useState('')
   const [descriptionDraft, setDescriptionDraft] = useState('')
   const [tagsDraft, setTagsDraft] = useState<string[]>([])
@@ -70,6 +72,25 @@ export function useDatabasePage(id: string) {
       })
       .catch(console.error)
       .finally(() => setLoading(false))
+  }, [id])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !id) return
+    try {
+      const raw = localStorage.getItem(`leaf-db-gallery-size:${id}`)
+      if (raw === 'small' || raw === 'medium' || raw === 'large') setGallerySizeState(raw)
+    } catch {
+      /* ignore */
+    }
+  }, [id])
+
+  const setGallerySize = useCallback((size: GallerySize) => {
+    setGallerySizeState(size)
+    try {
+      localStorage.setItem(`leaf-db-gallery-size:${id}`, size)
+    } catch {
+      /* ignore */
+    }
   }, [id])
 
   const saveDatabase = useCallback(async (patch: Partial<Database>) => {
@@ -153,11 +174,6 @@ export function useDatabasePage(id: string) {
 
   const columns: PropertyDefinition[] = useMemo(() => db?.schema?.properties ?? [], [db])
 
-  const columnBeingEdited = useMemo(
-    () => (columnEditKey ? columns.find((c) => c.key === columnEditKey) ?? null : null),
-    [columns, columnEditKey],
-  )
-
   const addRow = useCallback(async () => {
     try {
       const row = await createDatabaseRow(id)
@@ -209,17 +225,23 @@ export function useDatabasePage(id: string) {
 
   const saveColumnDefinition = useCallback(async (
     key: string,
-    patch: { label: string; type: PropertyDefinition['type'] },
+    patch: { label: string; type: PropertyDefinition['type']; wrap?: boolean },
   ) => {
     if (!db) return
     const label = patch.label.trim()
     const next = db.schema.properties.map((c) =>
-      c.key === key ? { ...c, label: label || c.label, type: patch.type } : c,
+      c.key === key
+        ? {
+            ...c,
+            label: label || c.label,
+            type: patch.type,
+            ...(patch.wrap !== undefined ? { wrap: patch.wrap } : {}),
+          }
+        : c,
     )
     try {
       const updated = await saveDatabase({ schema: { properties: next } })
       if (updated) setDb(updated)
-      setColumnEditKey(null)
     } catch (error) {
       console.error(error)
     }
@@ -234,11 +256,22 @@ export function useDatabasePage(id: string) {
       const { database: nextDb, rows: nextRows } = await databasesApi.removeProperty(id, key)
       setDb(nextDb)
       setRows(nextRows)
-      setColumnEditKey(null)
     } catch (error) {
       console.error(error)
     }
   }, [db, id])
+
+  const deleteDatabase = useCallback(async () => {
+    if (!db) return
+    if (!confirm(`Move "${db.title}" to Trash? You can restore it from Settings → Trash.`)) return
+    try {
+      await databasesApi.delete(id)
+      window.dispatchEvent(new CustomEvent('leaf-tree-changed'))
+      router.push('/databases')
+    } catch (error) {
+      console.error(error)
+    }
+  }, [db, id, router])
 
   const addColumn = useCallback(async (definition: PropertyDefinition) => {
     if (!db) return
@@ -289,10 +322,10 @@ export function useDatabasePage(id: string) {
     updateCell,
     addColumn,
     setViewType,
-    columnBeingEdited,
-    openColumnEditor: setColumnEditKey,
-    closeColumnEditor: () => setColumnEditKey(null),
     saveColumnDefinition,
     deleteColumn,
+    gallerySize,
+    setGallerySize,
+    deleteDatabase,
   }
 }
