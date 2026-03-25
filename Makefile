@@ -30,12 +30,12 @@ frontend:
 
 # Stop the backend (kills the process on port 8000).
 down-api:
-	-@python -c "import subprocess,re; [subprocess.run(['taskkill','//F','//PID',m.group(1)]) for l in subprocess.check_output('netstat -ano | findstr :8000',shell=True).decode().splitlines() if 'LISTENING' in l for m in [re.search(r'(\d+)\s*$$',l)] if m]" 2>/dev/null || lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+	-@python -c "import subprocess,re,os;port='8000';out=subprocess.run('netstat -ano' if os.name=='nt' else 'lsof -ti:'+port,shell=True,capture_output=True,text=True).stdout;pids={m.group(1) for l in out.splitlines() if ':'+port in l and ('LISTENING' in l or os.name!='nt') for m in [re.search(r'(\d+)\s*$$',l)] if m};[subprocess.run(['taskkill','/F','/PID',p] if os.name=='nt' else ['kill','-9',p]) for p in pids]"
 	@echo "API stopped."
 
 # Stop the frontend (kills the process on port 3000).
 down-frontend:
-	-@python -c "import subprocess,re; [subprocess.run(['taskkill','//F','//PID',m.group(1)]) for l in subprocess.check_output('netstat -ano | findstr :3000',shell=True).decode().splitlines() if 'LISTENING' in l for m in [re.search(r'(\d+)\s*$$',l)] if m]" 2>/dev/null || lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+	-@python -c "import subprocess,re,os;port='3000';out=subprocess.run('netstat -ano' if os.name=='nt' else 'lsof -ti:'+port,shell=True,capture_output=True,text=True).stdout;pids={m.group(1) for l in out.splitlines() if ':'+port in l and ('LISTENING' in l or os.name!='nt') for m in [re.search(r'(\d+)\s*$$',l)] if m};[subprocess.run(['taskkill','/F','/PID',p] if os.name=='nt' else ['kill','-9',p]) for p in pids]"
 	@echo "Frontend stopped."
 
 # Stop both.
