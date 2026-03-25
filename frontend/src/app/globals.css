@@ -882,21 +882,23 @@ html[data-leaf-design="campaign"] .ProseMirror pre code {
   border: 1px solid var(--leaf-border-soft);
   transition: border-color 0.3s;
   width: 100%;
+  position: relative;
 }
 
 .leaf-toggle-card:hover {
   border-color: color-mix(in srgb, var(--leaf-green) 24%, transparent);
 }
 
-.leaf-toggle-card-header {
+.leaf-toggle-card-content {
   padding: 22px 40px 26px 26px;
+}
+
+/* NodeViewContent inner wrapper becomes the grid container */
+.leaf-toggle-card-content [data-node-view-content-react] {
   display: grid;
-  grid-template-columns: minmax(80px, auto) 1fr;
-  gap: 12px 20px;
+  grid-template-columns: auto 1fr;
+  gap: 0 20px;
   align-items: start;
-  cursor: default;
-  position: relative;
-  transition: background 0.2s;
 }
 
 .leaf-toggle-card-chevron {
@@ -930,122 +932,117 @@ html[data-leaf-design="campaign"] .ProseMirror pre code {
 }
 
 .leaf-toggle-card-eyebrow {
-  padding-top: 2px;
-}
-
-.leaf-toggle-card-meta {
-  min-width: 0;
-}
-
-.leaf-toggle-card-field-shell {
-  width: 100%;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  min-height: 1.35em;
-}
-
-.leaf-toggle-card-field-pm.ProseMirror {
-  width: 100%;
-  flex: 1 1 auto;
-  min-height: 1.35em;
-  outline: none;
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin: 0;
-}
-
-.leaf-toggle-card-field-pm.ProseMirror p {
-  margin: 0;
-  padding: 0;
-}
-
-.leaf-toggle-card-input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  outline: none;
-}
-
-.leaf-toggle-card-input::placeholder {
-  color: var(--leaf-text-hint);
-  opacity: 0.8;
-}
-
-.leaf-toggle-card-input-eyebrow {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  align-self: center;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--leaf-text-muted);
+  min-height: 1em;
+  min-width: 60px;
+  outline: none;
+  padding-top: 2px;
 }
 
-html[data-leaf-design="campaign"] .leaf-toggle-card-input-eyebrow {
+.leaf-toggle-card-eyebrow:has(> br:only-child)::before,
+.leaf-toggle-card-eyebrow:empty::before {
+  content: 'Label';
+  color: var(--leaf-text-hint);
+  opacity: 0.8;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+html[data-leaf-design="campaign"] .leaf-toggle-card-eyebrow {
   font-family: var(--font-cinzel), Cinzel, serif;
   letter-spacing: 0.18em;
 }
 
-.leaf-toggle-card-input-title {
+.leaf-toggle-card-title {
+  grid-column: 2;
+  grid-row: 1;
   font-size: 1.15rem;
   font-weight: 700;
   line-height: 1.25;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   color: var(--leaf-green);
+  min-height: 1.2em;
+  outline: none;
 }
 
-html[data-leaf-design="campaign"] .leaf-toggle-card-input-title {
+.leaf-toggle-card-title:has(> br:only-child)::before,
+.leaf-toggle-card-title:empty::before {
+  content: 'Title';
+  color: var(--leaf-text-hint);
+  opacity: 0.8;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+html[data-leaf-design="campaign"] .leaf-toggle-card-title {
   font-family: var(--font-cinzel), Cinzel, serif;
 }
 
-.leaf-toggle-card-input-subtitle {
+.leaf-toggle-card-subtitle {
+  grid-column: 2;
+  grid-row: 2;
   font-size: 0.92rem;
   font-style: italic;
   color: var(--leaf-text-muted);
+  min-height: 1em;
+  outline: none;
 }
 
-.leaf-toggle-card--accent-0 .leaf-toggle-card-header {
+.leaf-toggle-card-subtitle:has(> br:only-child)::before,
+.leaf-toggle-card-subtitle:empty::before {
+  content: 'Subtitle';
+  color: var(--leaf-text-hint);
+  opacity: 0.8;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+.leaf-toggle-card--accent-0 .leaf-toggle-card-content {
   background: linear-gradient(135deg, var(--leaf-bg-elevated), color-mix(in srgb, var(--leaf-green) 10%, var(--leaf-bg-elevated)));
 }
 
-.leaf-toggle-card--accent-1 .leaf-toggle-card-header {
+.leaf-toggle-card--accent-1 .leaf-toggle-card-content {
   background: linear-gradient(135deg, var(--leaf-bg-elevated), rgba(107, 31, 168, 0.11));
 }
 
-.leaf-toggle-card--accent-2 .leaf-toggle-card-header {
+.leaf-toggle-card--accent-2 .leaf-toggle-card-content {
   background: linear-gradient(135deg, var(--leaf-bg-elevated), rgba(26, 74, 107, 0.12));
 }
 
-.leaf-toggle-card--accent-3 .leaf-toggle-card-header {
+.leaf-toggle-card--accent-3 .leaf-toggle-card-content {
   background: linear-gradient(135deg, var(--leaf-bg-elevated), rgba(26, 107, 42, 0.1));
 }
 
-.leaf-toggle-card--accent-4 .leaf-toggle-card-header {
+.leaf-toggle-card--accent-4 .leaf-toggle-card-content {
   background: linear-gradient(135deg, var(--leaf-bg-elevated), rgba(122, 96, 40, 0.14));
 }
 
-.leaf-toggle-card-body {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.45s ease;
-  border-top: 1px solid var(--leaf-border-soft);
+/* Body blocks in toggle card: hide when collapsed */
+/* Body blocks span full width below the header grid */
+.leaf-toggle-card-content [data-node-view-content-react] > :not(.leaf-toggle-card-eyebrow):not(.leaf-toggle-card-title):not(.leaf-toggle-card-subtitle) {
+  grid-column: 1 / -1;
 }
 
-.leaf-toggle-card[data-open="true"] .leaf-toggle-card-body {
-  max-height: 2600px;
+.leaf-toggle-card[data-open="true"] .leaf-toggle-card-subtitle {
+  padding-bottom: 16px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--leaf-border-soft);
 }
 
-.leaf-toggle-card-body-inner {
-  padding: 8px 26px 22px;
-  background: color-mix(in srgb, var(--leaf-bg-app) 40%, var(--leaf-bg-editor));
-}
-
-html[data-leaf-design="campaign"] .leaf-toggle-card-body-inner {
-  background: var(--leaf-bg-editor);
-}
-
-.leaf-toggle-card-prose [data-node-view-content] {
-  min-height: 0.5em;
+/* Hide all body content (paragraphs, etc.) when closed.
+   The subtitle ~ * selector targets all siblings after the subtitle node. */
+.leaf-toggle-card[data-open="false"] .leaf-toggle-card-subtitle ~ * {
+  display: none;
 }
 
 .ProseMirror .leaf-toggle-card-node.ProseMirror-selectednode {

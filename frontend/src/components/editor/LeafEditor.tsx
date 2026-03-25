@@ -713,105 +713,100 @@ function ToggleCardView({ node, updateAttributes }: NodeViewProps) {
   const open = node.attrs.open !== false && node.attrs.open !== 'false'
   const accent = ((Number(node.attrs.accent) || 0) % 5 + 5) % 5
 
-  const onHeaderPointer = (event: React.MouseEvent | React.KeyboardEvent) => {
-    const target = event.target as HTMLElement
-    if (target.closest('input')) return
-    if ('key' in event) {
-      if (event.key !== 'Enter' && event.key !== ' ') return
-      event.preventDefault()
-    }
-    updateAttributes({ open: !open })
-  }
-
   return (
-    <NodeViewWrapper className="leaf-toggle-card-node" data-drag-handle="">
+    <NodeViewWrapper className="leaf-toggle-card-node">
       <div
         className={`leaf-toggle-card leaf-toggle-card--accent-${accent}`}
         data-open={open ? 'true' : 'false'}
       >
-        <div
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
+          className="leaf-toggle-card-chevron"
           aria-expanded={open}
-          className="leaf-toggle-card-header"
-          onClick={onHeaderPointer}
-          onKeyDown={onHeaderPointer}
+          aria-label={open ? 'Collapse card' : 'Expand card'}
+          contentEditable={false}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => {
+            e.stopPropagation()
+            updateAttributes({ open: !open })
+          }}
         >
-          <div className="leaf-toggle-card-eyebrow">
-            <input
-              type="text"
-              className="leaf-toggle-card-input leaf-toggle-card-input-eyebrow"
-              value={node.attrs.eyebrow ?? ''}
-              placeholder="Label"
-              aria-label="Card label"
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => updateAttributes({ eyebrow: e.target.value })}
-            />
-          </div>
-          <div className="leaf-toggle-card-meta">
-            <input
-              type="text"
-              className="leaf-toggle-card-input leaf-toggle-card-input-title"
-              value={node.attrs.title ?? ''}
-              placeholder="Title"
-              aria-label="Card title"
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => updateAttributes({ title: e.target.value })}
-            />
-            <input
-              type="text"
-              className="leaf-toggle-card-input leaf-toggle-card-input-subtitle"
-              value={node.attrs.subtitle ?? ''}
-              placeholder="Subtitle"
-              aria-label="Card subtitle"
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => updateAttributes({ subtitle: e.target.value })}
-            />
-          </div>
-          <button
-            type="button"
-            className="leaf-toggle-card-chevron"
-            aria-expanded={open}
-            aria-label={open ? 'Collapse card' : 'Expand card'}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={(e) => {
-              e.stopPropagation()
-              updateAttributes({ open: !open })
-            }}
-          >
-            ▾
-          </button>
-        </div>
-        <div className="leaf-toggle-card-body">
-          <div className="leaf-toggle-card-body-inner">
-            <NodeViewContent className="leaf-toggle-card-prose leaf-prose max-w-none min-h-[1.5em] focus:outline-none" />
-          </div>
-        </div>
+          ▾
+        </button>
+        <NodeViewContent className="leaf-toggle-card-content" />
       </div>
     </NodeViewWrapper>
   )
 }
 
+const ToggleCardEyebrow = Node.create({
+  name: 'toggleCardEyebrow',
+  group: '',
+  content: 'inline*',
+  defining: true,
+  selectable: false,
+  parseHTML() {
+    return [{ tag: 'div[data-type="toggleCardEyebrow"]' }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['div', mergeAttributes({ 'data-type': 'toggleCardEyebrow', class: 'leaf-toggle-card-eyebrow' }, HTMLAttributes), 0]
+  },
+  addKeyboardShortcuts() {
+    return {
+      Enter: () => false,
+    }
+  },
+})
+
+const ToggleCardTitle = Node.create({
+  name: 'toggleCardTitle',
+  group: '',
+  content: 'inline*',
+  defining: true,
+  selectable: false,
+  parseHTML() {
+    return [{ tag: 'div[data-type="toggleCardTitle"]' }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['div', mergeAttributes({ 'data-type': 'toggleCardTitle', class: 'leaf-toggle-card-title' }, HTMLAttributes), 0]
+  },
+  addKeyboardShortcuts() {
+    return {
+      Enter: () => false,
+    }
+  },
+})
+
+const ToggleCardSubtitle = Node.create({
+  name: 'toggleCardSubtitle',
+  group: '',
+  content: 'inline*',
+  defining: true,
+  selectable: false,
+  parseHTML() {
+    return [{ tag: 'div[data-type="toggleCardSubtitle"]' }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['div', mergeAttributes({ 'data-type': 'toggleCardSubtitle', class: 'leaf-toggle-card-subtitle' }, HTMLAttributes), 0]
+  },
+  addKeyboardShortcuts() {
+    return {
+      Enter: () => false,
+    }
+  },
+})
+
 const ToggleCard = Node.create({
   name: 'toggleCard',
   group: 'block',
-  content: 'block+',
+  content: 'toggleCardEyebrow toggleCardTitle toggleCardSubtitle block+',
   defining: true,
   isolating: true,
   draggable: true,
   addAttributes() {
     return {
       open: { default: true },
-      eyebrow: { default: '' },
-      title: { default: 'Toggle card' },
-      subtitle: { default: 'Use the arrow to expand or collapse' },
       accent: { default: 0 },
-      eyebrowColor: { default: '' },
-      titleColor: { default: '' },
-      subtitleColor: { default: '' },
     }
   },
   parseHTML() {
@@ -823,12 +818,6 @@ const ToggleCard = Node.create({
           return {
             open: element.getAttribute('data-open') !== 'false',
             accent: parseInt(element.getAttribute('data-accent') || '0', 10) || 0,
-            eyebrow: element.getAttribute('data-eyebrow') || '',
-            title: element.getAttribute('data-title') || 'Toggle card',
-            subtitle: element.getAttribute('data-subtitle') || '',
-            eyebrowColor: element.getAttribute('data-eyebrow-color') || '',
-            titleColor: element.getAttribute('data-title-color') || '',
-            subtitleColor: element.getAttribute('data-subtitle-color') || '',
           }
         },
         contentElement: '[data-toggle-card-content]',
@@ -843,12 +832,6 @@ const ToggleCard = Node.create({
           'data-type': 'toggle-card',
           'data-open': node.attrs.open === false ? 'false' : 'true',
           'data-accent': String(node.attrs.accent ?? 0),
-          'data-eyebrow': node.attrs.eyebrow ?? '',
-          'data-title': node.attrs.title ?? '',
-          'data-subtitle': node.attrs.subtitle ?? '',
-          'data-eyebrow-color': node.attrs.eyebrowColor ?? '',
-          'data-title-color': node.attrs.titleColor ?? '',
-          'data-subtitle-color': node.attrs.subtitleColor ?? '',
         },
         HTMLAttributes,
       ),
@@ -956,7 +939,7 @@ const StatStrip = Node.create({
 })
 
 /* ── Callout node view — renders content with an inline colour picker ─────── */
-function CalloutView({ node, updateAttributes, selected }: NodeViewProps) {
+function CalloutView({ node, updateAttributes }: NodeViewProps) {
   const variant = (node.attrs.variant as CalloutVariant) || 'gray'
   const [showPicker, setShowPicker] = useState(false)
   return (
@@ -1276,6 +1259,9 @@ export default function LeafEditor({
     StoryTag,
     Column,
     ColumnList,
+    ToggleCardEyebrow,
+    ToggleCardTitle,
+    ToggleCardSubtitle,
     ToggleCard,
     Callout.extend({ addNodeView() { return ReactNodeViewRenderer(CalloutView as never) } }),
     StatStrip,
@@ -1844,12 +1830,14 @@ export default function LeafEditor({
             type: 'toggleCard',
             attrs: {
               open: true,
-              eyebrow: '',
-              title: 'Toggle card',
-              subtitle: 'Use the arrow to expand or collapse',
               accent: Math.floor(Math.random() * 5),
             },
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'toggleCardEyebrow' },
+              { type: 'toggleCardTitle', content: [{ type: 'text', text: 'Toggle card' }] },
+              { type: 'toggleCardSubtitle', content: [{ type: 'text', text: 'Use the arrow to expand or collapse' }] },
+              { type: 'paragraph' },
+            ],
           },
           { type: 'paragraph' },
         ]).run()
