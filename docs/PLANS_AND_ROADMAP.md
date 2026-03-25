@@ -37,7 +37,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Stable TipTap editor rebuild with `gapcursor`/`dropcursor` disabled.
 - [x] Slash commands and block insertion menu for headings, lists, todos, quotes, sub-pages, databases, column layouts, and **callouts** (classic Notion-like + campaign-themed variants).
 - [x] Text alignment (paragraph, heading, blockquote) and palette text colours (`TextAlign`, `TextStyle`, `Color`); selection bubble + slash **Style** group (no static toolbar).
-- [x] Inline **story flag** atoms (variant + editable label; slash menu group **Flags**; distinct from page **tags** metadata) and **stat strip** block (three kicker/title pairs); presets in `lib/editorRichText.ts`.
+- [x] Inline **story flag** atoms (variant + editable label; slash menu group **Flags**; distinct from page **tags** metadata) and **stat strip** block (2–4 kicker/value pairs; gutter grip menu: delete, colour, column count); presets in `lib/editorRichText.ts`.
 - [x] **Toggle cards**: eyebrow/title/subtitle are small TipTap fields with a **filtered slash menu** (text marks, alignment, colours, **Flags**); values persist as string/HTML node attrs. Collapsible body is normal editor content — **full** slash commands (headings, lists, embeds, flags, etc.) work inside the card body.
 - [x] Rich/Markdown mode switching plus Markdown import/export.
 - [x] Page embeds as dedicated block nodes.
@@ -190,7 +190,7 @@ Questions still open for the next milestone:
 |------|---------|
 | `frontend/src/app/(workspace)/editor/[id]/page.tsx` | Page editor route and shell wiring |
 | `frontend/src/app/(workspace)/databases/[id]/page.tsx` | Standalone database page |
-| `frontend/src/components/editor/LeafEditor.tsx` | Main editor implementation, node views, and toggle card wiring |
+| `frontend/src/components/editor/LeafEditor.tsx` | Main editor implementation, node views, toggle card wiring; block gutter uses `posAtCoords` for atom views (stat strip, embeds) |
 | `frontend/src/components/editor/ToggleCardHeaderField.tsx` | Toggle card header lines: mini TipTap + filtered slash (Style, Flags) |
 | `frontend/src/components/editor/toggleCardHeaderSlash.ts` | Slash actions and ranking for toggle header fields |
 | `frontend/src/lib/editorRichText.ts` | Story-tag presets and shared colour swatches |
@@ -205,7 +205,7 @@ Questions still open for the next milestone:
 | `frontend/src/hooks/useLeafAutosave.ts` | Autosave pipeline |
 | `frontend/src/hooks/useDatabasePage.ts` | Database route state and mutations |
 | `frontend/src/lib/api/types.ts` | Shared page/database/document types |
-| `frontend/src/lib/leafDocument.ts` | Structured content parsing and normalization |
+| `frontend/src/lib/leafDocument.ts` | Structured content parsing and normalization; `statStrip` HTML includes `columns`, `variant`, fourth pair |
 | `frontend/e2e/workspace.spec.ts` | Browser regression coverage |
 | `docs/FRAMEWORK_DIRECTION.md` | Web framework decision and platform expansion guidance |
 

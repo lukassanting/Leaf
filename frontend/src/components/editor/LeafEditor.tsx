@@ -46,7 +46,7 @@ import { useRouter } from 'next/navigation'
 import { BubbleMenu, EditorContent, NodeViewWrapper, NodeViewContent, ReactNodeViewRenderer, useEditor, type NodeViewProps } from '@tiptap/react'
 import { Node, mergeAttributes, InputRule, isTextSelection } from '@tiptap/core'
 import { DOMSerializer } from '@tiptap/pm/model'
-import { TextSelection } from '@tiptap/pm/state'
+import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import TaskItem from '@tiptap/extension-task-item'
 import TaskList from '@tiptap/extension-task-list'
@@ -171,6 +171,8 @@ type BlockMenuState = {
   top: number
   height: number
   endPos: number
+  nodeStart: number
+  nodeType: string
 } | null
 
 type EmbedNodeAttrs = {
@@ -844,14 +846,18 @@ const ToggleCard = Node.create({
 })
 
 function StatStripView({ node, updateAttributes }: NodeViewProps) {
-  const pairs = [
+  const cols = Math.min(4, Math.max(2, Number(node.attrs.columns) || 3))
+  const variant = (node.attrs.variant as CalloutVariant) || 'gray'
+  const allPairs: [string, string][] = [
     ['kicker0', 'title0'],
     ['kicker1', 'title1'],
     ['kicker2', 'title2'],
-  ] as const
+    ['kicker3', 'title3'],
+  ]
+  const pairs = allPairs.slice(0, cols)
   return (
-    <NodeViewWrapper className="leaf-stat-strip" data-drag-handle="">
-      <div className="leaf-stat-strip-grid">
+    <NodeViewWrapper className={`leaf-stat-strip leaf-stat-strip--${variant}`}>
+      <div className="leaf-stat-strip-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
         {pairs.map(([k, t]) => (
           <div key={k} className="leaf-stat-strip-cell">
             <input
@@ -887,12 +893,16 @@ const StatStrip = Node.create({
   isolating: true,
   addAttributes() {
     return {
+      columns: { default: 3 },
+      variant: { default: 'gray' },
       kicker0: { default: '' },
       title0: { default: '' },
       kicker1: { default: '' },
       title1: { default: '' },
       kicker2: { default: '' },
       title2: { default: '' },
+      kicker3: { default: '' },
+      title3: { default: '' },
     }
   },
   parseHTML() {
@@ -903,12 +913,12 @@ const StatStrip = Node.create({
           if (!(element instanceof HTMLElement)) return false
           const g = (name: string) => element.getAttribute(`data-${name}`) ?? ''
           return {
-            kicker0: g('kicker0'),
-            title0: g('title0'),
-            kicker1: g('kicker1'),
-            title1: g('title1'),
-            kicker2: g('kicker2'),
-            title2: g('title2'),
+            columns: parseInt(g('columns') || '3', 10) || 3,
+            variant: g('variant') || 'gray',
+            kicker0: g('kicker0'), title0: g('title0'),
+            kicker1: g('kicker1'), title1: g('title1'),
+            kicker2: g('kicker2'), title2: g('title2'),
+            kicker3: g('kicker3'), title3: g('title3'),
           }
         },
       },
@@ -921,12 +931,12 @@ const StatStrip = Node.create({
       mergeAttributes(
         {
           'data-type': 'stat-strip',
-          'data-kicker0': a.kicker0 ?? '',
-          'data-title0': a.title0 ?? '',
-          'data-kicker1': a.kicker1 ?? '',
-          'data-title1': a.title1 ?? '',
-          'data-kicker2': a.kicker2 ?? '',
-          'data-title2': a.title2 ?? '',
+          'data-columns': String(a.columns ?? 3),
+          'data-variant': a.variant ?? 'gray',
+          'data-kicker0': a.kicker0 ?? '', 'data-title0': a.title0 ?? '',
+          'data-kicker1': a.kicker1 ?? '', 'data-title1': a.title1 ?? '',
+          'data-kicker2': a.kicker2 ?? '', 'data-title2': a.title2 ?? '',
+          'data-kicker3': a.kicker3 ?? '', 'data-title3': a.title3 ?? '',
           class: 'leaf-stat-strip-host',
         },
         HTMLAttributes,
@@ -938,70 +948,136 @@ const StatStrip = Node.create({
   },
 })
 
-/* ── Callout node view — renders content with an inline colour picker ─────── */
-function CalloutView({ node, updateAttributes }: NodeViewProps) {
+/* ── Callout node view ─────── */
+function CalloutView({ node }: NodeViewProps) {
   const variant = (node.attrs.variant as CalloutVariant) || 'gray'
-  const [showPicker, setShowPicker] = useState(false)
   return (
     <NodeViewWrapper
       className={`leaf-callout leaf-callout--${variant}`}
       data-type="callout"
       data-variant={variant}
-      data-drag-handle=""
     >
-      {/* Colour dot — click to open picker */}
-      <button
-        type="button"
-        className="leaf-callout-color-dot"
-        title="Change callout colour"
-        contentEditable={false}
-        style={{ background: CALLOUT_VARIANT_META[variant].dot }}
-        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setShowPicker(!showPicker) }}
-      />
-      {showPicker && (
-        <div
-          className="leaf-callout-picker"
-          contentEditable={false}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {CALLOUT_VARIANTS.map((v) => (
-            <button
-              key={v}
-              type="button"
-              title={CALLOUT_VARIANT_META[v].label}
-              className={`leaf-callout-picker-swatch${v === variant ? ' active' : ''}`}
-              style={{ background: CALLOUT_VARIANT_META[v].dot }}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                updateAttributes({ variant: v })
-                setShowPicker(false)
-              }}
-            />
-          ))}
-        </div>
-      )}
       <NodeViewContent className="leaf-callout-content" />
     </NodeViewWrapper>
   )
 }
 
-function BlockDropdown({ onSelect, onClose }: { onSelect: (action: string) => void; onClose: () => void }) {
+function BlockDropdown({ blockMenu, editor, onSelect, onClose }: {
+  blockMenu: NonNullable<BlockMenuState>
+  editor: import('@tiptap/core').Editor | null
+  onSelect: (action: string) => void
+  onClose: () => void
+}) {
   const groups = ['Text', 'Style', 'Structure', 'Insert', 'Toggle Cards'] as const
+  const hasColour = blockMenu.nodeType === 'callout' || blockMenu.nodeType === 'statStrip'
+  const blockNode = hasColour && editor ? editor.state.doc.nodeAt(blockMenu.nodeStart) : null
+  const currentVariant = (blockNode?.attrs.variant as CalloutVariant) || 'gray'
+  const isStatStrip = blockMenu.nodeType === 'statStrip'
+  const currentColumns = isStatStrip ? (Number(blockNode?.attrs.columns) || 3) : 0
 
   return (
     <>
       <div className="fixed inset-0 z-40" onMouseDown={onClose} />
       <div
-        className="absolute z-50 overflow-hidden rounded-lg"
+        className="absolute z-50 overflow-y-auto rounded-lg"
         style={{
           top: 28,
           left: 0,
           width: 240,
+          maxHeight: 420,
           background: 'var(--leaf-bg-elevated)',
           border: '1px solid var(--leaf-border-strong)',
           boxShadow: '0 4px 20px color-mix(in srgb, var(--foreground) 10%, transparent)',
         }}
       >
+        {/* ── Contextual: colour picker (callout + stat strip) ─── */}
+        {hasColour && editor && blockNode && (
+          <div>
+            <div className="px-3 pb-1 pt-2.5 text-[10px] font-medium uppercase tracking-wider" style={{ color: 'var(--leaf-text-muted)' }}>
+              Colour
+            </div>
+            <div className="flex flex-wrap gap-1 px-2.5 pb-2">
+              {CALLOUT_VARIANTS.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  title={CALLOUT_VARIANT_META[v].label}
+                  style={{
+                    background: CALLOUT_VARIANT_META[v].dot,
+                    width: 20, height: 20, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0,
+                    outline: v === currentVariant ? '2px solid var(--leaf-green)' : 'none',
+                    outlineOffset: 1,
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    const tr = editor.state.tr.setNodeMarkup(blockMenu.nodeStart, undefined, { ...blockNode.attrs, variant: v })
+                    editor.view.dispatch(tr)
+                    onClose()
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Contextual: stat strip column count ─── */}
+        {isStatStrip && editor && blockNode && (
+          <div>
+            <div className="px-3 pb-1 pt-2.5 text-[10px] font-medium uppercase tracking-wider" style={{ color: 'var(--leaf-text-muted)' }}>
+              Columns
+            </div>
+            <div className="flex gap-1 px-2.5 pb-2">
+              {[2, 3, 4].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className="flex items-center justify-center rounded-md text-xs font-medium transition-colors duration-100"
+                  style={{
+                    width: 32, height: 28, cursor: 'pointer',
+                    border: n === currentColumns ? '1.5px solid var(--leaf-green)' : '1px solid var(--leaf-border-soft)',
+                    background: n === currentColumns ? 'color-mix(in srgb, var(--leaf-green) 12%, transparent)' : 'transparent',
+                    color: n === currentColumns ? 'var(--leaf-green)' : 'var(--leaf-text-muted)',
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    const tr = editor.state.tr.setNodeMarkup(blockMenu.nodeStart, undefined, { ...blockNode.attrs, columns: n })
+                    editor.view.dispatch(tr)
+                    onClose()
+                  }}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Delete ─── */}
+        <div>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors duration-100 hover:bg-red-500/10"
+            style={{ color: 'var(--leaf-text-title)' }}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              if (!editor) return
+              try {
+                editor.chain().focus().deleteRange({ from: blockMenu.nodeStart, to: blockMenu.endPos }).run()
+              } catch { /* ignore */ }
+              onClose()
+            }}
+          >
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--leaf-text-muted)' }}>
+              <path d="M5.5 2h5M2.5 4h11M6 4v8M10 4v8M3.5 4l.75 9.5a1 1 0 001 .5h5.5a1 1 0 001-.5L12.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Delete
+          </button>
+        </div>
+
+        {/* ── Separator ─── */}
+        <div className="mx-2 my-1" style={{ borderTop: '1px solid var(--leaf-border-soft)' }} />
+
+        {/* ── Insert block types ─── */}
         {groups.map((group) => {
           const items = SLASH_ITEMS.filter((item) => item.group === group)
           return (
@@ -1812,12 +1888,16 @@ export default function LeafEditor({
           {
             type: 'statStrip',
             attrs: {
+              columns: 3,
+              variant: 'gray',
               kicker0: '',
               title0: '',
               kicker1: '',
               title1: '',
               kicker2: '',
               title2: '',
+              kicker3: '',
+              title3: '',
             },
           },
           { type: 'paragraph' },
@@ -1944,7 +2024,11 @@ export default function LeafEditor({
     }
   }, [mode])
 
+  const menuOpenRef = useRef(false)
+  menuOpenRef.current = menuOpen
+
   const handleMouseMove = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (menuOpenRef.current) return
     if (!editor || mode !== 'rich') {
       setBlockMenu(null)
       return
@@ -1953,28 +2037,149 @@ export default function LeafEditor({
     const container = containerRef.current
     if (!container) return
 
-    const result = editor.view.posAtCoords({ left: event.clientX, top: event.clientY })
-    if (!result) return
+    const view = editor.view
+    const proseMirror = view.dom
 
-    const domInfo = editor.view.domAtPos(result.pos)
-    let element = (domInfo.node.nodeType === 3 ? domInfo.node.parentElement : domInfo.node) as HTMLElement | null
+    // Walk up from target to the direct child of .ProseMirror (block root). More reliable than
+    // closest('.ProseMirror > *') inside React node views (atom blocks like statStrip).
+    let element: HTMLElement | null = null
+    let cur: HTMLElement | null = event.target as HTMLElement
+    while (cur && cur.parentElement) {
+      if (cur.parentElement === proseMirror || cur.parentElement.classList.contains('ProseMirror')) {
+        element = cur
+        break
+      }
+      cur = cur.parentElement
+    }
 
-    while (element && element.parentElement && !element.parentElement.classList.contains('ProseMirror')) {
-      element = element.parentElement
+    if (!element) {
+      const result = view.posAtCoords({ left: event.clientX, top: event.clientY })
+      if (!result) return
+      const domInfo = view.domAtPos(result.pos)
+      let nodeEl = (domInfo.node.nodeType === 3 ? domInfo.node.parentElement : domInfo.node) as HTMLElement | null
+      while (nodeEl && nodeEl.parentElement && !nodeEl.parentElement.classList.contains('ProseMirror')) {
+        nodeEl = nodeEl.parentElement
+      }
+      element = nodeEl
     }
 
     if (!element || !element.parentElement?.classList.contains('ProseMirror')) return
 
     const containerRect = container.getBoundingClientRect()
-    const blockRect = element.getBoundingClientRect()
+    const doc = editor.state.doc
+    const pmChildren = Array.from(proseMirror.children) as HTMLElement[]
+
+    let blockEl: HTMLElement = element
+    let blockRect = blockEl.getBoundingClientRect()
+    let childIndex = pmChildren.indexOf(blockEl)
+
+    if (childIndex < 0) {
+      for (const n of document.elementsFromPoint(event.clientX, event.clientY)) {
+        if (!(n instanceof HTMLElement)) continue
+        if (n.parentElement !== proseMirror) continue
+        const idx = pmChildren.indexOf(n)
+        if (idx >= 0) {
+          childIndex = idx
+          blockEl = n
+          blockRect = n.getBoundingClientRect()
+          break
+        }
+      }
+    }
+
+    const applyMenuFromPmPos = (pmPos: number) => {
+      const $resolved = editor.state.doc.resolve(pmPos)
+      const depth = $resolved.depth > 0 ? 1 : 0
+      const nodeStart = $resolved.before(depth)
+      const endPos = $resolved.after(depth)
+      const nodeType = $resolved.node(depth).type.name
+      setBlockMenu({ top: blockRect.top - containerRect.top, height: blockRect.height, endPos, nodeStart, nodeType })
+    }
+
+    // Atom React node views (stat strip, embeds) often return null from posAtCoords over inner DOM.
+    // Map the ProseMirror block wrapper to doc.child(index) — DOM order matches document order here.
+    if (childIndex >= 0 && childIndex < doc.childCount) {
+      // Doc content positions are 0 .. doc.content.size; child i starts at sum of prior nodeSizes (not 1).
+      let nodeStart = 0
+      for (let i = 0; i < childIndex; i++) nodeStart += doc.child(i).nodeSize
+      const node = doc.child(childIndex)
+      const endPos = nodeStart + node.nodeSize
+      setBlockMenu({
+        top: blockRect.top - containerRect.top,
+        height: blockRect.height,
+        endPos,
+        nodeStart,
+        nodeType: node.type.name,
+      })
+      return
+    }
+
+    const innerX = Math.min(blockRect.left + 4, blockRect.right - 1)
+    const innerY = blockRect.top + Math.min(Math.max(blockRect.height / 2, 1), blockRect.height - 1)
+
+    const coordsHit = view.posAtCoords({ left: innerX, top: innerY })
+    if (coordsHit) {
+      try {
+        applyMenuFromPmPos(coordsHit.pos)
+        return
+      } catch {
+        /* fall through */
+      }
+    }
+
+    const centerHit = view.posAtCoords({
+      left: blockRect.left + blockRect.width / 2,
+      top: blockRect.top + blockRect.height / 2,
+    })
+    if (centerHit) {
+      try {
+        applyMenuFromPmPos(centerHit.pos)
+        return
+      } catch {
+        /* fall through */
+      }
+    }
 
     try {
-      const $pos = editor.state.doc.resolve(result.pos)
-      const depth = $pos.depth > 0 ? 1 : 0
-      const endPos = $pos.after(depth)
-      setBlockMenu({ top: blockRect.top - containerRect.top, height: blockRect.height, endPos })
+      const pmPos = view.posAtDOM(element, 0)
+      applyMenuFromPmPos(pmPos)
     } catch {
       setBlockMenu(null)
+    }
+  }, [editor, mode])
+
+  useEffect(() => {
+    if (!editor || mode !== 'rich') return
+    const syncBlockMenuFromNodeSelection = () => {
+      if (menuOpenRef.current) return
+      const sel = editor.state.selection
+      if (!(sel instanceof NodeSelection)) return
+      const { node, from, to } = sel
+      if (!node.type.isBlock) return
+      const container = containerRef.current
+      if (!container) return
+      try {
+        const view = editor.view
+        const c1 = view.coordsAtPos(from)
+        const c2 = view.coordsAtPos(Math.max(from, to - 1))
+        const topClient = Math.min(c1.top, c2.top)
+        const bottomClient = Math.max(c1.bottom, c2.bottom)
+        const containerRect = container.getBoundingClientRect()
+        setBlockMenu({
+          top: topClient - containerRect.top,
+          height: Math.max(bottomClient - topClient, 28),
+          nodeStart: from,
+          endPos: to,
+          nodeType: node.type.name,
+        })
+      } catch {
+        /* ignore */
+      }
+    }
+    syncBlockMenuFromNodeSelection()
+    editor.on('selectionUpdate', syncBlockMenuFromNodeSelection)
+    return () => {
+      editor.off('selectionUpdate', syncBlockMenuFromNodeSelection)
     }
   }, [editor, mode])
 
@@ -2251,8 +2456,13 @@ export default function LeafEditor({
                     type="button"
                     className="flex h-7 w-7 items-center justify-center rounded-md cursor-grab transition-colors duration-150 hover:bg-black/5 active:cursor-grabbing"
                     style={{ color: 'var(--leaf-text-muted)' }}
-                    title="Drag to move · Drop on block edge to create columns"
+                    title="Drag to move · Click for options"
                     draggable
+                    onClick={(e) => {
+                      e.preventDefault()
+                      pendingInsertPos.current = blockMenu.endPos
+                      setMenuOpen((current) => !current)
+                    }}
                     onDragStart={(event) => {
                       if (!editor) return
                       try {
@@ -2306,7 +2516,7 @@ export default function LeafEditor({
                     </svg>
                   </button>
                 </div>
-                {menuOpen && <BlockDropdown onSelect={handleBlockAction} onClose={() => setMenuOpen(false)} />}
+                {menuOpen && <BlockDropdown blockMenu={blockMenu} editor={editor} onSelect={handleBlockAction} onClose={() => { setMenuOpen(false); setBlockMenu(null) }} />}
               </div>
             )}
             <EditorContent editor={editor} />

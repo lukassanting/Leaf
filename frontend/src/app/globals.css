@@ -462,13 +462,12 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--boss {
   color: #fce7f3;
 }
 
-/* Stat strip (three kicker + value cards) */
+/* Stat strip (2–4 kicker + value cards) */
 .ProseMirror .leaf-stat-strip {
   margin: 0.85em 0;
 }
 .ProseMirror .leaf-stat-strip-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.65rem;
 }
 @media (max-width: 640px) {
@@ -480,10 +479,11 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--boss {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  padding: 0.55rem 0.65rem;
-  border-radius: 10px;
-  border: 1px solid var(--leaf-border-soft, var(--color-border));
-  background: var(--leaf-bg-elevated, #fafafa);
+  padding: 0.55rem 0.65rem 0.55rem 0.75rem;
+  border-radius: 6px;
+  border: none;
+  border-left: 3px solid #d4d4d8;
+  background: rgba(0, 0, 0, 0.03);
 }
 .ProseMirror .leaf-stat-strip-kicker,
 .ProseMirror .leaf-stat-strip-title {
@@ -508,6 +508,62 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--boss {
   color: var(--leaf-text-title, var(--color-text-dark));
 }
 
+/* Stat strip colour variants — same fill + left accent as callouts */
+.ProseMirror .leaf-stat-strip--gray .leaf-stat-strip-cell {
+  border-left-color: #a1a1aa;
+  background: rgba(113, 113, 122, 0.08);
+}
+.ProseMirror .leaf-stat-strip--blue .leaf-stat-strip-cell {
+  border-left-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+}
+.ProseMirror .leaf-stat-strip--yellow .leaf-stat-strip-cell {
+  border-left-color: #eab308;
+  background: rgba(234, 179, 8, 0.1);
+}
+.ProseMirror .leaf-stat-strip--green .leaf-stat-strip-cell {
+  border-left-color: #22c55e;
+  background: rgba(34, 197, 94, 0.09);
+}
+.ProseMirror .leaf-stat-strip--red .leaf-stat-strip-cell {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+.ProseMirror .leaf-stat-strip--flavor .leaf-stat-strip-cell {
+  border-left: none;
+  border: 1px solid rgba(161, 161, 170, 0.35);
+  background: rgba(0, 0, 0, 0.02);
+  padding-left: 0.65rem;
+}
+
+html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--green .leaf-stat-strip-cell {
+  border-left: 3px solid #4a8a4a;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  background: rgba(26, 74, 26, 0.2);
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--red .leaf-stat-strip-cell {
+  border-left: 3px solid #8b1a1a;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  background: rgba(74, 10, 10, 0.2);
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--gray .leaf-stat-strip-cell,
+html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--blue .leaf-stat-strip-cell,
+html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--yellow .leaf-stat-strip-cell {
+  border-left: 3px solid rgba(201, 168, 76, 0.45);
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  background: rgba(201, 168, 76, 0.06);
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--flavor .leaf-stat-strip-cell {
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  background: rgba(201, 168, 76, 0.05);
+}
+
 /* Callouts — classic (Notion-like) */
 .ProseMirror div[data-type="callout"] {
   margin: 0.75rem 0;
@@ -520,48 +576,6 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--boss {
 }
 .ProseMirror div[data-type="callout"] p {
   margin: 0.25em 0;
-}
-/* Colour dot button */
-.leaf-callout-color-dot {
-  position: absolute;
-  left: 0.6rem;
-  top: 0.95rem;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255,255,255,0.3);
-  cursor: pointer;
-  transition: transform 0.1s;
-  z-index: 2;
-}
-.leaf-callout-color-dot:hover { transform: scale(1.25); }
-/* Inline picker */
-.leaf-callout-picker {
-  position: absolute;
-  left: 0.3rem;
-  top: 2.1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 5px;
-  border-radius: 8px;
-  background: var(--leaf-bg-elevated, #fff);
-  border: 1px solid var(--leaf-border-strong, #e4e4e7);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-  z-index: 10;
-}
-.leaf-callout-picker-swatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 1.5px solid transparent;
-  cursor: pointer;
-  transition: transform 0.1s;
-}
-.leaf-callout-picker-swatch:hover { transform: scale(1.2); }
-.leaf-callout-picker-swatch.active {
-  border-color: var(--leaf-green, #22c55e);
-  box-shadow: 0 0 0 1px var(--leaf-green, #22c55e);
 }
 .ProseMirror div[data-type="callout"].leaf-callout--gray {
   border-left-color: #a1a1aa;
@@ -588,8 +602,7 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--boss {
   border: 1px solid rgba(161, 161, 170, 0.35);
   background: rgba(0, 0, 0, 0.02);
   font-style: italic;
-  padding-left: 2.25rem;
-  position: relative;
+  padding-left: 1.25rem;
 }
 .ProseMirror div[data-type="callout"].leaf-callout--flavor::before {
   content: '→';

@@ -107,12 +107,16 @@ export type LeafNode =
   | {
       type: 'statStrip'
       attrs: {
+        columns?: number
+        variant?: string
         kicker0: string
         title0: string
         kicker1: string
         title1: string
         kicker2: string
         title2: string
+        kicker3?: string
+        title3?: string
       }
     }
 

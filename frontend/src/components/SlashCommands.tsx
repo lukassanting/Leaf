@@ -67,7 +67,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   { label: '3 columns',     description: 'Three blocks side by side', action: 'columns3', group: 'Insert', keywords: ['columns', '3 columns', 'layout'] },
   { label: '4 columns',     description: 'Four blocks side by side',  action: 'columns4', group: 'Insert', keywords: ['columns', '4 columns', 'layout'] },
   { label: '5 columns',     description: 'Five blocks side by side',  action: 'columns5', group: 'Insert', keywords: ['columns', '5 columns', 'layout'] },
-  { label: 'Stat strip',    description: 'Three kicker + title stat cards', action: 'statStrip', group: 'Insert', keywords: ['stat', 'strip', 'stats', 'dc', 'hp', 'ac', 'cards'] },
+  { label: 'Stat strip',    description: '2–4 kicker + value stat cards', action: 'statStrip', group: 'Insert', keywords: ['stat', 'strip', 'stats', 'dc', 'hp', 'ac', 'cards'] },
   { label: 'Link to page',  description: 'Link an existing page or database', action: 'link', group: 'Insert', keywords: ['link', 'page', 'wikilink', 'mention'] },
   { label: 'Sub-page',      description: 'New child page',          action: 'subpage', group: 'Insert',    keywords: ['page', 'subpage'] },
   { label: 'Database',      description: 'New table database',      action: 'database',group: 'Insert',    keywords: ['database', 'db', 'table'] },
