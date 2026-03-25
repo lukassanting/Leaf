@@ -1,4 +1,4 @@
-"""Add databases and database_rows (Notion-like table views)
+"""Add databases and database_rows (structured table views)
 
 Revision ID: a1b2c3d4e5f6
 Revises: ba31f75b174e

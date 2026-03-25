@@ -68,7 +68,7 @@ class LeafModel(Base):
 
 
 class DatabaseModel(Base):
-    """Notion-like database container (table view)."""
+    """Structured database container (default table view)."""
     __tablename__ = "databases"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))

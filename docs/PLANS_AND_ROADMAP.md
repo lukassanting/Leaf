@@ -6,7 +6,7 @@ A single reference for where Leaf stands after the v3 redesign, what is verified
 
 ## 1. Product direction
 
-- **Product:** a fast, Notion-inspired workspace for personal knowledge management with pages, embedded structure, and database views.
+- **Product:** a fast workspace for personal knowledge management with pages, embedded structure, and database views.
 - **Experience goal:** instant-feeling navigation, stable typing, low-friction structure creation, and clear page/database relationships.
 - **Editor goal:** rich editing with a Markdown-friendly mental model, structured persistence, and room to grow into richer blocks.
 - **Architecture goal:** keep the stack simple and local-first while making future search, collaboration, and richer block types feasible.
@@ -35,7 +35,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 
 - [x] Schema-first `LeafDocument` content model with HTML migration support.
 - [x] Stable TipTap editor rebuild with `gapcursor`/`dropcursor` disabled.
-- [x] Slash commands and block insertion menu for headings, lists, todos, quotes, sub-pages, databases, column layouts, and **callouts** (classic Notion-like + campaign-themed variants).
+- [x] Slash commands and block insertion menu for headings, lists, todos, quotes, sub-pages, databases, column layouts, and **callouts** (classic colored panels + campaign-themed variants).
 - [x] Text alignment (paragraph, heading, blockquote) and palette text colours (`TextAlign`, `TextStyle`, `Color`); selection bubble + slash **Style** group (no static toolbar).
 - [x] Inline **story flag** atoms (variant + editable label; slash menu group **Flags**; distinct from page **tags** metadata) and **stat strip** block (2–4 kicker/value pairs; gutter grip menu: delete, colour, column count); presets in `lib/editorRichText.ts`.
 - [x] **Toggle cards**: eyebrow/title/subtitle are small TipTap fields with a **filtered slash menu** (text marks, alignment, colours, **Flags**); values persist as string/HTML node attrs. Collapsible body is normal editor content — **full** slash commands (headings, lists, embeds, flags, etc.) work inside the card body.
@@ -70,7 +70,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Resizable column widths via drag handles between columns.
 - [x] Drag-to-create columns: drag any block to the left or right edge of another to create side-by-side columns.
 - [x] "Remove columns" unwraps content back into the main document (no content is ever deleted).
-- [x] Notion-style invisible design — no borders/dividers, just whitespace gaps.
+- [x] Minimal chrome for columns — no borders/dividers, just whitespace gaps.
 - [x] Responsive stacking on narrow screens (< 640px).
 - [x] Nesting prevention — slash commands block column insertion inside existing columns.
 - [x] Automatic migration from legacy `columnLayout` (JSON blob) format to new nested node format.

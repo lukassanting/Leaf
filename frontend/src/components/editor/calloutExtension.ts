@@ -1,5 +1,5 @@
 /**
- * TipTap `callout` block — Notion-style panels (classic) + campaign accent / flavor variants.
+ * TipTap `callout` block — classic colored panels + campaign accent / flavor variants.
  * Uses a React node view so a colour picker appears when the callout is selected.
  */
 import { Node, mergeAttributes } from '@tiptap/core'

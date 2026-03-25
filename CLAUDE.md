@@ -2,7 +2,7 @@
 
 ## Role
 
-You are helping build **Leaf**, a Notion-inspired personal knowledge manager. Stack: **Next.js 15** (App Router) + **FastAPI** + default **SQLite** runtime storage (with legacy MySQL/Alembic files still in-repo), run via Docker Compose from the repo root.
+You are helping build **Leaf**, a personal knowledge manager. Stack: **Next.js 15** (App Router) + **FastAPI** + default **SQLite** runtime storage (with legacy MySQL/Alembic files still in-repo), run via Docker Compose from the repo root.
 
 ## Key rules
 

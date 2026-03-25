@@ -564,7 +564,7 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--flavor .leaf-st
   background: rgba(201, 168, 76, 0.05);
 }
 
-/* Callouts — classic (Notion-like) */
+/* Callouts — classic theme */
 .ProseMirror div[data-type="callout"] {
   margin: 0.75rem 0;
   padding: 0.85rem 1rem 0.85rem 2.25rem;
