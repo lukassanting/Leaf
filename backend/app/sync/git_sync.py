@@ -277,7 +277,12 @@ class GitSyncService:
                 capture_output=True,
                 text=True,
                 timeout=60,
-                env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+                env={
+                    **os.environ,
+                    "GIT_TERMINAL_PROMPT": "0",
+                    "GCM_INTERACTIVE": "never",
+                    "GIT_ASKPASS": "",
+                },
             )
             if result.returncode != 0:
                 stderr = result.stderr.strip()
