@@ -143,21 +143,11 @@ function classifyTone(raw: string): 'green' | 'blue' | 'amber' | 'red' | 'muted'
   return 'muted'
 }
 
-/** Pastel chip colours per tag label (reference: varied tag hues in table view). */
-function tagChipPalette(label: string): { background: string; color: string; borderColor: string } {
-  const palettes = [
-    { background: '#e0f2fe', color: '#0369a1', borderColor: '#bae6fd' },
-    { background: '#ede9fe', color: '#5b21b6', borderColor: '#ddd6fe' },
-    { background: '#d1fae5', color: '#047857', borderColor: '#a7f3d0' },
-    { background: '#fce7f3', color: '#9d174d', borderColor: '#fbcfe8' },
-    { background: '#fef3c7', color: '#b45309', borderColor: '#fde68a' },
-    { background: '#ffedd5', color: '#9a3412', borderColor: '#fed7aa' },
-    { background: '#e0e7ff', color: '#4338ca', borderColor: '#c7d2fe' },
-    { background: '#ccfbf1', color: '#0f766e', borderColor: '#99f6e4' },
-  ]
+/** Maps tag label → slot 0–7; colours are `globals.css` `--leaf-db-tag-{n}-{bg,fg,border}` (classic + campaign). */
+function tagChipSlot(label: string): number {
   let h = 0
   for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) >>> 0
-  return palettes[h % palettes.length]
+  return h % 8
 }
 
 /* ── StatusPill: round with colored dot (single-select status) ────────────── */
@@ -195,14 +185,15 @@ function StatusPill({ label, tone = 'muted', compact = false }: { label: string;
 
 /* ── TagPill: squared-off tag chip (multi-select tags) ────────────────────── */
 function TagPill({ label, compact = false }: { label: string; compact?: boolean }) {
-  const p = tagChipPalette(label)
+  const slot = tagChipSlot(label)
+  const v = (suffix: string) => `var(--leaf-db-tag-${slot}-${suffix})`
   return (
     <span
       className="inline-flex items-center border"
       style={{
-        background: p.background,
-        color: p.color,
-        borderColor: p.borderColor,
+        background: v('bg'),
+        color: v('fg'),
+        borderColor: v('border'),
         fontSize: compact ? 10 : 10.5,
         padding: compact ? '1px 6px' : '2px 8px',
         borderRadius: 4,

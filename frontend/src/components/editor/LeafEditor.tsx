@@ -91,6 +91,8 @@ function selectionBubbleShouldShow({
   const { doc, selection } = state
   const { empty } = selection
   if (!editor.isEditable) return false
+  // Align/colour bubble only applies to text — not embeds, images, etc.
+  if (selection instanceof NodeSelection) return false
   const isEmptyTextBlock = !doc.textBetween(from, to).length && isTextSelection(selection)
   const isChildOfMenu = element.contains(document.activeElement)
   const hasEditorFocus = view.hasFocus() || isChildOfMenu

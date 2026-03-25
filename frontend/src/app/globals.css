@@ -80,6 +80,34 @@
   --leaf-db-pill-blue-bg: #e8f1fe;
   --leaf-db-pill-blue-fg: #1e40af;
   --leaf-db-pill-blue-border: #bfdbfe;
+  /*
+   * Database tag chips (multi-select): labels hash to slot 0–7. Override any slot to customise.
+   * Status pills use --leaf-db-pill-* and --leaf-db-dot-* above.
+   */
+  --leaf-db-tag-0-bg: #e0f2fe;
+  --leaf-db-tag-0-fg: #0369a1;
+  --leaf-db-tag-0-border: #bae6fd;
+  --leaf-db-tag-1-bg: #ede9fe;
+  --leaf-db-tag-1-fg: #5b21b6;
+  --leaf-db-tag-1-border: #ddd6fe;
+  --leaf-db-tag-2-bg: #d1fae5;
+  --leaf-db-tag-2-fg: #047857;
+  --leaf-db-tag-2-border: #a7f3d0;
+  --leaf-db-tag-3-bg: #fce7f3;
+  --leaf-db-tag-3-fg: #9d174d;
+  --leaf-db-tag-3-border: #fbcfe8;
+  --leaf-db-tag-4-bg: #fef3c7;
+  --leaf-db-tag-4-fg: #b45309;
+  --leaf-db-tag-4-border: #fde68a;
+  --leaf-db-tag-5-bg: #ffedd5;
+  --leaf-db-tag-5-fg: #9a3412;
+  --leaf-db-tag-5-border: #fed7aa;
+  --leaf-db-tag-6-bg: #e0e7ff;
+  --leaf-db-tag-6-fg: #4338ca;
+  --leaf-db-tag-6-border: #c7d2fe;
+  --leaf-db-tag-7-bg: #ccfbf1;
+  --leaf-db-tag-7-fg: #0f766e;
+  --leaf-db-tag-7-border: #99f6e4;
   --leaf-db-progress-track: #f4f4f5;
   --leaf-db-row-hover: rgba(0, 0, 0, 0.018);
   --leaf-db-chrome-hover: rgba(0, 0, 0, 0.04);
@@ -217,6 +245,31 @@ html[data-leaf-design="campaign"] {
   --leaf-db-pill-blue-bg: color-mix(in srgb, #3b82f6 18%, transparent);
   --leaf-db-pill-blue-fg: #93c5fd;
   --leaf-db-pill-blue-border: color-mix(in srgb, #3b82f6 40%, transparent);
+  /* Tag chips — campaign / dark editor */
+  --leaf-db-tag-0-bg: color-mix(in srgb, #38bdf8 22%, var(--leaf-bg-elevated));
+  --leaf-db-tag-0-fg: #7dd3fc;
+  --leaf-db-tag-0-border: color-mix(in srgb, #38bdf8 42%, transparent);
+  --leaf-db-tag-1-bg: color-mix(in srgb, #a78bfa 20%, var(--leaf-bg-elevated));
+  --leaf-db-tag-1-fg: #c4b5fd;
+  --leaf-db-tag-1-border: color-mix(in srgb, #a78bfa 40%, transparent);
+  --leaf-db-tag-2-bg: color-mix(in srgb, #34d399 20%, var(--leaf-bg-elevated));
+  --leaf-db-tag-2-fg: #6ee7b7;
+  --leaf-db-tag-2-border: color-mix(in srgb, #34d399 40%, transparent);
+  --leaf-db-tag-3-bg: color-mix(in srgb, #f472b6 18%, var(--leaf-bg-elevated));
+  --leaf-db-tag-3-fg: #f9a8d4;
+  --leaf-db-tag-3-border: color-mix(in srgb, #f472b6 38%, transparent);
+  --leaf-db-tag-4-bg: color-mix(in srgb, #fbbf24 18%, var(--leaf-bg-elevated));
+  --leaf-db-tag-4-fg: #fcd34d;
+  --leaf-db-tag-4-border: color-mix(in srgb, #fbbf24 38%, transparent);
+  --leaf-db-tag-5-bg: color-mix(in srgb, #fb923c 18%, var(--leaf-bg-elevated));
+  --leaf-db-tag-5-fg: #fdba74;
+  --leaf-db-tag-5-border: color-mix(in srgb, #fb923c 38%, transparent);
+  --leaf-db-tag-6-bg: color-mix(in srgb, #818cf8 20%, var(--leaf-bg-elevated));
+  --leaf-db-tag-6-fg: #a5b4fc;
+  --leaf-db-tag-6-border: color-mix(in srgb, #818cf8 40%, transparent);
+  --leaf-db-tag-7-bg: color-mix(in srgb, #2dd4bf 20%, var(--leaf-bg-elevated));
+  --leaf-db-tag-7-fg: #5eead4;
+  --leaf-db-tag-7-border: color-mix(in srgb, #2dd4bf 40%, transparent);
   --leaf-db-progress-track: color-mix(in srgb, var(--leaf-border-soft) 75%, transparent);
   --leaf-db-row-hover: color-mix(in srgb, var(--leaf-green) 10%, transparent);
   --leaf-db-chrome-hover: color-mix(in srgb, var(--leaf-green) 12%, transparent);
@@ -872,6 +925,11 @@ html[data-leaf-design="campaign"] .ProseMirror pre code {
 /* Database embed: no selection outline (table is large; green ring is noisy). Page embed keeps a light ring. */
 .ProseMirror [data-type="databaseEmbed"].ProseMirror-selectednode {
   outline: none;
+}
+/* React node views: selected wrapper may not carry data-type — match embedded DB surface */
+.ProseMirror .ProseMirror-selectednode:has(.leaf-database-surface) {
+  outline: none !important;
+  outline-offset: 0;
 }
 .ProseMirror [data-type="pageEmbed"].ProseMirror-selectednode {
   outline: 2px solid color-mix(in srgb, var(--leaf-green) 38%, transparent);
