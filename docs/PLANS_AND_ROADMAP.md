@@ -150,6 +150,7 @@ These are the next best steps after the completed redesign.
 |---|------|----------|
 | ~~7.1~~ | ~~Conflict-resolution UI for `updated_at` mismatches~~ | ✅ Done — bidirectional file sync + cloud conflict detection + settings page |
 | ~~7.4~~ | ~~Git-based sync (auto-commit + push/pull to remote)~~ | ✅ Done — git init/commit/pull/push cycle, periodic scheduler, test connection, git status panel |
+| 7.5 | GitHub Device Flow OAuth + auto-repo creation | One-click GitHub sync: user authorizes via device code flow, backend auto-creates a private repo and configures git sync — no manual PAT or repo setup. Best fit for self-hosted/local tools (no callback server needed). `client_id` configurable per deployment. |
 | 7.2 | CI workflow for lint + backend tests + Playwright smoke suite | Keeps redesign stable |
 | 7.3 | Production deployment path and env hardening | Needed before wider usage |
 
