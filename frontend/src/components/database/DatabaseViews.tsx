@@ -35,6 +35,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigationProgress } from '@/components/NavigationProgress'
 import { warmEditorRoute } from '@/lib/warmEditorRoute'
 import type { DatabaseRow, GallerySize, LeafHeaderBanner, PropertyDefinition, ViewType } from '@/lib/api'
+import { TagsOptionCell, StatusOptionCell, chipVar, normalizeChipColor, type OptionColumnActions } from '@/components/database/optionPickers'
 
 export type { GallerySize }
 
@@ -122,6 +123,15 @@ function getTagColumn(columns: PropertyDefinition[]) {
   return getColumnByMatcher(columns, (column) => column.type === 'tags')
 }
 
+/** Board group label may come from status or tags column — pick the one that defines this label in `options`. */
+function columnForBoardGroup(columns: PropertyDefinition[], group: string): PropertyDefinition | null {
+  const statusColumn = getStatusColumn(columns)
+  const tagColumn = getTagColumn(columns)
+  if (statusColumn?.options?.some((o) => o.label === group)) return statusColumn
+  if (tagColumn?.options?.some((o) => o.label === group)) return tagColumn
+  return statusColumn ?? tagColumn
+}
+
 function getEstimateColumn(columns: PropertyDefinition[]) {
   return getColumnByMatcher(columns, (column) => /estimate|est|points/i.test(column.key) || /estimate|est|points/i.test(column.label))
 }
@@ -184,7 +194,26 @@ function StatusPill({ label, tone = 'muted', compact = false }: { label: string;
 }
 
 /* ── TagPill: squared-off tag chip (multi-select tags) ────────────────────── */
-function TagPill({ label, compact = false }: { label: string; compact?: boolean }) {
+function TagPill({ label, column, compact = false }: { label: string; column?: PropertyDefinition; compact?: boolean }) {
+  const opt = column?.options?.find((o) => o.label === label)
+  if (opt) {
+    const c = normalizeChipColor(opt.color)
+    return (
+      <span
+        className="inline-flex items-center border"
+        style={{
+          background: chipVar(c, 'bg'),
+          color: chipVar(c, 'fg'),
+          borderColor: chipVar(c, 'border'),
+          fontSize: compact ? 10 : 10.5,
+          padding: compact ? '1px 6px' : '2px 8px',
+          borderRadius: 4,
+        }}
+      >
+        {label}
+      </span>
+    )
+  }
   const slot = tagChipSlot(label)
   const v = (suffix: string) => `var(--leaf-db-tag-${slot}-${suffix})`
   return (
@@ -204,24 +233,67 @@ function TagPill({ label, compact = false }: { label: string; compact?: boolean 
   )
 }
 
-function TagChips({ value, compact = false }: { value: unknown; compact?: boolean }) {
+function TagChips({ value, column, compact = false }: { value: unknown; column?: PropertyDefinition; compact?: boolean }) {
   const tags = parseTagValues(value)
   if (!tags.length) return <span className="text-xs" style={{ color: 'var(--leaf-text-hint)' }}>—</span>
 
   return (
     <div className="flex flex-wrap gap-1">
       {tags.map((tag) => (
-        <TagPill key={tag} label={tag} compact={compact} />
+        <TagPill key={tag} label={tag} column={column} compact={compact} />
       ))}
     </div>
   )
 }
 
-function StatusValue({ value, compact = false }: { value: unknown; compact?: boolean }) {
+function StatusValue({ value, column, compact = false }: { value: unknown; column?: PropertyDefinition; compact?: boolean }) {
   if (!value) return <span className="text-xs" style={{ color: 'var(--leaf-text-hint)' }}>—</span>
   const label = String(value)
+  const opt = column?.options?.find((o) => o.label === label)
+  if (opt) {
+    const c = normalizeChipColor(opt.color)
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 rounded-full border"
+        style={{
+          background: chipVar(c, 'bg'),
+          color: chipVar(c, 'fg'),
+          borderColor: chipVar(c, 'border'),
+          fontSize: compact ? 10 : 10.5,
+          padding: compact ? '1px 8px 1px 6px' : '2px 10px 2px 7px',
+        }}
+      >
+        <span className="inline-block shrink-0 rounded-full" style={{ width: 6, height: 6, background: chipVar(c, 'fg') }} />
+        {label}
+      </span>
+    )
+  }
   const tone = classifyTone(label)
   return <StatusPill label={label} tone={tone} compact={compact} />
+}
+
+/** Board column header: use schema option colour when the group label matches an option. */
+function GroupHeaderPill({ label, column }: { label: string; column: PropertyDefinition | null }) {
+  const opt = column?.options?.find((o) => o.label === label)
+  if (opt) {
+    const c = normalizeChipColor(opt.color)
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 rounded-full border"
+        style={{
+          background: chipVar(c, 'bg'),
+          color: chipVar(c, 'fg'),
+          borderColor: chipVar(c, 'border'),
+          fontSize: 10,
+          padding: '1px 8px 1px 6px',
+        }}
+      >
+        <span className="inline-block shrink-0 rounded-full" style={{ width: 6, height: 6, background: chipVar(c, 'fg') }} />
+        {label}
+      </span>
+    )
+  }
+  return <StatusPill label={label} tone={classifyTone(label)} compact />
 }
 
 function ProgressValue({ value }: { value: unknown }) {
@@ -236,8 +308,8 @@ function ProgressValue({ value }: { value: unknown }) {
 }
 
 function renderPropertyValue(column: PropertyDefinition, value: unknown, compact = false) {
-  if (column.type === 'tags') return <TagChips value={value} compact={compact} />
-  if (column.type === 'select') return <StatusValue value={value} compact={compact} />
+  if (column.type === 'tags') return <TagChips value={value} column={column} compact={compact} />
+  if (column.type === 'select') return <StatusValue value={value} column={column} compact={compact} />
   if (column.type === 'number') {
     const n = parseNumberValue(value)
     return (
@@ -249,7 +321,7 @@ function renderPropertyValue(column: PropertyDefinition, value: unknown, compact
   if (column.type === 'date') {
     return <span style={{ color: 'var(--leaf-text-muted)', fontSize: compact ? 11 : 12 }}>{formatDateCellDisplay(value)}</span>
   }
-  if (/status/i.test(column.key) || /status/i.test(column.label)) return <StatusValue value={value} compact={compact} />
+  if (/status/i.test(column.key) || /status/i.test(column.label)) return <StatusValue value={value} column={column} compact={compact} />
   if (/progress/i.test(column.key) || /progress/i.test(column.label)) return <ProgressValue value={value} />
   if (/date|due/i.test(column.key) || /date|due/i.test(column.label)) {
     return <span style={{ color: 'var(--leaf-text-muted)', fontSize: 12 }}>{formatDateCellDisplay(value)}</span>
@@ -453,11 +525,15 @@ function DatePicker({
 function Cell({
   value,
   propDef,
+  rowId,
   onSave,
+  optionColumnActions,
 }: {
   value: unknown
   propDef: PropertyDefinition
+  rowId: string
   onSave: (val: string) => void
+  optionColumnActions?: OptionColumnActions | null
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(String(value ?? ''))
@@ -471,6 +547,21 @@ function Cell({
   const commit = () => {
     setEditing(false)
     if (draft !== String(value ?? '')) onSave(draft)
+  }
+
+  if ((propDef.type === 'tags' || propDef.type === 'select') && optionColumnActions) {
+    if (propDef.type === 'tags') {
+      return (
+        <TagsOptionCell column={propDef} value={value} rowId={rowId} actions={optionColumnActions}>
+          {renderPropertyValue(propDef, value)}
+        </TagsOptionCell>
+      )
+    }
+    return (
+      <StatusOptionCell column={propDef} value={value} rowId={rowId} actions={optionColumnActions}>
+        {renderPropertyValue(propDef, value)}
+      </StatusOptionCell>
+    )
   }
 
   if (propDef.type === 'date') {
@@ -643,7 +734,7 @@ function RowPreview({
       </div>
       <div className="flex items-center justify-between">
         <div className="flex flex-wrap gap-1">
-          {tagColumn ? <TagChips value={(row.properties || {})[tagColumn.key]} compact /> : null}
+          {tagColumn ? <TagChips value={(row.properties || {})[tagColumn.key]} column={tagColumn} compact /> : null}
         </div>
         {estimateColumn ? (
           <span style={{ fontSize: 11, color: 'var(--leaf-text-muted)' }}>
@@ -1092,6 +1183,7 @@ export function DatabaseToolbar({
 
 export function TableView({
   rows, columns, onUpdateName, onUpdateCell, onDeleteRow, onAddRow, onAddColumn, highlightedRowId, saveColumnDefinition, deleteColumn,
+  optionColumnActions,
 }: {
   rows: DatabaseRow[]
   columns: PropertyDefinition[]
@@ -1103,6 +1195,7 @@ export function TableView({
   highlightedRowId?: string | null
   saveColumnDefinition?: (key: string, patch: ColumnDefinitionPatch) => void | Promise<void>
   deleteColumn?: (key: string) => void | Promise<void>
+  optionColumnActions?: OptionColumnActions | null
 }) {
   const [headerMenuKey, setHeaderMenuKey] = useState<string | null>(null)
 
@@ -1200,7 +1293,13 @@ export function TableView({
                     className={`px-3 py-2 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap'}`}
                     style={{ color: 'var(--leaf-text-body)', maxWidth: column.wrap ? 280 : undefined }}
                   >
-                    <Cell value={(row.properties || {})[column.key]} propDef={column} onSave={(value) => onUpdateCell(row.id, column.key, value)} />
+                    <Cell
+                      value={(row.properties || {})[column.key]}
+                      propDef={column}
+                      rowId={row.id}
+                      onSave={(value) => onUpdateCell(row.id, column.key, value)}
+                      optionColumnActions={optionColumnActions}
+                    />
                   </td>
                 ))}
                 <td className="px-3 py-2 text-right align-middle">
@@ -1269,7 +1368,7 @@ export function BoardView({
         <div key={group} className="w-[240px] min-w-[240px] shrink-0">
           <div className="flex items-center justify-between px-0.5 pb-2.5">
             <div className="flex items-center gap-2">
-              <StatusPill label={group} tone={classifyTone(group)} compact />
+              <GroupHeaderPill label={group} column={columnForBoardGroup(columns, group)} />
               <span className="text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>{groupRows.length}</span>
             </div>
             <div className="flex items-center gap-1">
@@ -1362,14 +1461,14 @@ export function GalleryView({
               <div className="flex items-center gap-1.5">
                 {sameStatusTag ? (
                   statusColumn!.type === 'tags' ? (
-                    <TagChips value={status} compact />
+                    <TagChips value={status} column={statusColumn!} compact />
                   ) : (
-                    status ? <StatusValue value={status} compact /> : null
+                    status ? <StatusValue value={status} column={statusColumn!} compact /> : null
                   )
                 ) : (
                   <>
-                    {status ? <StatusValue value={status} compact /> : null}
-                    {tagColumn ? <TagChips value={(row.properties || {})[tagColumn.key]} compact /> : null}
+                    {status ? <StatusValue value={status} column={statusColumn ?? undefined} compact /> : null}
+                    {tagColumn ? <TagChips value={(row.properties || {})[tagColumn.key]} column={tagColumn} compact /> : null}
                   </>
                 )}
                 {estimateColumn ? (
@@ -1444,14 +1543,14 @@ export function ListView({
             <div className="flex items-center gap-2">
               {sameStatusTag ? (
                 statusColumn!.type === 'tags' ? (
-                  <TagChips value={status} compact />
+                  <TagChips value={status} column={statusColumn!} compact />
                 ) : (
-                  status ? <StatusValue value={status} compact /> : null
+                  status ? <StatusValue value={status} column={statusColumn!} compact /> : null
                 )
               ) : (
                 <>
-                  {tagColumn ? <TagChips value={(row.properties || {})[tagColumn.key]} compact /> : null}
-                  {status ? <StatusValue value={status} compact /> : null}
+                  {tagColumn ? <TagChips value={(row.properties || {})[tagColumn.key]} column={tagColumn} compact /> : null}
+                  {status ? <StatusValue value={status} column={statusColumn ?? undefined} compact /> : null}
                 </>
               )}
             </div>

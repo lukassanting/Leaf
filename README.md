@@ -4,9 +4,18 @@ A fast personal knowledge workspace with rich pages, inline databases, a local-f
 
 ## Quick start
 
-**Prerequisites:** Python 3.11+, Node.js 20+, npm. For the Makefile: `make` (on Windows: [Chocolatey](https://chocolatey.org/) `choco install make`, or use WSL / Git Bash).
+**Prerequisites:** Python 3.11+, Node.js 20+, npm (for local dev), or **Docker** with Compose. For the Makefile: `make` (on Windows: [Chocolatey](https://chocolatey.org/) `choco install make`, or use WSL / Git Bash).
 
 All commands below are from the **repo root** (`Leaf/`).
+
+### Option A — Docker (one terminal)
+
+```bash
+make docker     # build + start API (:8000) and frontend (:3000); Ctrl+C to stop
+make down       # stop containers (docker compose down)
+```
+
+### Option B — Local (two terminals)
 
 1. **Install dependencies** (first time only):
 
@@ -14,7 +23,7 @@ All commands below are from the **repo root** (`Leaf/`).
    make install
    ```
 
-2. **Start the app** (two terminals):
+2. **Start the app**:
 
    ```bash
    make api        # Terminal 1 — backend on http://localhost:8000
@@ -23,7 +32,7 @@ All commands below are from the **repo root** (`Leaf/`).
 
 3. **Open** http://localhost:3000
 
-4. **Stop**: Ctrl+C in each terminal.
+4. **Stop**: Ctrl+C in each terminal (or `make down-api` / `make down-frontend` on Windows-friendly port cleanup).
 
 ## Debugging workflow
 
@@ -37,8 +46,14 @@ All commands below are from the **repo root** (`Leaf/`).
 
 | Target | Description |
 |---|---|
-| `make api` | Start backend (FastAPI on :8000) |
-| `make frontend` | Start frontend (Next.js on :3000) |
+| `make docker` / `make up` | Build + start full stack via Docker Compose (attached logs) |
+| `make down` | Stop Docker Compose services |
+| `make down-volumes` | Stop Compose and remove the `leaf_data` volume |
+| `make logs` | Follow all container logs |
+| `make shell-api` / `make shell-frontend` | Shell into a running container |
+| `make api` | Start backend locally (FastAPI on :8000) |
+| `make frontend` | Start frontend locally (Next.js on :3000) |
+| `make down-api` / `make down-frontend` | Kill local processes on :8000 / :3000 |
 | `make install` | Install all dependencies |
 | `make test` | Frontend lint + backend checks |
 
@@ -127,7 +142,7 @@ SYNC_MODE=folder python -m uvicorn app.main:app --reload
 $env:SYNC_MODE="folder"; python -m uvicorn app.main:app --reload
 ```
 
-**Docker (dev only):** `make up` works without changes (sync defaults to off). Add `SYNC_MODE: folder` to the `api` environment block in `docker-compose.yml`, or just configure from the Settings page after the app starts. Note: for folder sync in Docker, you'd need to bind-mount a host directory instead of using the Docker volume so cloud clients can see the files.
+**Docker (dev only):** `make docker` (or `make up`) works without changes (sync defaults to off). Add `SYNC_MODE: folder` to the `api` environment block in `docker-compose.yml`, or just configure from the Settings page after the app starts. Note: for folder sync in Docker, you'd need to bind-mount a host directory instead of using the Docker volume so cloud clients can see the files.
 
 ## Data storage
 
@@ -188,12 +203,13 @@ See `docs/FRAMEWORK_DIRECTION.md` for the full decision and cross-platform guida
 
 ## Docker (optional)
 
-Docker Compose files are included for isolated builds and CI. They are **not** the primary development workflow.
+Docker Compose runs the same API + frontend as local dev, with data in the named volume `leaf_data` (see `docker-compose.yml`).
 
 ```bash
-make docker-up           # Build + start via Docker Compose
-make docker-down         # Stop containers
-make docker-down-volumes # Stop + remove data volume
+make docker        # Build + start (attached; Ctrl+C stops containers)
+make down          # docker compose down
+make down-volumes  # down + remove volume (wipes container DB / data dir)
+make logs          # Follow logs
 ```
 
 Note: Docker uses its own data volume, separate from your local `backend/data/`. For production packaging, Leaf will be distributed as a desktop app (Electron/Tauri) — not as a Docker container.
@@ -204,7 +220,7 @@ Note: Docker uses its own data volume, separate from your local `backend/data/`.
 Leaf/
 ├── CLAUDE.md                    # AI code editor instructions
 ├── README.md                    # ← this file
-├── Makefile                     # make up, test, install, etc.
+├── Makefile                     # make docker, down, api, frontend, test, install, …
 ├── docs/
 │   ├── PLANS_AND_ROADMAP.md
 │   ├── CODEBASE.md

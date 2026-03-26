@@ -73,6 +73,7 @@ export default function DatabaseViewPage() {
     gallerySize,
     setGallerySize,
     deleteDatabase,
+    optionColumnActions,
   } = useDatabasePage(id)
 
   if (loading || !db) {
@@ -177,6 +178,7 @@ export default function DatabaseViewPage() {
               deleteColumn={deleteColumn}
               gallerySize={gallerySize}
               setGallerySize={setGallerySize}
+              optionColumnActions={optionColumnActions}
             />
           </div>
         </div>

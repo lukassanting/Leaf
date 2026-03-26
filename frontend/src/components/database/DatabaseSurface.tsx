@@ -31,6 +31,7 @@
 
 import type { DatabaseRow, GallerySize, PropertyDefinition, ViewType } from '@/lib/api'
 import { AddColumnModal, BoardView, DatabaseToolbar, GalleryView, ListView, TableView } from '@/components/database/DatabaseViews'
+import type { OptionColumnActions } from '@/components/database/optionPickers'
 
 type Props = {
   activeView: ViewType
@@ -52,6 +53,7 @@ type Props = {
   deleteColumn?: (key: string) => void | Promise<void>
   gallerySize?: GallerySize
   setGallerySize?: (size: GallerySize) => void
+  optionColumnActions?: OptionColumnActions | null
 }
 
 export function DatabaseSurface({
@@ -71,6 +73,7 @@ export function DatabaseSurface({
   deleteColumn,
   gallerySize,
   setGallerySize,
+  optionColumnActions,
 }: Props) {
   return (
     <div className="leaf-database-surface">
@@ -96,6 +99,7 @@ export function DatabaseSurface({
           highlightedRowId={highlightedRowId}
           saveColumnDefinition={saveColumnDefinition}
           deleteColumn={deleteColumn}
+          optionColumnActions={optionColumnActions ?? undefined}
         />
       )}
       {activeView === 'board' && (

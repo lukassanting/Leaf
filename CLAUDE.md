@@ -106,9 +106,9 @@ Leaf/
 ## Common commands
 
 ```bash
-make up              # build + start full stack
-make down            # stop
-make down-volumes    # stop + wipe DB
+make docker          # build + start full stack (docker compose up --build); alias: make up
+make down            # docker compose down
+make down-volumes    # stop + remove leaf_data volume
 make logs            # follow all logs
 make shell-api       # sh into API container
 make shell-frontend  # sh into frontend container

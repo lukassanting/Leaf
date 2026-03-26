@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useCallback, useEffect, useState } from 'react'
 import { syncApi } from '@/lib/api/sync'
 import type { SyncStatus } from '@/lib/api/syncTypes'
 
 function formatTimeAgo(isoString: string): string {
   const diff = Date.now() - new Date(isoString).getTime()
-  const mins = Math.floor(diff / 60_000)
-  if (mins < 1) return 'just now'
+  const secs = Math.floor(diff / 1_000)
+  if (secs < 5) return 'just now'
+  if (secs < 60) return `${secs}s ago`
+  const mins = Math.floor(secs / 60)
   if (mins < 60) return `${mins}m ago`
   const hrs = Math.floor(mins / 60)
   if (hrs < 24) return `${hrs}h ago`
@@ -17,22 +18,48 @@ function formatTimeAgo(isoString: string): string {
 
 export function SyncStatusIndicator() {
   const [status, setStatus] = useState<SyncStatus | null>(null)
+  const [, setTick] = useState(0)       // forces re-render for "time ago"
+  const [syncing, setSyncing] = useState(false)
 
+  // Fetch status from API every 10s
   useEffect(() => {
-    const fetch = () => {
+    const fetchStatus = () => {
       syncApi.getStatus().then(setStatus).catch(() => {})
     }
-    fetch()
-    const id = setInterval(fetch, 10_000)
+    fetchStatus()
+    const id = setInterval(fetchStatus, 10_000)
     return () => clearInterval(id)
   }, [])
+
+  // Lightweight tick every 5s to keep "time ago" label fresh
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 5_000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Click to sync now
+  const handleClick = useCallback(async () => {
+    if (syncing) return
+    setSyncing(true)
+    try {
+      await syncApi.triggerSync()
+      // Refresh status after sync completes
+      const updated = await syncApi.getStatus()
+      setStatus(updated)
+    } catch {
+      // silently ignore — status poll will pick up errors
+    } finally {
+      setSyncing(false)
+    }
+  }, [syncing])
 
   // Don't render if sync is off or we haven't loaded yet
   if (!status || status.mode === 'off') return null
 
   // Derive color and label from state + git info
   const hasGitError = status.git?.last_error
-  const effectiveState = hasGitError ? 'error' : status.state
+  const isSyncingNow = syncing || status.state === 'syncing'
+  const effectiveState = hasGitError ? 'error' : isSyncingNow ? 'syncing' : status.state
 
   const dotColor =
     effectiveState === 'watching' ? 'var(--leaf-green)' :
@@ -41,10 +68,10 @@ export function SyncStatusIndicator() {
                                     'var(--leaf-text-muted)'
 
   let label: string
-  if (effectiveState === 'error') {
-    label = 'Sync error'
-  } else if (effectiveState === 'syncing') {
+  if (isSyncingNow) {
     label = 'Syncing…'
+  } else if (effectiveState === 'error') {
+    label = 'Sync error'
   } else if (status.mode === 'git' && status.git?.last_sync_at) {
     label = `Git synced ${formatTimeAgo(status.git.last_sync_at)}`
   } else if (status.last_sync_at) {
@@ -56,17 +83,18 @@ export function SyncStatusIndicator() {
   }
 
   return (
-    <Link
-      href="/settings"
-      className="flex items-center gap-2 px-3 py-1.5 no-underline transition-colors"
+    <button
+      onClick={handleClick}
+      className="flex items-center gap-2 px-3 py-1.5 w-full transition-colors cursor-pointer border-none bg-transparent text-left"
       style={{ color: 'var(--leaf-text-muted)' }}
-      title="Sync settings"
+      title="Click to sync now"
+      disabled={syncing}
     >
       <span
         className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
         style={{
           background: dotColor,
-          boxShadow: status.state === 'syncing' ? `0 0 6px ${dotColor}` : 'none',
+          boxShadow: isSyncingNow ? `0 0 6px ${dotColor}` : 'none',
         }}
       />
       <span style={{ fontSize: 11 }}>{label}</span>
@@ -81,6 +109,6 @@ export function SyncStatusIndicator() {
           {status.conflicts_count}
         </span>
       )}
-    </Link>
+    </button>
   )
 }

@@ -77,6 +77,7 @@ class GitSyncService:
         Returns True if initialization happened, False if already initialized.
         """
         if self.is_initialized:
+            self._ensure_git_identity()
             self._ensure_remote()
             self._ensure_gitignore()
             return False
@@ -84,6 +85,7 @@ class GitSyncService:
         logger.info("Initializing git repo in %s", self.data_dir)
         self._run_git("init")
         self._run_git("checkout", "-b", self._branch)
+        self._ensure_git_identity()
         self._ensure_gitignore()
         self._ensure_remote()
 
@@ -241,7 +243,7 @@ class GitSyncService:
         }
         try:
             result = subprocess.run(
-                ["git", "ls-remote", "--heads", authed_url],
+                ["git", "-c", "credential.helper=", "ls-remote", "--heads", authed_url],
                 cwd=str(self.data_dir),
                 capture_output=True,
                 text=True,
@@ -269,7 +271,7 @@ class GitSyncService:
 
     def _run_git(self, *args: str) -> str:
         """Run a git command in DATA_DIR. Raises GitSyncError on failure."""
-        cmd = ["git"] + list(args)
+        cmd = ["git", "-c", "credential.helper="] + list(args)
         try:
             result = subprocess.run(
                 cmd,
@@ -314,6 +316,17 @@ class GitSyncService:
         if not url:
             return url
         return re.sub(r"https://[^@]+@", "https://", url)
+
+    def _ensure_git_identity(self) -> None:
+        """Set a default git identity in the repo if one isn't configured."""
+        try:
+            self._run_git("config", "user.email")
+        except GitSyncError:
+            self._run_git("config", "user.email", "leaf-sync@localhost")
+        try:
+            self._run_git("config", "user.name")
+        except GitSyncError:
+            self._run_git("config", "user.name", "Leaf Sync")
 
     def _ensure_remote(self) -> None:
         """Set or update the 'origin' remote."""

@@ -128,6 +128,7 @@ export function EmbeddedDatabaseBlock({
     deleteColumn,
     gallerySize,
     setGallerySize,
+    optionColumnActions,
   } = useDatabasePage(id)
 
   if (loading) {
@@ -190,6 +191,7 @@ export function EmbeddedDatabaseBlock({
         deleteColumn={deleteColumn}
         gallerySize={gallerySize}
         setGallerySize={setGallerySize}
+        optionColumnActions={optionColumnActions}
       />
     </div>
   )

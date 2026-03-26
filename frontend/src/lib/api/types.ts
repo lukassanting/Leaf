@@ -209,12 +209,33 @@ export interface LeafReorderChildren {
 
 export type PropertyType = 'text' | 'number' | 'tags' | 'select' | 'date'
 
+/** Palette keys for tag/status chips (see `globals.css` --leaf-db-chip-*). */
+export type DatabaseChipColor =
+  | 'default'
+  | 'gray'
+  | 'brown'
+  | 'orange'
+  | 'yellow'
+  | 'green'
+  | 'blue'
+  | 'purple'
+  | 'pink'
+  | 'red'
+
+export interface PropertyOption {
+  id: string
+  label: string
+  color?: DatabaseChipColor
+}
+
 export interface PropertyDefinition {
   key: string
   label: string
   type: PropertyType
   /** When true, table cells for this column wrap text instead of staying on one line. */
   wrap?: boolean
+  /** For `tags` and `select`: predefined choices with colours; row values are option labels. */
+  options?: PropertyOption[]
 }
 
 export interface DatabaseSchema {

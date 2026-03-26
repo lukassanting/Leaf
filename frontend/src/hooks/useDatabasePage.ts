@@ -31,7 +31,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { databasesApi } from '@/lib/api'
-import type { Database, DatabaseRow, GallerySize, LeafIcon, PropertyDefinition, ViewType } from '@/lib/api'
+import type { Database, DatabaseRow, GallerySize, LeafIcon, PropertyDefinition, PropertyOption, ViewType } from '@/lib/api'
+import type { OptionColumnActions } from '@/components/database/optionPickers'
 import {
   createDatabaseRow,
   updateDatabaseAndEmitTitle,
@@ -39,6 +40,14 @@ import {
   updateDatabaseViewType,
 } from '@/lib/databaseMutations'
 import { useDatabaseBreadcrumbs } from './useDatabaseBreadcrumbs'
+
+function parseTagValuesLocal(value: unknown): string[] {
+  if (Array.isArray(value)) return value as string[]
+  if (typeof value === 'string' && value) {
+    return value.split(',').map((tag) => tag.trim()).filter(Boolean)
+  }
+  return []
+}
 
 export function useDatabasePage(id: string) {
   const router = useRouter()
@@ -223,6 +232,118 @@ export function useDatabasePage(id: string) {
     setRows((prev) => prev.map((item) => (item.id === rowId ? updated : item)))
   }, [id, rows, columns])
 
+  const updateCellValue = useCallback(async (rowId: string, key: string, parsedValue: unknown) => {
+    const row = rows.find((item) => item.id === rowId)
+    if (!row) return
+    const updated = await databasesApi.updateRow(id, rowId, {
+      properties: { ...row.properties, [key]: parsedValue },
+    })
+    setRows((prev) => prev.map((item) => (item.id === rowId ? updated : item)))
+  }, [id, rows])
+
+  const setColumnOptions = useCallback(async (columnKey: string, options: PropertyOption[]) => {
+    if (!db) return
+    const nextSchema = {
+      properties: db.schema.properties.map((c) => (c.key === columnKey ? { ...c, options } : c)),
+    }
+    try {
+      const updated = await saveDatabase({ schema: nextSchema })
+      if (updated) setDb(updated)
+    } catch (error) {
+      console.error(error)
+    }
+  }, [db, saveDatabase])
+
+  const renameColumnOption = useCallback(async (columnKey: string, optionId: string, newLabel: string) => {
+    if (!db) return
+    const col = db.schema.properties.find((c) => c.key === columnKey)
+    if (!col?.options) return
+    const opt = col.options.find((o) => o.id === optionId)
+    if (!opt) return
+    const trimmed = newLabel.trim()
+    if (!trimmed || trimmed === opt.label) return
+    const oldLabel = opt.label
+    const nextOpts = col.options.map((o) => (o.id === optionId ? { ...o, label: trimmed } : o))
+    const nextSchema = {
+      properties: db.schema.properties.map((c) => (c.key === columnKey ? { ...c, options: nextOpts } : c)),
+    }
+
+    let nextRows = rows
+    for (const row of rows) {
+      const v = (row.properties || {})[columnKey]
+      if (col.type === 'tags') {
+        const arr = parseTagValuesLocal(v)
+        if (!arr.includes(oldLabel)) continue
+        const nextArr = arr.map((t) => (t === oldLabel ? trimmed : t))
+        const updated = await databasesApi.updateRow(id, row.id, {
+          properties: { ...row.properties, [columnKey]: nextArr },
+        })
+        nextRows = nextRows.map((r) => (r.id === row.id ? updated : r))
+      } else if (col.type === 'select' && String(v ?? '') === oldLabel) {
+        const updated = await databasesApi.updateRow(id, row.id, {
+          properties: { ...row.properties, [columnKey]: trimmed },
+        })
+        nextRows = nextRows.map((r) => (r.id === row.id ? updated : r))
+      }
+    }
+    setRows(nextRows)
+    try {
+      const updated = await saveDatabase({ schema: nextSchema })
+      if (updated) setDb(updated)
+    } catch (error) {
+      console.error(error)
+    }
+  }, [db, id, rows, saveDatabase])
+
+  const deleteColumnOption = useCallback(async (columnKey: string, optionId: string) => {
+    if (!db) return
+    const col = db.schema.properties.find((c) => c.key === columnKey)
+    if (!col?.options) return
+    const opt = col.options.find((o) => o.id === optionId)
+    if (!opt) return
+    const label = opt.label
+    const nextOpts = col.options.filter((o) => o.id !== optionId)
+    const nextSchema = {
+      properties: db.schema.properties.map((c) => (c.key === columnKey ? { ...c, options: nextOpts } : c)),
+    }
+
+    let nextRows = rows
+    for (const row of rows) {
+      const v = (row.properties || {})[columnKey]
+      if (col.type === 'tags') {
+        const arr = parseTagValuesLocal(v)
+        if (!arr.includes(label)) continue
+        const nextArr = arr.filter((t) => t !== label)
+        const updated = await databasesApi.updateRow(id, row.id, {
+          properties: { ...row.properties, [columnKey]: nextArr },
+        })
+        nextRows = nextRows.map((r) => (r.id === row.id ? updated : r))
+      } else if (col.type === 'select' && String(v ?? '') === label) {
+        const updated = await databasesApi.updateRow(id, row.id, {
+          properties: { ...row.properties, [columnKey]: null },
+        })
+        nextRows = nextRows.map((r) => (r.id === row.id ? updated : r))
+      }
+    }
+    setRows(nextRows)
+    try {
+      const updated = await saveDatabase({ schema: nextSchema })
+      if (updated) setDb(updated)
+    } catch (error) {
+      console.error(error)
+    }
+  }, [db, id, rows, saveDatabase])
+
+  const optionColumnActions: OptionColumnActions = useMemo(
+    () => ({
+      setColumnOptions: (columnKey, options) => setColumnOptions(columnKey, options),
+      renameColumnOption: (columnKey, optionId, newLabel) => renameColumnOption(columnKey, optionId, newLabel),
+      deleteColumnOption: (columnKey, optionId) => deleteColumnOption(columnKey, optionId),
+      updateCellValue: (rowId, columnKey, value) => updateCellValue(rowId, columnKey, value),
+    }),
+    [setColumnOptions, renameColumnOption, deleteColumnOption, updateCellValue],
+  )
+
   const saveColumnDefinition = useCallback(async (
     key: string,
     patch: { label: string; type: PropertyDefinition['type']; wrap?: boolean },
@@ -327,5 +448,10 @@ export function useDatabasePage(id: string) {
     gallerySize,
     setGallerySize,
     deleteDatabase,
+    updateCellValue,
+    setColumnOptions,
+    renameColumnOption,
+    deleteColumnOption,
+    optionColumnActions,
   }
 }

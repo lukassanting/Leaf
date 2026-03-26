@@ -30,10 +30,21 @@ from pydantic import BaseModel, Field
 
 # ─── Schema (column definitions) ─────────────────────────────────────────────
 
+
+class PropertyOption(BaseModel):
+    """Selectable value for `tags` (multi) or `select` (status) columns; persisted in property `options`."""
+
+    id: str
+    label: str
+    color: Optional[str] = None  # e.g. default | gray | blue | purple
+
+
 class PropertyDefinition(BaseModel):
     key: str
     label: str
-    type: str = "text"  # "text" | "number" | "page_link"
+    type: str = "text"  # "text" | "number" | "page_link" | "tags" | "select" | "date"
+    wrap: Optional[bool] = None
+    options: Optional[list[PropertyOption]] = None
 
 
 class DatabaseSchema(BaseModel):

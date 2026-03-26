@@ -20,6 +20,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from sqlalchemy import text
+
 from app.database.connectors.mysql import get_db_connector
 from app.database.models.mysql_models import (
     DatabaseModel,
@@ -80,6 +82,10 @@ class FileToDbSyncer:
 
         connector = get_db_connector()
         with connector.get_db_session() as session:
+            # Disable FK checks for this session — parent/database may not
+            # be synced yet when the watcher fires for a child or row file.
+            session.execute(text("PRAGMA foreign_keys = OFF"))
+
             db_leaf = session.query(LeafModel).filter(LeafModel.id == leaf_id).first()
 
             if db_leaf:
@@ -165,65 +171,78 @@ class FileToDbSyncer:
                         for f in rows_dir.glob("*.md"):
                             md_files.append((f, db_dir.name))
 
-        # Also sync database meta.json files
-        self._sync_database_metas()
-
         connector = get_db_connector()
 
-        for path, database_id in md_files:
-            try:
-                parsed = _parse_md(path)
-                if not parsed:
+        # Temporarily disable FK checks — the file data is internally
+        # consistent but the circular FK chain (leaves ↔ databases ↔
+        # database_rows) makes insertion-order impossible to guarantee.
+        with connector.get_db_session() as session:
+            session.execute(text("PRAGMA foreign_keys = OFF"))
+            session.commit()
+
+        try:
+            # Sync database meta.json files (needs leaves for parent_leaf_id FK)
+            self._sync_database_metas()
+
+            for path, database_id in md_files:
+                try:
+                    parsed = _parse_md(path)
+                    if not parsed:
+                        stats["errors"] += 1
+                        continue
+
+                    leaf_id = parsed.get("id")
+                    if not leaf_id:
+                        stats["errors"] += 1
+                        continue
+
+                    file_leaf_ids.add(leaf_id)
+                    if database_id is None:
+                        database_id = parsed.get("database_id")
+
+                    with connector.get_db_session() as session:
+                        db_leaf = session.query(LeafModel).filter(
+                            LeafModel.id == leaf_id
+                        ).first()
+
+                        if db_leaf:
+                            file_updated_at = _parse_datetime(parsed.get("updated_at"))
+                            if file_updated_at and db_leaf.updated_at and db_leaf.updated_at >= file_updated_at:
+                                stats["skipped"] += 1
+                                continue
+
+                            self._update_leaf_from_parsed(db_leaf, parsed, database_id)
+                            session.commit()
+                            stats["updated"] += 1
+                        else:
+                            new_leaf = self._create_leaf_from_parsed(parsed, database_id)
+                            session.add(new_leaf)
+                            if database_id:
+                                self._ensure_database_row(session, database_id, leaf_id)
+                            session.commit()
+                            stats["created"] += 1
+
+                except Exception:
+                    logger.exception("Error syncing file %s", path)
                     stats["errors"] += 1
-                    continue
 
-                leaf_id = parsed.get("id")
-                if not leaf_id:
-                    stats["errors"] += 1
-                    continue
-
-                file_leaf_ids.add(leaf_id)
-                if database_id is None:
-                    database_id = parsed.get("database_id")
-
+            # Remove DB leaves that have no corresponding file
+            # (only pages/rows that would have .md files — skip if file_leaf_ids is empty
+            #  to avoid accidentally wiping the DB on an empty scan)
+            if file_leaf_ids:
                 with connector.get_db_session() as session:
-                    db_leaf = session.query(LeafModel).filter(
-                        LeafModel.id == leaf_id
-                    ).first()
-
-                    if db_leaf:
-                        file_updated_at = _parse_datetime(parsed.get("updated_at"))
-                        if file_updated_at and db_leaf.updated_at and db_leaf.updated_at >= file_updated_at:
-                            stats["skipped"] += 1
-                            continue
-
-                        self._update_leaf_from_parsed(db_leaf, parsed, database_id)
+                    all_leaves = session.query(LeafModel).all()
+                    for leaf in all_leaves:
+                        if leaf.id not in file_leaf_ids:
+                            session.delete(leaf)
+                            stats["deleted"] += 1
+                    if stats["deleted"]:
                         session.commit()
-                        stats["updated"] += 1
-                    else:
-                        new_leaf = self._create_leaf_from_parsed(parsed, database_id)
-                        session.add(new_leaf)
-                        if database_id:
-                            self._ensure_database_row(session, database_id, leaf_id)
-                        session.commit()
-                        stats["created"] += 1
-
-            except Exception:
-                logger.exception("Error syncing file %s", path)
-                stats["errors"] += 1
-
-        # Remove DB leaves that have no corresponding file
-        # (only pages/rows that would have .md files — skip if file_leaf_ids is empty
-        #  to avoid accidentally wiping the DB on an empty scan)
-        if file_leaf_ids:
+        finally:
+            # Re-enable FK checks
             with connector.get_db_session() as session:
-                all_leaves = session.query(LeafModel).all()
-                for leaf in all_leaves:
-                    if leaf.id not in file_leaf_ids:
-                        session.delete(leaf)
-                        stats["deleted"] += 1
-                if stats["deleted"]:
-                    session.commit()
+                session.execute(text("PRAGMA foreign_keys = ON"))
+                session.commit()
 
         logger.info(
             "Full sync complete: created=%d updated=%d skipped=%d deleted=%d errors=%d",

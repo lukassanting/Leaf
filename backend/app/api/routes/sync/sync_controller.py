@@ -204,18 +204,28 @@ async def trigger_sync(request: Request):
 
 @router.post("/rebuild-index")
 async def rebuild_index(request: Request):
-    """Full rebuild: scan all .md files and recreate the SQLite index."""
+    """Full rebuild: pull from git (if configured), then scan all .md files and recreate the SQLite index."""
     sync = _get_sync_state(request)
     if sync is None:
         raise HTTPException(status_code=503, detail="Sync service not initialized")
 
+    config = sync["config"]
     syncer = sync["syncer"]
     manifest = sync["manifest"]
 
+    result = {"message": "Index rebuilt from files", "stats": {}}
+
+    # Pull from git first so we rebuild from the latest remote state
+    git_sync = sync.get("git_sync")
+    if config.SYNC_MODE == "git" and git_sync:
+        git_stats = git_sync.sync_now()
+        result["git"] = git_stats
+
     stats = syncer.sync_all()
     manifest.update()
+    result["stats"] = stats
 
-    return {"message": "Index rebuilt from files", "stats": stats}
+    return result
 
 
 # ─── Git ────────────────────────────────────────────────────────────────
