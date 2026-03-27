@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { databasesApi, leavesApi, trashApi } from '@/lib/api'
 import { emitLeafTreeChanged } from '@/lib/appEvents'
+import { resetWorkspaceDefaultsCache } from '@/lib/workspaceDefaults'
 import { syncApi } from '@/lib/api/sync'
 import type { SyncConfig, SyncConflict, SyncMode, SyncStatus } from '@/lib/api/syncTypes'
 import type { TrashDatabaseItem, TrashLeafItem } from '@/lib/api/types'
@@ -76,7 +77,7 @@ export default function SettingsPage() {
   const [draftGitUrl, setDraftGitUrl] = useState('')
   const [draftGitToken, setDraftGitToken] = useState('')
   const [draftInterval, setDraftInterval] = useState(300)
-  const [draftInitialized, setDraftInitialized] = useState(false)
+  const [, setDraftInitialized] = useState(false)
 
   const refresh = useCallback(async () => {
     try {
@@ -151,6 +152,7 @@ export default function SettingsPage() {
     try {
       await syncApi.triggerSync()
       await refresh()
+      emitLeafTreeChanged()
     } finally {
       setSyncing(false)
     }
@@ -160,7 +162,9 @@ export default function SettingsPage() {
     setSyncing(true)
     try {
       await syncApi.rebuildIndex()
+      resetWorkspaceDefaultsCache()
       await refresh()
+      emitLeafTreeChanged()
     } finally {
       setSyncing(false)
     }

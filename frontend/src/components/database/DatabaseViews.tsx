@@ -31,7 +31,28 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  closestCorners,
+  useSensor,
+  useSensors,
+  useDroppable,
+  useDraggable,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useNavigationProgress } from '@/components/NavigationProgress'
 import { warmEditorRoute } from '@/lib/warmEditorRoute'
 import type { DatabaseRow, GallerySize, LeafHeaderBanner, PropertyDefinition, ViewType } from '@/lib/api'
@@ -132,17 +153,6 @@ function columnForBoardGroup(columns: PropertyDefinition[], group: string): Prop
   return statusColumn ?? tagColumn
 }
 
-function getEstimateColumn(columns: PropertyDefinition[]) {
-  return getColumnByMatcher(columns, (column) => /estimate|est|points/i.test(column.key) || /estimate|est|points/i.test(column.label))
-}
-
-/** List/Gallery use status + tags slots; a "Status" column with type `tags` matches both and would render twice. */
-function statusColumnSameAsTagColumn(
-  status: PropertyDefinition | null,
-  tag: PropertyDefinition | null,
-): boolean {
-  return Boolean(status && tag && status.key === tag.key)
-}
 
 function classifyTone(raw: string): 'green' | 'blue' | 'amber' | 'red' | 'muted' {
   const value = raw.toLowerCase()
@@ -632,6 +642,44 @@ function Cell({
   )
 }
 
+/** All schema columns with editable cells (matches table semantics). */
+function PropertyColumnList({
+  row,
+  columns,
+  onUpdateCell,
+  optionColumnActions,
+}: {
+  row: DatabaseRow
+  columns: PropertyDefinition[]
+  onUpdateCell: (rowId: string, key: string, val: string) => void
+  optionColumnActions?: OptionColumnActions | null
+}) {
+  if (!columns.length) return null
+  return (
+    <div className="flex flex-col gap-1.5">
+      {columns.map((col) => (
+        <div key={col.key} className="flex items-start gap-2">
+          <span
+            className="shrink-0 text-[10px] font-medium leading-[18px] pt-0.5"
+            style={{ color: 'var(--leaf-text-hint)', minWidth: 56, maxWidth: 100 }}
+          >
+            {col.label}
+          </span>
+          <div className="min-w-0 flex-1">
+            <Cell
+              value={(row.properties || {})[col.key]}
+              propDef={col}
+              rowId={row.id}
+              onSave={(v) => onUpdateCell(row.id, col.key, v)}
+              optionColumnActions={optionColumnActions}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function NameCell({ row, onSave }: { row: DatabaseRow; onSave: (title: string) => void }) {
   const { startNavigation } = useNavigationProgress()
   const [editing, setEditing] = useState(false)
@@ -706,18 +754,19 @@ function RowPreview({
   coverTone,
   coverHeight,
   onUpdateName,
+  onUpdateCell,
   onDeleteRow,
+  optionColumnActions,
 }: {
   row: DatabaseRow
   columns: PropertyDefinition[]
   coverTone: string
   coverHeight?: number
   onUpdateName: (rowId: string, title: string) => void
+  onUpdateCell: (rowId: string, key: string, val: string) => void
   onDeleteRow: (rowId: string) => void
+  optionColumnActions?: OptionColumnActions | null
 }) {
-  const tagColumn = getTagColumn(columns)
-  const estimateColumn = getEstimateColumn(columns)
-
   return (
     <div
       className="group overflow-hidden rounded-xl border transition-colors duration-150"
@@ -732,16 +781,12 @@ function RowPreview({
       <div className="mb-2">
         <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
       </div>
-      <div className="flex items-center justify-between">
-        <div className="flex flex-wrap gap-1">
-          {tagColumn ? <TagChips value={(row.properties || {})[tagColumn.key]} column={tagColumn} compact /> : null}
-        </div>
-        {estimateColumn ? (
-          <span style={{ fontSize: 11, color: 'var(--leaf-text-muted)' }}>
-            # {String((row.properties || {})[estimateColumn.key] || '—')}
-          </span>
-        ) : null}
-      </div>
+      <PropertyColumnList
+        row={row}
+        columns={columns}
+        onUpdateCell={onUpdateCell}
+        optionColumnActions={optionColumnActions}
+      />
       <button
         type="button"
         onClick={() => onDeleteRow(row.id)}
@@ -845,14 +890,16 @@ function PropertyHeaderGlyph({ type }: { type: PropertyDefinition['type'] }) {
 
 export type ColumnDefinitionPatch = { label: string; type: PropertyDefinition['type']; wrap?: boolean }
 
-/* ── ColumnHeaderMenu: property menu (rename, type, wrap, delete) ─────────── */
+/** Fixed-position portal below `anchorEl` so the menu is not clipped by table overflow-x. */
 export function ColumnHeaderMenu({
   column,
+  anchorEl,
   onSave,
   onClose,
   onDelete,
 }: {
   column: PropertyDefinition
+  anchorEl: HTMLElement | null
   onSave: (patch: ColumnDefinitionPatch) => void
   onClose: () => void
   onDelete?: () => void
@@ -861,8 +908,20 @@ export function ColumnHeaderMenu({
   const [localType, setLocalType] = useState(column.type)
   const [localWrap, setLocalWrap] = useState(column.wrap ?? false)
   const [showTypeMenu, setShowTypeMenu] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
   const ref = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const recomputePos = useCallback(() => {
+    if (!anchorEl) return
+    const r = anchorEl.getBoundingClientRect()
+    const menuWidth = Math.min(280, window.innerWidth - 24)
+    let left = r.left
+    const top = r.bottom + 4
+    left = Math.min(left, window.innerWidth - menuWidth - 8)
+    left = Math.max(8, left)
+    setPos({ top, left })
+  }, [anchorEl])
 
   useEffect(() => {
     setLabel(column.label)
@@ -871,20 +930,34 @@ export function ColumnHeaderMenu({
     setShowTypeMenu(false)
   }, [column])
 
+  useLayoutEffect(() => {
+    recomputePos()
+  }, [recomputePos])
+
+  useEffect(() => {
+    if (!anchorEl) return
+    window.addEventListener('scroll', recomputePos, true)
+    window.addEventListener('resize', recomputePos)
+    return () => {
+      window.removeEventListener('scroll', recomputePos, true)
+      window.removeEventListener('resize', recomputePos)
+    }
+  }, [anchorEl, recomputePos])
+
   useEffect(() => { inputRef.current?.select() }, [])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        if (label.trim() && label.trim() !== column.label) {
-          onSave({ label: label.trim(), type: localType, wrap: localWrap })
-        }
-        onClose()
+      const t = e.target as Node
+      if (ref.current?.contains(t) || anchorEl?.contains(t)) return
+      if (label.trim() && label.trim() !== column.label) {
+        onSave({ label: label.trim(), type: localType, wrap: localWrap })
       }
+      onClose()
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [label, column.label, column.key, localType, localWrap, onSave, onClose])
+  }, [label, column.label, column.key, localType, localWrap, onSave, onClose, anchorEl])
 
   const typeOptions: { value: PropertyDefinition['type']; label: string }[] = [
     { value: 'select', label: 'Status' },
@@ -901,11 +974,13 @@ export function ColumnHeaderMenu({
     if (label.trim()) onSave({ label: label.trim(), type: localType, wrap: localWrap })
   }
 
-  return (
+  const menu = (
     <div
       ref={ref}
-      className="absolute left-0 top-full z-50 mt-1 w-[min(280px,calc(100vw-24px))] rounded-xl border py-1.5 shadow-lg"
+      className="leaf-col-menu fixed z-[9999] w-[min(280px,calc(100vw-24px))] rounded-xl border py-1.5 shadow-lg"
       style={{
+        top: pos.top,
+        left: pos.left,
         background: 'var(--leaf-bg-elevated)',
         borderColor: 'var(--leaf-border-strong)',
         boxShadow: 'var(--leaf-shadow-soft)',
@@ -1042,6 +1117,9 @@ export function ColumnHeaderMenu({
       ) : null}
     </div>
   )
+
+  if (typeof document === 'undefined' || !anchorEl) return null
+  return createPortal(menu, document.body)
 }
 
 export function DatabaseToolbar({
@@ -1181,9 +1259,89 @@ export function DatabaseToolbar({
   )
 }
 
+function SortableDatabaseTableRow({
+  id,
+  row,
+  columns,
+  highlightedRowId,
+  onUpdateName,
+  onUpdateCell,
+  onDeleteRow,
+  optionColumnActions,
+}: {
+  id: string
+  row: DatabaseRow
+  columns: PropertyDefinition[]
+  highlightedRowId?: string | null
+  onUpdateName: (rowId: string, title: string) => void
+  onUpdateCell: (rowId: string, key: string, val: string) => void
+  onDeleteRow: (rowId: string) => void
+  optionColumnActions?: OptionColumnActions | null
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const isHighlighted = Boolean(highlightedRowId && row.leaf_id === highlightedRowId.replace('dbrow:', ''))
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.45 : undefined,
+    borderBottom: '1px solid var(--leaf-border-soft)',
+    background: isHighlighted ? 'var(--leaf-bg-active)' as const : undefined,
+  }
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className="group transition-colors duration-75"
+      onMouseEnter={(e) => { if (!isHighlighted) e.currentTarget.style.background = 'var(--leaf-db-row-hover)' }}
+      onMouseLeave={(e) => { if (!isHighlighted) e.currentTarget.style.background = '' }}
+    >
+      <td className="w-8 px-1 align-middle" {...attributes}>
+        <button
+          type="button"
+          className="cursor-grab touch-none rounded px-0.5 py-1 text-[10px] opacity-50 hover:opacity-90"
+          style={{ color: 'var(--leaf-text-muted)' }}
+          {...listeners}
+          aria-label="Drag to reorder row"
+        >
+          ⋮⋮
+        </button>
+      </td>
+      <td className="px-3 py-2 align-middle">
+        <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
+      </td>
+      {columns.map((column) => (
+        <td
+          key={column.key}
+          className={`px-3 py-2 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap'}`}
+          style={{ color: 'var(--leaf-text-body)', maxWidth: column.wrap ? 280 : undefined }}
+        >
+          <Cell
+            value={(row.properties || {})[column.key]}
+            propDef={column}
+            rowId={row.id}
+            onSave={(value) => onUpdateCell(row.id, column.key, value)}
+            optionColumnActions={optionColumnActions}
+          />
+        </td>
+      ))}
+      <td className="px-3 py-2 text-right align-middle">
+        <button
+          type="button"
+          onClick={() => onDeleteRow(row.id)}
+          className="leaf-db-row-action rounded px-1.5 py-0.5 text-[11px] opacity-0 transition-opacity group-hover:opacity-100"
+          style={{ color: 'var(--leaf-text-muted)' }}
+        >
+          ···
+        </button>
+      </td>
+    </tr>
+  )
+}
+
 export function TableView({
   rows, columns, onUpdateName, onUpdateCell, onDeleteRow, onAddRow, onAddColumn, highlightedRowId, saveColumnDefinition, deleteColumn,
   optionColumnActions,
+  onReorderRows,
 }: {
   rows: DatabaseRow[]
   columns: PropertyDefinition[]
@@ -1196,18 +1354,39 @@ export function TableView({
   saveColumnDefinition?: (key: string, patch: ColumnDefinitionPatch) => void | Promise<void>
   deleteColumn?: (key: string) => void | Promise<void>
   optionColumnActions?: OptionColumnActions | null
+  onReorderRows?: (rowIds: string[]) => void | Promise<void>
 }) {
-  const [headerMenuKey, setHeaderMenuKey] = useState<string | null>(null)
+  const [headerMenu, setHeaderMenu] = useState<{ key: string; anchor: HTMLElement } | null>(null)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
-  const openHeaderMenu = (key: string) => {
-    setHeaderMenuKey((current) => (current === key ? null : key))
+  const onTableDragEnd = (event: DragEndEvent) => {
+    if (!onReorderRows) return
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const ids = rows.map((r) => r.id)
+    const oldIndex = ids.indexOf(String(active.id))
+    const newIndex = ids.indexOf(String(over.id))
+    if (oldIndex < 0 || newIndex < 0) return
+    const next = arrayMove(ids, oldIndex, newIndex)
+    void onReorderRows(next)
   }
 
-  return (
-    <div className="overflow-x-auto px-2 pb-2">
+  const openHeaderMenu = (key: string, anchor: HTMLElement) => {
+    setHeaderMenu((current) => (current?.key === key ? null : { key, anchor }))
+  }
+
+  const headerMenuColumn = headerMenu ? columns.find((c) => c.key === headerMenu.key) : undefined
+
+  const tableInner = (
       <table className="leaf-db-table w-full border-collapse text-sm">
         <thead>
           <tr style={{ borderBottom: '1px solid var(--leaf-border-soft)' }}>
+            {onReorderRows ? (
+              <th className="w-8 px-1 py-2" aria-hidden style={{ color: 'var(--leaf-text-muted)' }} />
+            ) : null}
             <th className="w-56 whitespace-nowrap px-3 py-2 text-left text-[11px] font-medium" style={{ color: 'var(--leaf-text-muted)' }}>
               <span className="flex items-center gap-1.5">
                 <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.5 }}>
@@ -1219,12 +1398,11 @@ export function TableView({
             {columns.map((column) => (
               <th
                 key={column.key}
-                className={`group relative px-3 py-2 text-left text-[11px] font-medium ${column.wrap ? 'align-top' : 'whitespace-nowrap'}`}
+                className={`group px-3 py-2 text-left text-[11px] font-medium ${column.wrap ? 'align-top' : 'whitespace-nowrap'}`}
                 style={{ color: 'var(--leaf-text-muted)', cursor: 'pointer', maxWidth: column.wrap ? 280 : undefined }}
                 onClick={(event) => {
-                  if ((event.target as HTMLElement).closest('.leaf-col-menu')) return
                   if ((event.target as HTMLElement).closest('.leaf-col-header-menu-btn')) return
-                  openHeaderMenu(column.key)
+                  openHeaderMenu(column.key, event.currentTarget)
                 }}
               >
                 <div className="flex items-center justify-between gap-1">
@@ -1239,22 +1417,13 @@ export function TableView({
                     aria-label="Column options"
                     onClick={(event) => {
                       event.stopPropagation()
-                      openHeaderMenu(column.key)
+                      const th = (event.currentTarget as HTMLElement).closest('th')
+                      if (th) openHeaderMenu(column.key, th)
                     }}
                   >
                     ⋯
                   </button>
                 </div>
-                {headerMenuKey === column.key && saveColumnDefinition && (
-                  <div className="leaf-col-menu">
-                    <ColumnHeaderMenu
-                      column={column}
-                      onSave={(patch) => { void saveColumnDefinition(column.key, patch) }}
-                      onClose={() => setHeaderMenuKey(null)}
-                      onDelete={deleteColumn ? () => { void deleteColumn(column.key) } : undefined}
-                    />
-                  </div>
-                )}
               </th>
             ))}
             <th className="px-3 py-2 text-left" style={{ color: 'var(--leaf-text-muted)' }}>
@@ -1270,55 +1439,75 @@ export function TableView({
             </th>
           </tr>
         </thead>
-        <tbody>
-          {rows.map((row) => {
-            const isHighlighted = highlightedRowId && row.leaf_id === highlightedRowId.replace('dbrow:', '')
-            return (
-              <tr
-                key={row.id}
-                className="group transition-colors duration-75"
-                style={{
-                  borderBottom: '1px solid var(--leaf-border-soft)',
-                  background: isHighlighted ? 'var(--leaf-bg-active)' : undefined,
-                }}
-                onMouseEnter={(e) => { if (!isHighlighted) e.currentTarget.style.background = 'var(--leaf-db-row-hover)' }}
-                onMouseLeave={(e) => { if (!isHighlighted) e.currentTarget.style.background = '' }}
-              >
-                <td className="px-3 py-2 align-middle">
-                  <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
-                </td>
-                {columns.map((column) => (
-                  <td
-                    key={column.key}
-                    className={`px-3 py-2 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap'}`}
-                    style={{ color: 'var(--leaf-text-body)', maxWidth: column.wrap ? 280 : undefined }}
-                  >
-                    <Cell
-                      value={(row.properties || {})[column.key]}
-                      propDef={column}
-                      rowId={row.id}
-                      onSave={(value) => onUpdateCell(row.id, column.key, value)}
-                      optionColumnActions={optionColumnActions}
-                    />
+        {onReorderRows ? (
+          <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+            <tbody>
+              {rows.map((row) => (
+                <SortableDatabaseTableRow
+                  key={row.id}
+                  id={row.id}
+                  row={row}
+                  columns={columns}
+                  highlightedRowId={highlightedRowId}
+                  onUpdateName={onUpdateName}
+                  onUpdateCell={onUpdateCell}
+                  onDeleteRow={onDeleteRow}
+                  optionColumnActions={optionColumnActions}
+                />
+              ))}
+            </tbody>
+          </SortableContext>
+        ) : (
+          <tbody>
+            {rows.map((row) => {
+              const isHighlighted = highlightedRowId && row.leaf_id === highlightedRowId.replace('dbrow:', '')
+              return (
+                <tr
+                  key={row.id}
+                  className="group transition-colors duration-75"
+                  style={{
+                    borderBottom: '1px solid var(--leaf-border-soft)',
+                    background: isHighlighted ? 'var(--leaf-bg-active)' : undefined,
+                  }}
+                  onMouseEnter={(e) => { if (!isHighlighted) e.currentTarget.style.background = 'var(--leaf-db-row-hover)' }}
+                  onMouseLeave={(e) => { if (!isHighlighted) e.currentTarget.style.background = '' }}
+                >
+                  <td className="px-3 py-2 align-middle">
+                    <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
                   </td>
-                ))}
-                <td className="px-3 py-2 text-right align-middle">
-                  <button
-                    type="button"
-                    onClick={() => onDeleteRow(row.id)}
-                    className="leaf-db-row-action rounded px-1.5 py-0.5 text-[11px] opacity-0 transition-opacity group-hover:opacity-100"
-                    style={{ color: 'var(--leaf-text-muted)' }}
-                  >
-                    ···
-                  </button>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
+                  {columns.map((column) => (
+                    <td
+                      key={column.key}
+                      className={`px-3 py-2 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap'}`}
+                      style={{ color: 'var(--leaf-text-body)', maxWidth: column.wrap ? 280 : undefined }}
+                    >
+                      <Cell
+                        value={(row.properties || {})[column.key]}
+                        propDef={column}
+                        rowId={row.id}
+                        onSave={(value) => onUpdateCell(row.id, column.key, value)}
+                        optionColumnActions={optionColumnActions}
+                      />
+                    </td>
+                  ))}
+                  <td className="px-3 py-2 text-right align-middle">
+                    <button
+                      type="button"
+                      onClick={() => onDeleteRow(row.id)}
+                      className="leaf-db-row-action rounded px-1.5 py-0.5 text-[11px] opacity-0 transition-opacity group-hover:opacity-100"
+                      style={{ color: 'var(--leaf-text-muted)' }}
+                    >
+                      ···
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        )}
         <tfoot>
           <tr>
-            <td colSpan={columns.length + 2} className="px-3 py-2">
+            <td colSpan={columns.length + 2 + (onReorderRows ? 1 : 0)} className="px-3 py-2">
               <button
                 type="button"
                 onClick={onAddRow}
@@ -1332,21 +1521,129 @@ export function TableView({
           </tr>
         </tfoot>
       </table>
+  )
+
+  const scrollShell = (
+    <div className="overflow-x-auto px-2 pb-2">
+      {headerMenu && headerMenuColumn && saveColumnDefinition ? (
+        <ColumnHeaderMenu
+          anchorEl={headerMenu.anchor}
+          column={headerMenuColumn}
+          onSave={(patch) => { void saveColumnDefinition(headerMenuColumn.key, patch) }}
+          onClose={() => setHeaderMenu(null)}
+          onDelete={deleteColumn ? () => { void deleteColumn(headerMenuColumn.key) } : undefined}
+        />
+      ) : null}
+      {tableInner}
+    </div>
+  )
+
+  if (onReorderRows) {
+    return (
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onTableDragEnd}>
+        {scrollShell}
+      </DndContext>
+    )
+  }
+
+  return scrollShell
+}
+
+const BOARD_COL_PREFIX = 'board-col:'
+
+function boardColumnDropId(group: string) {
+  return `${BOARD_COL_PREFIX}${encodeURIComponent(group)}`
+}
+
+function parseBoardColumnDropId(overId: string): string | null {
+  if (!overId.startsWith(BOARD_COL_PREFIX)) return null
+  return decodeURIComponent(overId.slice(BOARD_COL_PREFIX.length))
+}
+
+function BoardDraggableCard({
+  row,
+  columns,
+  coverTone,
+  onUpdateName,
+  onUpdateCell,
+  onDeleteRow,
+  optionColumnActions,
+}: {
+  row: DatabaseRow
+  columns: PropertyDefinition[]
+  coverTone: string
+  onUpdateName: (rowId: string, title: string) => void
+  onUpdateCell: (rowId: string, key: string, val: string) => void
+  onDeleteRow: (rowId: string) => void
+  optionColumnActions?: OptionColumnActions | null
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: row.id })
+  const style = {
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    opacity: isDragging ? 0.6 : undefined,
+    zIndex: isDragging ? 10 : undefined,
+  }
+  return (
+    <div ref={setNodeRef} style={style} className="relative">
+      <div className="flex gap-0.5">
+        <button
+          type="button"
+          className="mt-2 h-6 w-5 shrink-0 cursor-grab touch-none rounded text-[10px] opacity-35 hover:opacity-70"
+          style={{ color: 'var(--leaf-text-muted)' }}
+          {...listeners}
+          {...attributes}
+          aria-label="Drag to another column"
+        >
+          ⋮⋮
+        </button>
+        <div className="min-w-0 flex-1">
+          <RowPreview
+            row={row}
+            columns={columns}
+            coverTone={coverTone}
+            onUpdateName={onUpdateName}
+            onUpdateCell={onUpdateCell}
+            onDeleteRow={onDeleteRow}
+            optionColumnActions={optionColumnActions}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BoardKanbanColumn({ group, children }: { group: string; children: ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: boardColumnDropId(group) })
+  return (
+    <div
+      ref={setNodeRef}
+      className="rounded-lg px-0.5 py-0.5 transition-colors"
+      style={{
+        background: isOver ? 'color-mix(in srgb, var(--color-primary) 12%, transparent)' : undefined,
+        minHeight: 24,
+      }}
+    >
+      {children}
     </div>
   )
 }
 
 export function BoardView({
-  rows, columns, onUpdateName, onDeleteRow, onAddRow,
+  rows, columns, onUpdateName, onUpdateCell, onUpdateCellValue, onDeleteRow, onAddRow, optionColumnActions,
 }: {
   rows: DatabaseRow[]
   columns: PropertyDefinition[]
   onUpdateName: (rowId: string, title: string) => void
+  onUpdateCell: (rowId: string, key: string, val: string) => void
+  onUpdateCellValue: (rowId: string, key: string, value: unknown) => void | Promise<void>
   onDeleteRow: (rowId: string) => void
   onAddRow: () => void
+  optionColumnActions?: OptionColumnActions | null
 }) {
   const statusColumn = getStatusColumn(columns)
   const tagColumn = getTagColumn(columns)
+  const boardDnDEnabled = Boolean(statusColumn || tagColumn)
+  const boardSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const groups = useMemo(() => {
     const map = new Map<string, DatabaseRow[]>()
@@ -1362,7 +1659,21 @@ export function BoardView({
     return Array.from(map.entries())
   }, [rows, statusColumn, tagColumn])
 
-  return (
+  const onBoardDragEnd = (event: DragEndEvent) => {
+    if (!boardDnDEnabled) return
+    const { active, over } = event
+    if (!over) return
+    const group = parseBoardColumnDropId(String(over.id))
+    if (group === null) return
+    const rowId = String(active.id)
+    if (statusColumn) {
+      void onUpdateCellValue(rowId, statusColumn.key, group)
+    } else if (tagColumn) {
+      void onUpdateCellValue(rowId, tagColumn.key, [group])
+    }
+  }
+
+  const boardBody = (
     <div className="flex gap-4 overflow-x-auto px-2 py-3 pb-3">
       {groups.map(([group, groupRows]) => (
         <div key={group} className="w-[240px] min-w-[240px] shrink-0">
@@ -1376,26 +1687,43 @@ export function BoardView({
               <button type="button" className="h-[22px] w-[22px] rounded-[5px] text-sm leading-none" style={{ color: 'var(--leaf-text-muted)' }}>...</button>
             </div>
           </div>
-          <div className="flex flex-col gap-2">
-            {groupRows.map((row) => (
-              <RowPreview
-                key={row.id}
-                row={row}
-                columns={columns}
-                coverTone={hashTone(row.id, DB_CARD_COVER_TONES)}
-                onUpdateName={onUpdateName}
-                onDeleteRow={onDeleteRow}
-              />
-            ))}
-            <button
-              type="button"
-              onClick={onAddRow}
-              className="flex w-full items-center gap-1.5 rounded-xl px-3 py-2 text-xs"
-              style={{ color: 'var(--leaf-text-muted)' }}
-            >
-              + New
-            </button>
-          </div>
+          <BoardKanbanColumn group={group}>
+            <div className="flex flex-col gap-2">
+              {groupRows.map((row) =>
+                boardDnDEnabled ? (
+                  <BoardDraggableCard
+                    key={row.id}
+                    row={row}
+                    columns={columns}
+                    coverTone={hashTone(row.id, DB_CARD_COVER_TONES)}
+                    onUpdateName={onUpdateName}
+                    onUpdateCell={onUpdateCell}
+                    onDeleteRow={onDeleteRow}
+                    optionColumnActions={optionColumnActions}
+                  />
+                ) : (
+                  <RowPreview
+                    key={row.id}
+                    row={row}
+                    columns={columns}
+                    coverTone={hashTone(row.id, DB_CARD_COVER_TONES)}
+                    onUpdateName={onUpdateName}
+                    onUpdateCell={onUpdateCell}
+                    onDeleteRow={onDeleteRow}
+                    optionColumnActions={optionColumnActions}
+                  />
+                )
+              )}
+              <button
+                type="button"
+                onClick={onAddRow}
+                className="flex w-full items-center gap-1.5 rounded-xl px-3 py-2 text-xs"
+                style={{ color: 'var(--leaf-text-muted)' }}
+              >
+                + New
+              </button>
+            </div>
+          </BoardKanbanColumn>
         </div>
       ))}
       <div className="flex min-w-[160px] items-start pt-6">
@@ -1410,6 +1738,15 @@ export function BoardView({
       </div>
     </div>
   )
+
+  if (boardDnDEnabled) {
+    return (
+      <DndContext sensors={boardSensors} collisionDetection={closestCorners} onDragEnd={onBoardDragEnd}>
+        {boardBody}
+      </DndContext>
+    )
+  }
+  return boardBody
 }
 
 const GALLERY_CONFIG: Record<GallerySize, { cols: string; coverH: number; minH: number }> = {
@@ -1422,26 +1759,25 @@ export function GalleryView({
   rows,
   columns,
   onUpdateName,
+  onUpdateCell,
   onAddRow,
+  optionColumnActions,
   gallerySize = 'medium',
 }: {
   rows: DatabaseRow[]
   columns: PropertyDefinition[]
   onUpdateName: (rowId: string, title: string) => void
+  onUpdateCell: (rowId: string, key: string, val: string) => void
   onDeleteRow: (rowId: string) => void
   onAddRow: () => void
+  optionColumnActions?: OptionColumnActions | null
   gallerySize?: GallerySize
 }) {
-  const statusColumn = getStatusColumn(columns)
-  const tagColumn = getTagColumn(columns)
-  const estimateColumn = getEstimateColumn(columns)
-  const sameStatusTag = statusColumnSameAsTagColumn(statusColumn, tagColumn)
   const config = GALLERY_CONFIG[gallerySize]
 
   return (
     <div className={`grid gap-3 px-2 py-3 ${config.cols}`}>
       {rows.map((row, index) => {
-        const status = statusColumn ? (row.properties || {})[statusColumn.key] : null
         const tone = DB_CARD_COVER_TONES[index % DB_CARD_COVER_TONES.length]
         return (
           <div
@@ -1458,25 +1794,12 @@ export function GalleryView({
               <div className="mb-1.5">
                 <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
               </div>
-              <div className="flex items-center gap-1.5">
-                {sameStatusTag ? (
-                  statusColumn!.type === 'tags' ? (
-                    <TagChips value={status} column={statusColumn!} compact />
-                  ) : (
-                    status ? <StatusValue value={status} column={statusColumn!} compact /> : null
-                  )
-                ) : (
-                  <>
-                    {status ? <StatusValue value={status} column={statusColumn ?? undefined} compact /> : null}
-                    {tagColumn ? <TagChips value={(row.properties || {})[tagColumn.key]} column={tagColumn} compact /> : null}
-                  </>
-                )}
-                {estimateColumn ? (
-                  <span className="ml-auto text-[10.5px]" style={{ color: 'var(--leaf-text-muted)' }}>
-                    # {String((row.properties || {})[estimateColumn.key] || '—')}
-                  </span>
-                ) : null}
-              </div>
+              <PropertyColumnList
+                row={row}
+                columns={columns}
+                onUpdateCell={onUpdateCell}
+                optionColumnActions={optionColumnActions}
+              />
             </div>
           </div>
         )
@@ -1498,83 +1821,183 @@ export function GalleryView({
   )
 }
 
+function SortableDatabaseListRow({
+  id,
+  row,
+  columns,
+  onUpdateName,
+  onUpdateCell,
+  onDeleteRow,
+  optionColumnActions,
+}: {
+  id: string
+  row: DatabaseRow
+  columns: PropertyDefinition[]
+  onUpdateName: (rowId: string, title: string) => void
+  onUpdateCell: (rowId: string, key: string, val: string) => void
+  onDeleteRow: (rowId: string) => void
+  optionColumnActions?: OptionColumnActions | null
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.45 : undefined,
+    borderBottom: '1px solid var(--leaf-border-soft)',
+  }
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group px-2 py-3 transition-colors duration-150"
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-hover)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
+    >
+      <div className="mb-2 flex items-center gap-2">
+        <button
+          type="button"
+          className="shrink-0 cursor-grab touch-none rounded px-0.5 py-1 text-[10px] opacity-50 hover:opacity-90"
+          style={{ color: 'var(--leaf-text-muted)' }}
+          {...listeners}
+          {...attributes}
+          aria-label="Drag to reorder row"
+        >
+          ⋮⋮
+        </button>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0 opacity-50">
+          <path d="M4.5 2.75H9.1L11.75 5.38V13.25H4.5V2.75Z" stroke="currentColor" strokeWidth="1.15" strokeLinejoin="round" />
+          <path d="M8.9 2.75V5.55H11.75" stroke="currentColor" strokeWidth="1.15" strokeLinejoin="round" />
+        </svg>
+        <div className="min-w-0 flex-1">
+          <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
+        </div>
+        <button
+          type="button"
+          onClick={() => onDeleteRow(row.id)}
+          className="shrink-0 text-[10px] opacity-0 transition-opacity group-hover:opacity-100"
+          style={{ color: 'var(--leaf-text-muted)' }}
+        >
+          ...
+        </button>
+      </div>
+      <PropertyColumnList
+        row={row}
+        columns={columns}
+        onUpdateCell={onUpdateCell}
+        optionColumnActions={optionColumnActions}
+      />
+    </div>
+  )
+}
+
 export function ListView({
   rows,
   columns,
+  onUpdateName,
+  onUpdateCell,
   onDeleteRow,
   onAddRow,
+  optionColumnActions,
+  onReorderRows,
 }: {
   rows: DatabaseRow[]
   columns: PropertyDefinition[]
   onUpdateName: (rowId: string, title: string) => void
+  onUpdateCell: (rowId: string, key: string, val: string) => void
   onDeleteRow: (rowId: string) => void
   onAddRow: () => void
+  optionColumnActions?: OptionColumnActions | null
+  onReorderRows?: (rowIds: string[]) => void | Promise<void>
 }) {
-  const { startNavigation } = useNavigationProgress()
-  const statusColumn = getStatusColumn(columns)
-  const tagColumn = getTagColumn(columns)
-  const sameStatusTag = statusColumnSameAsTagColumn(statusColumn, tagColumn)
+  const listSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const onListDragEnd = (event: DragEndEvent) => {
+    if (!onReorderRows) return
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const ids = rows.map((r) => r.id)
+    const oldIndex = ids.indexOf(String(active.id))
+    const newIndex = ids.indexOf(String(over.id))
+    if (oldIndex < 0 || newIndex < 0) return
+    void onReorderRows(arrayMove(ids, oldIndex, newIndex))
+  }
+
+  const footer = (
+    <div className="px-2 py-2.5">
+      <button
+        type="button"
+        onClick={onAddRow}
+        className="text-[12.5px]"
+        style={{ color: 'var(--leaf-text-muted)' }}
+      >
+        + New
+      </button>
+    </div>
+  )
+
+  if (onReorderRows) {
+    return (
+      <div className="px-2">
+        <DndContext sensors={listSensors} collisionDetection={closestCenter} onDragEnd={onListDragEnd}>
+          <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+            {rows.map((row) => (
+              <SortableDatabaseListRow
+                key={row.id}
+                id={row.id}
+                row={row}
+                columns={columns}
+                onUpdateName={onUpdateName}
+                onUpdateCell={onUpdateCell}
+                onDeleteRow={onDeleteRow}
+                optionColumnActions={optionColumnActions}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+        {footer}
+      </div>
+    )
+  }
 
   return (
     <div className="px-2">
-      {rows.map((row) => {
-        const status = statusColumn ? (row.properties || {})[statusColumn.key] : null
-        return (
-          <div
-            key={row.id}
-            className="group flex items-center gap-3 border-b px-2 py-2.5 transition-colors duration-150"
-            style={{ borderBottomColor: 'var(--leaf-border-soft)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-hover)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
-          >
+      {rows.map((row) => (
+        <div
+          key={row.id}
+          className="group border-b px-2 py-3 transition-colors duration-150"
+          style={{ borderBottomColor: 'var(--leaf-border-soft)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-hover)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
+        >
+          <div className="mb-2 flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0 opacity-50">
               <path d="M4.5 2.75H9.1L11.75 5.38V13.25H4.5V2.75Z" stroke="currentColor" strokeWidth="1.15" strokeLinejoin="round" />
               <path d="M8.9 2.75V5.55H11.75" stroke="currentColor" strokeWidth="1.15" strokeLinejoin="round" />
             </svg>
-            <Link
-              href={row.leaf_id ? `/editor/${row.leaf_id}` : '#'}
-              className="flex-1 truncate text-sm font-medium"
-              style={{ color: 'var(--leaf-text-title)' }}
-              onClick={() => startNavigation()}
-              onMouseEnter={() => { void warmEditorRoute() }}
-            >
-              {row.leaf_title || 'Untitled'}
-            </Link>
-            <div className="flex items-center gap-2">
-              {sameStatusTag ? (
-                statusColumn!.type === 'tags' ? (
-                  <TagChips value={status} column={statusColumn!} compact />
-                ) : (
-                  status ? <StatusValue value={status} column={statusColumn!} compact /> : null
-                )
-              ) : (
-                <>
-                  {tagColumn ? <TagChips value={(row.properties || {})[tagColumn.key]} column={tagColumn} compact /> : null}
-                  {status ? <StatusValue value={status} column={statusColumn ?? undefined} compact /> : null}
-                </>
-              )}
+            <div className="min-w-0 flex-1">
+              <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
             </div>
             <button
               type="button"
               onClick={() => onDeleteRow(row.id)}
-              className="text-[10px] opacity-0 transition-opacity group-hover:opacity-100"
+              className="shrink-0 text-[10px] opacity-0 transition-opacity group-hover:opacity-100"
               style={{ color: 'var(--leaf-text-muted)' }}
             >
               ...
             </button>
           </div>
-        )
-      })}
-      <div className="px-2 py-2.5">
-        <button
-          type="button"
-          onClick={onAddRow}
-          className="text-[12.5px]"
-          style={{ color: 'var(--leaf-text-muted)' }}
-        >
-          + New
-        </button>
-      </div>
+          <PropertyColumnList
+            row={row}
+            columns={columns}
+            onUpdateCell={onUpdateCell}
+            optionColumnActions={optionColumnActions}
+          />
+        </div>
+      ))}
+      {footer}
     </div>
   )
 }

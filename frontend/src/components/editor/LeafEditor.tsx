@@ -48,6 +48,8 @@ import { Node, mergeAttributes, InputRule, isTextSelection } from '@tiptap/core'
 import { DOMSerializer } from '@tiptap/pm/model'
 import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import Link from '@tiptap/extension-link'
 import TaskItem from '@tiptap/extension-task-item'
 import TaskList from '@tiptap/extension-task-list'
 import TextStyle from '@tiptap/extension-text-style'
@@ -59,6 +61,10 @@ import TurndownService from 'turndown'
 import { leavesApi, type Database, type LeafTreeItem, type LeafDocument } from '@/lib/api'
 import { DatabaseIcon, LeafIcon } from '@/components/Icons'
 import { EditorSelectionBubble } from './EditorSelectionBubble'
+import { CodeBlockLangBubble } from '@/components/editor/CodeBlockLangBubble'
+import { ImageInsertDialog } from '@/components/editor/ImageInsertDialog'
+import { leafCodeLowlight } from '@/components/editor/codeLowlight'
+import { LeafImage, LinkCard } from '@/components/editor/editorBlocks'
 import { EmbeddedDatabaseBlock } from '@/components/database/EmbeddedDatabaseBlock'
 import { useNavigationProgress } from '@/components/NavigationProgress'
 import { warmEditorRoute } from '@/lib/warmEditorRoute'
@@ -1227,6 +1233,8 @@ export default function LeafEditor({
   const columnDropRef = useRef<{ targetNodePos: number; targetNodeEnd: number; side: 'left' | 'right' } | null>(null)
   const dragSourceRef = useRef<{ pos: number; end: number } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const imageInsertPosRef = useRef(1)
+  const [imageInsertOpen, setImageInsertOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const pendingInsertPos = useRef<number | null>(null)
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1310,11 +1318,29 @@ export default function LeafEditor({
 
   const extensions = useMemo(() => [
     StarterKit.configure({
+      codeBlock: false,
       dropcursor: {
         color: 'var(--leaf-green)',
         width: 2,
       },
     }),
+    CodeBlockLowlight.configure({
+      lowlight: leafCodeLowlight,
+      defaultLanguage: 'plaintext',
+      HTMLAttributes: { class: 'leaf-code-block hljs' },
+    }),
+    Link.configure({
+      openOnClick: true,
+      autolink: true,
+      linkOnPaste: true,
+      HTMLAttributes: {
+        class: 'leaf-external-link',
+        rel: 'noopener noreferrer',
+        target: '_blank',
+      },
+    }),
+    LeafImage,
+    LinkCard,
     TextStyle,
     Color,
     TextAlign.configure({ types: ['heading', 'paragraph', 'blockquote', 'callout'] }),
@@ -1589,7 +1615,11 @@ export default function LeafEditor({
       })
       if (foundPos === null) return
       const inner = foundPos + 1
-      editor.chain().focus().setTextSelection(inner).scrollIntoView().run()
+      editor.chain().focus().setTextSelection(inner).run()
+      // Use DOM scrolling — ProseMirror's scrollIntoView doesn't reach the outer scroll container
+      const domAtPos = editor.view.domAtPos(foundPos)
+      const el = domAtPos.node instanceof HTMLElement ? domAtPos.node : domAtPos.node.parentElement
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
     window.addEventListener('leaf-outline-jump', handler as EventListener)
     return () => window.removeEventListener('leaf-outline-jump', handler as EventListener)
@@ -1780,6 +1810,16 @@ export default function LeafEditor({
     setWikilinkMenu(null)
   }, [editor, leafId])
 
+  const handleImageInsertConfirm = useCallback((src: string, alt: string) => {
+    if (!editor) return
+    const pos = imageInsertPosRef.current
+    editor.chain().focus().setTextSelection(pos).insertContent([
+      { type: 'image', attrs: { src, alt: alt || null } },
+      { type: 'paragraph' },
+    ]).run()
+    setImageInsertOpen(false)
+  }, [editor])
+
   const applyAction = useCallback(async (
     action: string,
     options: { selectionPos: number; deleteRange?: { from: number; to: number } },
@@ -1858,9 +1898,57 @@ export default function LeafEditor({
         ]).run()
         return
       }
-      case 'link':
+      case 'wikilink':
         editor.chain().focus().setTextSelection(selectionPos).insertContent('[[').run()
         return
+      case 'weblink': {
+        if (typeof window === 'undefined') return
+        const url = window.prompt('URL', 'https://')
+        if (!url?.trim()) return
+        const u = url.trim()
+        const { from, to } = editor.state.selection
+        const hasSel = from !== to
+        if (hasSel) {
+          editor.chain().focus().extendMarkRange('link').setLink({ href: u }).run()
+        } else {
+          editor.chain().focus().setTextSelection(selectionPos).insertContent({
+            type: 'text',
+            text: u,
+            marks: [{ type: 'link', attrs: { href: u, target: '_blank', rel: 'noopener noreferrer' } }],
+          }).insertContent(' ').run()
+        }
+        return
+      }
+      case 'code_block':
+        editor.chain().focus().setTextSelection(selectionPos).toggleCodeBlock({ language: 'plaintext' }).run()
+        return
+      case 'image': {
+        if (typeof window === 'undefined') return
+        imageInsertPosRef.current = selectionPos
+        setImageInsertOpen(true)
+        return
+      }
+      case 'link_card': {
+        if (typeof window === 'undefined') return
+        const cardUrl = window.prompt('URL', 'https://')
+        if (!cardUrl?.trim()) return
+        const cardTitle = window.prompt('Title', cardUrl.trim()) || cardUrl.trim()
+        const cardDesc = window.prompt('Description (optional)', '') ?? ''
+        const cardImg = window.prompt('Image URL (optional)', '') ?? ''
+        editor.chain().focus().setTextSelection(selectionPos).insertContent([
+          {
+            type: 'linkCard',
+            attrs: {
+              url: cardUrl.trim(),
+              title: cardTitle.trim(),
+              description: cardDesc.trim(),
+              image: cardImg.trim(),
+            },
+          },
+          { type: 'paragraph' },
+        ]).run()
+        return
+      }
       case 'subpage':
         await insertEmbedPlaceholder('page', selectionPos)
         return
@@ -1987,7 +2075,7 @@ export default function LeafEditor({
       editor.off('focus', syncWikilinkMenu)
       editor.off('blur', handleBlur)
     }
-  }, [editor, applyAction, insertWikilink, updateSlashMenu, updateWikilinkMenu])
+  }, [editor, applyAction, insertWikilink, createAndInsertWikilink, updateSlashMenu, updateWikilinkMenu])
 
   useEffect(() => {
     if (!editor) return
@@ -2347,6 +2435,11 @@ export default function LeafEditor({
   return (
     <div className="flex flex-col">
       <input ref={fileInputRef} type="file" accept=".md,text/markdown" className="hidden" onChange={onFileChange} />
+      <ImageInsertDialog
+        open={imageInsertOpen}
+        onClose={() => setImageInsertOpen(false)}
+        onInsert={handleImageInsertConfirm}
+      />
 
       {mode === 'rich' ? (
         <div
@@ -2386,6 +2479,7 @@ export default function LeafEditor({
                 <EditorSelectionBubble editor={editor} />
               </BubbleMenu>
             ) : null}
+            {editor ? <CodeBlockLangBubble editor={editor} /> : null}
             {columnDropZone && (
               <div
                 className="column-drop-indicator"

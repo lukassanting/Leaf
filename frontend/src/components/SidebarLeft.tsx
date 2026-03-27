@@ -35,7 +35,6 @@ import { databasesApi, leavesApi } from '@/lib/api'
 import { createLeafAndPrimeCache } from '@/lib/leafMutations'
 import { useNavigationProgress } from '@/components/NavigationProgress'
 import { SidebarTree } from './SidebarTree'
-import { SyncStatusIndicator } from './SyncStatusIndicator'
 import { warmEditorRoute } from '@/lib/warmEditorRoute'
 import { DatabaseIcon, LeafIcon } from './Icons'
 import { ensureWorkspaceDefaults } from '@/lib/workspaceDefaults'
@@ -303,8 +302,7 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
         </div>
       </div>
 
-      {/* Sync status + New page footer */}
-      <SyncStatusIndicator />
+      {/* New page footer */}
       <div className="border-t px-3 py-3" style={{ borderTopColor: 'var(--leaf-border-soft)' }}>
         <button
           type="button"

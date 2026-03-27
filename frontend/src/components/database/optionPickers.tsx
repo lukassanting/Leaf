@@ -5,8 +5,27 @@
 
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import type { DatabaseChipColor, PropertyDefinition, PropertyOption } from '@/lib/api'
+
+/** Computes fixed position for a dropdown below its trigger element. */
+function useDropdownPosition(triggerRef: React.RefObject<HTMLElement | null>, open: boolean) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const recompute = useCallback(() => {
+    if (!open || !triggerRef.current) { setPos(null); return }
+    const rect = triggerRef.current.getBoundingClientRect()
+    setPos({ top: rect.bottom + 4, left: rect.left })
+  }, [open, triggerRef])
+  useEffect(() => { recompute() }, [recompute])
+  useEffect(() => {
+    if (!open) return
+    window.addEventListener('scroll', recompute, true)
+    window.addEventListener('resize', recompute)
+    return () => { window.removeEventListener('scroll', recompute, true); window.removeEventListener('resize', recompute) }
+  }, [open, recompute])
+  return pos
+}
 
 export const DATABASE_CHIP_COLORS: { key: DatabaseChipColor; label: string }[] = [
   { key: 'default', label: 'Default' },
@@ -198,18 +217,20 @@ export function TagsOptionCell({
   const [filter, setFilter] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const options = useMemo(() => column.options ?? [], [column.options])
   const selected = useMemo(() => parseTagValues(value), [value])
+  const pos = useDropdownPosition(rootRef, open)
 
   useEffect(() => {
     if (!open) return
     const onDoc = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false)
-        setEditingId(null)
-        setFilter('')
-      }
+      const t = e.target as Node
+      if (rootRef.current?.contains(t) || dropdownRef.current?.contains(t)) return
+      setOpen(false)
+      setEditingId(null)
+      setFilter('')
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
@@ -248,10 +269,13 @@ export function TagsOptionCell({
       <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setOpen(true)}>
         {children}
       </button>
-      {open ? (
+      {open && pos ? createPortal(
         <div
-          className="absolute left-0 top-full z-[80] mt-1 flex rounded-xl border shadow-lg"
+          ref={dropdownRef}
+          className="fixed z-[9999] flex rounded-xl border shadow-lg"
           style={{
+            top: pos.top,
+            left: pos.left,
             background: 'var(--leaf-bg-elevated)',
             borderColor: 'var(--leaf-border-strong)',
             boxShadow: 'var(--leaf-shadow-soft)',
@@ -354,7 +378,8 @@ export function TagsOptionCell({
               actions={actions}
             />
           ) : null}
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   )
@@ -377,18 +402,20 @@ export function StatusOptionCell({
   const [filter, setFilter] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const options = useMemo(() => column.options ?? [], [column.options])
   const current = value != null && value !== '' ? String(value) : ''
+  const pos = useDropdownPosition(rootRef, open)
 
   useEffect(() => {
     if (!open) return
     const onDoc = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false)
-        setEditingId(null)
-        setFilter('')
-      }
+      const t = e.target as Node
+      if (rootRef.current?.contains(t) || dropdownRef.current?.contains(t)) return
+      setOpen(false)
+      setEditingId(null)
+      setFilter('')
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
@@ -431,10 +458,13 @@ export function StatusOptionCell({
       <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setOpen(true)}>
         {children}
       </button>
-      {open ? (
+      {open && pos ? createPortal(
         <div
-          className="absolute left-0 top-full z-[80] mt-1 flex rounded-xl border shadow-lg"
+          ref={dropdownRef}
+          className="fixed z-[9999] flex rounded-xl border shadow-lg"
           style={{
+            top: pos.top,
+            left: pos.left,
             background: 'var(--leaf-bg-elevated)',
             borderColor: 'var(--leaf-border-strong)',
             boxShadow: 'var(--leaf-shadow-soft)',
@@ -522,7 +552,8 @@ export function StatusOptionCell({
               actions={actions}
             />
           ) : null}
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   )

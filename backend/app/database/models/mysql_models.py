@@ -89,6 +89,7 @@ class DatabaseRowModel(Base):
     database_id = Column(String(36), ForeignKey("databases.id", ondelete="CASCADE"), nullable=False)
     properties = Column(MySQLJSON, nullable=False, default=dict)  # {"title": "...", "leaf_id": "..."}
     leaf_id = Column(String(36), ForeignKey("leaves.id", ondelete="SET NULL"), nullable=True)
+    order = Column(Integer, nullable=False, default=0)  # display order within database (table/list/board)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

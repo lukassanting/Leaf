@@ -34,6 +34,7 @@ from app.dtos.database_dtos import (
     Row,
     RowCreate,
     RowUpdate,
+    RowsReorder,
 )
 
 router = APIRouter()
@@ -130,6 +131,21 @@ def list_rows(
     rows = ops.get_rows(database_id)
     if rows is None:
         raise HTTPException(status_code=404, detail="Database not found")
+    return rows
+
+
+@router.post("/databases/{database_id}/rows/reorder", response_model=list[Row])
+def reorder_database_rows(
+    database_id: UUID,
+    body: RowsReorder,
+    ops: DatabaseOperations = Depends(DatabaseOperations),
+):
+    rows = ops.reorder_rows(database_id, body.row_ids)
+    if rows is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid reorder: must list every row id for this database exactly once",
+        )
     return rows
 
 

@@ -40,6 +40,8 @@ type Props = {
   addRow: () => void | Promise<void>
   updateName: (rowId: string, title: string) => void | Promise<void>
   updateCell: (rowId: string, key: string, value: string) => void | Promise<void>
+  updateCellValue?: (rowId: string, key: string, value: unknown) => void | Promise<void>
+  reorderRows?: (rowIds: string[]) => void | Promise<void>
   deleteRow: (rowId: string) => void | Promise<void>
   setViewType: (view: ViewType) => void | Promise<void>
   showAddCol: boolean
@@ -63,6 +65,8 @@ export function DatabaseSurface({
   addRow,
   updateName,
   updateCell,
+  updateCellValue,
+  reorderRows,
   deleteRow,
   setViewType,
   showAddCol,
@@ -100,6 +104,7 @@ export function DatabaseSurface({
           saveColumnDefinition={saveColumnDefinition}
           deleteColumn={deleteColumn}
           optionColumnActions={optionColumnActions ?? undefined}
+          onReorderRows={reorderRows ? (ids) => { void reorderRows(ids) } : undefined}
         />
       )}
       {activeView === 'board' && (
@@ -107,8 +112,11 @@ export function DatabaseSurface({
           rows={rows}
           columns={columns}
           onUpdateName={(rowId, title) => { void updateName(rowId, title) }}
+          onUpdateCell={(rowId, key, value) => { void updateCell(rowId, key, value) }}
+          onUpdateCellValue={(rowId, key, value) => { void updateCellValue?.(rowId, key, value) }}
           onDeleteRow={(rowId) => { void deleteRow(rowId) }}
           onAddRow={() => { void addRow() }}
+          optionColumnActions={optionColumnActions ?? undefined}
         />
       )}
       {activeView === 'gallery' && (
@@ -116,9 +124,11 @@ export function DatabaseSurface({
           rows={rows}
           columns={columns}
           onUpdateName={(rowId, title) => { void updateName(rowId, title) }}
+          onUpdateCell={(rowId, key, value) => { void updateCell(rowId, key, value) }}
           onDeleteRow={(rowId) => { void deleteRow(rowId) }}
           onAddRow={() => { void addRow() }}
           gallerySize={gallerySize}
+          optionColumnActions={optionColumnActions ?? undefined}
         />
       )}
       {activeView === 'list' && (
@@ -126,8 +136,11 @@ export function DatabaseSurface({
           rows={rows}
           columns={columns}
           onUpdateName={(rowId, title) => { void updateName(rowId, title) }}
+          onUpdateCell={(rowId, key, value) => { void updateCell(rowId, key, value) }}
           onDeleteRow={(rowId) => { void deleteRow(rowId) }}
           onAddRow={() => { void addRow() }}
+          optionColumnActions={optionColumnActions ?? undefined}
+          onReorderRows={reorderRows ? (ids) => { void reorderRows(ids) } : undefined}
         />
       )}
     </div>

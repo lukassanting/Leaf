@@ -171,6 +171,7 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 |------|---------|
 | `src/components/Editor.tsx` | Re-exports main editor (TipTap) |
 | `src/components/editor/LeafEditor.tsx` | Main document TipTap (`TextStyle`, `Color`, `TextAlign`, `storyTagExtension`, `statStrip`, `calloutExtension`), slash menu (full commands in nested toggle **body**), `ToggleCardHeaderField` for toggle **headers**, selection bubble, embeds, `toggleCard`, columns, document model; block gutter (+ / grip) maps each ProseMirror block wrapper to `doc.child(i)` (and `NodeSelection` + `coordsAtPos`) so atom React views (e.g. **stat strip**) get delete/colour/columns in the grip dropdown; listens for `leaf-outline-jump` to scroll to headings |
+| `src/components/editor/ImageInsertDialog.tsx` | Slash **Image**: URL or **Upload from device** (read as data URL; max ~3 MB); `LeafImage` already allows base64 |
 | `src/components/editor/calloutExtension.ts` | TipTap `callout` block (`data-type="callout"`, `data-variant`); classic + campaign styling in `globals.css` |
 | `src/components/editor/ToggleCardHeaderField.tsx` | One-line TipTap per toggle header (eyebrow/title/subtitle); `SlashMenuPanel` + `rankToggleHeaderSlashItems`; syncs attrs when unfocused |
 | `src/components/editor/toggleCardHeaderFieldExtensions.ts` | StarterKit subset + single-paragraph doc, marks, hard break on Enter, placeholder |
@@ -180,7 +181,7 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | `src/components/SlashCommands.tsx` | Slash command definitions and menu (**Style**, **Flags** story-flag presets, **Toggle Cards**) |
 | `src/components/editor/EditorSelectionBubble.tsx` | Selection bubble: alignment, clear colour, swatches (TipTap `BubbleMenu`; no static toolbar) |
 | `src/lib/editorRichText.ts` | Story-flag variants/presets (slash: “Flag · …”), text-colour swatches, slash action helpers |
-| `src/components/StatusBar.tsx` | Sync state, word count, mode label |
+| `src/components/StatusBar.tsx` | Footer: save state, word count, mode label, sync status + click-to-sync |
 | `src/components/TopStrip.tsx` | Top bar, breadcrumbs, Settings (⋯) menu with appearance / design theme |
 | `src/components/DesignThemeProvider.tsx` | Client context: reads/writes `leaf-design` in `localStorage`, sets `data-leaf-design` on `<html>` |
 | `src/components/DesignThemeScript.tsx` | Inline script to apply saved theme before paint (avoids flash) |

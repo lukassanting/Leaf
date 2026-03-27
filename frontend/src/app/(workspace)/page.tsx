@@ -33,6 +33,7 @@ import { warmEditorRoute } from '@/lib/warmEditorRoute'
 import { useWarmWorkspaceRoutes } from '@/hooks/useWarmWorkspaceRoutes'
 import { LeafIcon } from '@/components/Icons'
 import { TopStrip } from '@/components/TopStrip'
+import { StatusBar } from '@/components/StatusBar'
 import { ensureWorkspaceDefaults } from '@/lib/workspaceDefaults'
 
 type InlinePage = {
@@ -106,7 +107,7 @@ export default function HomePage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col" style={{ background: 'var(--leaf-bg-editor)' }}>
       <TopStrip breadcrumbs={[]} currentTitle="Home" />
-      <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-8 py-10" style={{ minHeight: 0 }}>
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-8 py-10">
       <div className="w-full max-w-xl">
         {/* Greeting */}
         <div className="mb-10">
@@ -221,6 +222,7 @@ export default function HomePage() {
         </button>
       </div>
       </div>
+      <StatusBar saveStatus="saved" wordCount={0} modeLabel="Home" />
     </div>
   )
 }

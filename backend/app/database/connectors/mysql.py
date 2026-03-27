@@ -73,6 +73,15 @@ class MySQLDatabaseConnector:
 
         return engine
 
+    @staticmethod
+    def _quote_ddl_ident(engine, name: str) -> str:
+        """Quote table/column names for raw ALTER TABLE (e.g. SQLite reserves ``order``)."""
+        d = engine.dialect.name
+        if d in ("mysql", "mariadb"):
+            return f"`{name.replace('`', '``')}`"
+        escaped = name.replace('"', '""')
+        return f'"{escaped}"'
+
     def _ensure_tables(self):
         from app.database.models.mysql_models import Base
         Base.metadata.create_all(bind=self.engine)
@@ -87,6 +96,7 @@ class MySQLDatabaseConnector:
             ("leaves", "properties", "TEXT DEFAULT NULL"),
             ("databases", "deleted_at", "DATETIME DEFAULT NULL"),
             ("leaves", "deleted_at", "DATETIME DEFAULT NULL"),
+            ("database_rows", "order", "INTEGER NOT NULL DEFAULT 0"),
         ]
         with self.engine.connect() as conn:
             for table, column, col_type in migrations:
@@ -94,7 +104,9 @@ class MySQLDatabaseConnector:
                     continue
                 existing = [c["name"] for c in insp.get_columns(table)]
                 if column not in existing:
-                    conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {col_type}'))
+                    q_table = self._quote_ddl_ident(self.engine, table)
+                    q_col = self._quote_ddl_ident(self.engine, column)
+                    conn.execute(text(f'ALTER TABLE {q_table} ADD COLUMN {q_col} {col_type}'))
                     conn.commit()
 
 

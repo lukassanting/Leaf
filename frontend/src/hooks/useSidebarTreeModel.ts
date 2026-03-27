@@ -134,8 +134,17 @@ export function useSidebarTreeModel(activeId?: string) {
         }
       })
 
+      // Build a set of database-row leaf IDs so we can remap parent_id references
+      const dbRowLeafIds = new Set(dbRowNodes.map((n) => n.id.slice('dbrow:'.length)))
+
       const merged = [
-        ...leafNodes,
+        ...leafNodes.map((node) => {
+          // If this page's parent is a database row leaf, remap to the dbrow: sidebar ID
+          if (node.parent_id && dbRowLeafIds.has(node.parent_id)) {
+            return { ...node, parent_id: `dbrow:${node.parent_id}` }
+          }
+          return node
+        }),
         ...databaseNodes.map((db) => ({
           ...db,
           children_ids: dbRowsMap[db.id] ?? [],
@@ -245,7 +254,8 @@ export function useSidebarTreeModel(activeId?: string) {
     try {
       startNavigation()
       void warmEditorRoute()
-      const leaf = await createLeafAndPrimeCache({ title: 'Untitled', parent_id: parentId }, { parent_id: parentId, kind: 'page' })
+      const apiParentId = sidebarNodeIdToLeafApiId(parentId)
+      const leaf = await createLeafAndPrimeCache({ title: 'Untitled', parent_id: apiParentId }, { parent_id: parentId, kind: 'page' })
       router.push(`/editor/${leaf.id}`)
     } catch {
       stopNavigation()
@@ -356,26 +366,7 @@ export function useSidebarTreeModel(activeId?: string) {
       return
     }
 
-    const sameParent = draggedNode.parent_id === targetNode.parent_id
-
-    // Same parent → reorder siblings (including workspace root: parent_id null)
-    if (sameParent) {
-      if (draggedNode.parent_id == null) {
-        void reorderRootPages(draggedId, targetNode.id)
-        return
-      }
-      const parent = nodes.find((n) => n.id === draggedNode.parent_id)
-      if (!parent) { setDraggedId(null); setDropTargetId(null); return }
-      const childIds = [...(parent.children_ids || [])]
-      const fromIdx = childIds.indexOf(draggedId)
-      if (fromIdx === -1) { setDraggedId(null); setDropTargetId(null); return }
-      childIds.splice(fromIdx, 1)
-      childIds.splice(childIds.indexOf(targetNode.id) + 1, 0, draggedId)
-      void handleReorder(draggedNode.parent_id, childIds)
-      return
-    }
-
-    // Different parent → move into target as child
+    // Always move into the target as a child when dropping ON a page
     void handleMove(draggedId, targetNode.id)
     setExpanded((prev) => ({ ...prev, [targetNode.id]: true }))
   }
@@ -409,5 +400,7 @@ export function useSidebarTreeModel(activeId?: string) {
     onDrop,
     setDropTargetId,
     startNavigation,
+    handleReorder,
+    reorderRootPages,
   }
 }

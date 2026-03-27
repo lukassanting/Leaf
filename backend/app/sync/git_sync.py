@@ -175,7 +175,7 @@ class GitSyncService:
                     stats["error"] = f"Push failed: {error_msg}"
                 self.last_error = stats["error"]
 
-            self.last_sync_at = datetime.now()
+            self.last_sync_at = datetime.utcnow()
 
         except GitSyncError as e:
             stats["error"] = str(e)

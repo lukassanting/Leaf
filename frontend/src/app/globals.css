@@ -47,6 +47,10 @@
   --leaf-green:        #10b981;
   --leaf-green-light:  #34d399;
   --leaf-tag-text:     #047857;
+  /* External URL links in the editor (TipTap `Link` → `.leaf-external-link`) */
+  --leaf-external-link:       #2563eb;
+  --leaf-external-link-hover: #1d4ed8;
+  --leaf-external-link-active: #1e40af;
   --leaf-shadow-soft:  0 10px 30px rgba(24, 24, 27, 0.06);
   --leaf-glass:        rgba(255, 255, 255, 0.82);
 
@@ -244,6 +248,10 @@ html[data-leaf-design="campaign"] {
   --leaf-green:        #c9a84c;
   --leaf-green-light:  #e4c76a;
   --leaf-tag-text:     #c9a84c;
+  /* External links on dark parchment — cool blue reads as “web”, distinct from gold wikilinks */
+  --leaf-external-link:        #7cb8ff;
+  --leaf-external-link-hover:  #a8d0ff;
+  --leaf-external-link-active: #5a9de6;
   --leaf-shadow-soft:  0 12px 48px rgba(0, 0, 0, 0.55);
   --leaf-glass:        rgba(22, 22, 40, 0.88);
 
@@ -877,6 +885,30 @@ html[data-leaf-design="campaign"] .ProseMirror pre code {
 }
 .leaf-hashtag:hover {
   background: var(--color-primary-dk);
+}
+
+/* External hyperlinks (slash “Link to URL”, bubble menu, autolink) — must read as clickable */
+.ProseMirror a.leaf-external-link {
+  color: var(--leaf-external-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(in srgb, var(--leaf-external-link) 45%, transparent);
+  cursor: pointer;
+  transition: color 0.12s ease, text-decoration-color 0.12s ease;
+}
+.ProseMirror a.leaf-external-link:hover {
+  color: var(--leaf-external-link-hover);
+  text-decoration-color: color-mix(in srgb, var(--leaf-external-link-hover) 70%, transparent);
+}
+.ProseMirror a.leaf-external-link:active {
+  color: var(--leaf-external-link-active);
+  text-decoration-color: var(--leaf-external-link-active);
+}
+.ProseMirror a.leaf-external-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--leaf-external-link) 40%, transparent);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 /* ─── Block gutter ────────────────────────────────────────────────────

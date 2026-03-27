@@ -30,6 +30,7 @@ export type LeafMark =
   | { type: 'strike' }
   | { type: 'code' }
   | { type: 'textStyle'; attrs?: { color?: string | null } }
+  | { type: 'link'; attrs: { href: string; target?: string | null; rel?: string | null } }
 
 export type LeafTextNode = {
   type: 'text'
@@ -85,7 +86,9 @@ export type LeafNode =
   | { type: 'bulletList'; content: { type: 'listItem'; content: LeafNode[] }[] }
   | { type: 'orderedList'; content: { type: 'listItem'; content: LeafNode[] }[] }
   | { type: 'taskList'; content: { type: 'taskItem'; attrs: { checked: boolean }; content: LeafNode[] }[] }
-  | { type: 'codeBlock'; content?: LeafTextNode[] }
+  | { type: 'codeBlock'; attrs?: { language?: string | null }; content?: LeafTextNode[] }
+  | { type: 'image'; attrs: { src: string; alt?: string | null; width?: number | null; height?: number | null } }
+  | { type: 'linkCard'; attrs: { url: string; title?: string; description?: string | null; image?: string | null } }
   | { type: 'horizontalRule' }
   | { type: 'columnList'; content: LeafColumnNode[] }
   | {
@@ -282,6 +285,8 @@ export interface DatabaseRow {
   leaf_title: string
   properties: Record<string, unknown>
   leaf_header_banner?: LeafHeaderBanner | null
+  /** Display order within the database (table/list/board). */
+  order?: number
   created_at: string
   updated_at: string
 }

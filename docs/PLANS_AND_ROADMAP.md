@@ -95,7 +95,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Conflict store with persisted `DATA_DIR/.sync-conflicts.json` and resolution API.
 - [x] Sync REST API: `GET/PUT /sync/config`, `GET /sync/status`, `POST /sync/trigger`, `POST /sync/rebuild-index`, conflict CRUD.
 - [x] Frontend Settings page (`/settings`) with sync mode selector, data dir display, watcher toggle, git config fields, sync status dashboard, and conflict resolution UI.
-- [x] Sidebar `SyncStatusIndicator`: green/yellow/red dot + "Synced Xm ago" + conflict badge, links to Settings.
+- [x] Footer `StatusBar` on workspace pages: green/yellow/red dot + "Synced Xm ago", click to sync now when sync is enabled; Settings remains the full dashboard.
 - [x] Runtime sync config persisted to `DATA_DIR/.sync-config.json`, loaded at startup.
 - [x] Git-based sync: auto-init repo in DATA_DIR, stage/commit/pull(rebase)/push cycle, PAT auth in URL, `.gitignore` for DB + metadata files.
 - [x] Periodic git sync scheduler (configurable interval, asyncio background task, post-pull DB reconciliation).
@@ -229,7 +229,7 @@ Questions still open for the next milestone:
 | `backend/app/sync/scheduler.py` | Periodic background sync loop |
 | `backend/app/api/routes/sync/sync_controller.py` | Sync API endpoints (file + git) |
 | `frontend/src/app/(workspace)/settings/page.tsx` | Settings page with sync configuration UI |
-| `frontend/src/components/SyncStatusIndicator.tsx` | Sidebar sync status indicator |
+| `frontend/src/components/StatusBar.tsx` | Footer sync + save status; click-to-sync |
 | `frontend/src/lib/api/sync.ts` | Sync API client |
 | `backend/tests/test_leaf_database_integration.py` | Integration coverage for current backend behavior |
 | `Makefile` | Local developer workflow (`up`, `test`, logs, shell helpers) |

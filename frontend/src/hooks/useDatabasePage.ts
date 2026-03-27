@@ -202,6 +202,15 @@ export function useDatabasePage(id: string) {
     }
   }, [id])
 
+  const reorderRows = useCallback(async (rowIds: string[]) => {
+    try {
+      const next = await databasesApi.reorderRows(id, rowIds)
+      setRows(next)
+    } catch (error) {
+      console.error(error)
+    }
+  }, [id])
+
   const updateName = useCallback(async (rowId: string, title: string) => {
     const row = rows.find((item) => item.id === rowId)
     if (!row) return
@@ -439,8 +448,10 @@ export function useDatabasePage(id: string) {
     activeView,
     addRow,
     deleteRow,
+    reorderRows,
     updateName,
     updateCell,
+    updateCellValue,
     addColumn,
     setViewType,
     saveColumnDefinition,
@@ -448,7 +459,6 @@ export function useDatabasePage(id: string) {
     gallerySize,
     setGallerySize,
     deleteDatabase,
-    updateCellValue,
     setColumnOptions,
     renameColumnOption,
     deleteColumnOption,

@@ -64,8 +64,10 @@ export default function DatabaseViewPage() {
     activeView,
     addRow,
     deleteRow,
+    reorderRows,
     updateName,
     updateCell,
+    updateCellValue,
     addColumn,
     setViewType,
     saveColumnDefinition,
@@ -168,6 +170,8 @@ export default function DatabaseViewPage() {
               addRow={addRow}
               updateName={updateName}
               updateCell={updateCell}
+              updateCellValue={updateCellValue}
+              reorderRows={reorderRows}
               deleteRow={deleteRow}
               setViewType={setViewType}
               showAddCol={showAddCol}

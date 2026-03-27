@@ -20,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from sqlalchemy import text
+from sqlalchemy import func, text
 
 from app.database.connectors.mysql import get_db_connector
 from app.database.models.mysql_models import (
@@ -368,9 +368,16 @@ class FileToDbSyncer:
         if existing:
             return
 
+        max_o = (
+            session.query(func.max(DatabaseRowModel.order))
+            .filter(DatabaseRowModel.database_id == database_id)
+            .scalar()
+        )
+        next_order = (max_o + 1) if max_o is not None else 0
         row = DatabaseRowModel(
             database_id=database_id,
             leaf_id=leaf_id,
             properties={"title": "", "leaf_id": leaf_id},
+            order=next_order,
         )
         session.add(row)

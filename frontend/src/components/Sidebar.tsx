@@ -109,6 +109,35 @@ function SectionHeader({ children, icon }: { children: React.ReactNode; icon?: R
   )
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractOutlineItems(document: { content: any[] }): OutlineItem[] {
+  const items: OutlineItem[] = []
+  let counter = 0
+  const walk = (nodes: typeof document.content) => {
+    for (const node of nodes) {
+      if (node.type === 'heading') {
+        const text = ((node as { content?: { type: string; text?: string }[] }).content ?? [])
+          .map((item: { type: string; text?: string }) => item.type === 'text' ? item.text : '\n').join('').trim()
+        if (text) {
+          items.push({ id: `heading-${counter++}-${text}`, label: text, level: node.attrs.level, ordinal: items.length })
+        }
+      } else if (node.type === 'callout' && 'content' in node) {
+        const inner = (node as { content?: typeof document.content }).content
+        if (inner) walk(inner)
+      } else if (node.type === 'columnList' && 'content' in node) {
+        for (const col of (node as { content: { content: typeof document.content }[] }).content) {
+          if (col.content) walk(col.content as typeof document.content)
+        }
+      } else if (node.type === 'toggleCard' && 'content' in node) {
+        const inner = (node as { content?: typeof document.content }).content
+        if (inner) walk(inner)
+      }
+    }
+  }
+  walk(document.content)
+  return items
+}
+
 export function Sidebar({ activeId }: { activeId?: string }) {
   const pathname = usePathname()
   const { startNavigation } = useNavigationProgress()
@@ -216,36 +245,7 @@ export function Sidebar({ activeId }: { activeId?: string }) {
           setDbProperties(null)
         }
         const document = parseLeafContent(leaf.content ?? null)
-        const nextOutline: OutlineItem[] = []
-        let headingCounter = 0
-        const walkNodes = (nodes: typeof document.content) => {
-          for (const node of nodes) {
-            if (node.type === 'heading') {
-              const text = ((node as { content?: { type: string; text?: string }[] }).content ?? [])
-                .map((item) => item.type === 'text' ? item.text : '\n').join('').trim()
-              if (text) {
-                nextOutline.push({
-                  id: `heading-${headingCounter++}-${text}`,
-                  label: text,
-                  level: node.attrs.level,
-                  ordinal: nextOutline.length,
-                })
-              }
-            } else if (node.type === 'callout' && 'content' in node) {
-              const inner = (node as { content?: typeof document.content }).content
-              if (inner) walkNodes(inner)
-            } else if (node.type === 'columnList' && 'content' in node) {
-              for (const col of (node as { content: { content: typeof document.content }[] }).content) {
-                if (col.content) walkNodes(col.content as typeof document.content)
-              }
-            } else if (node.type === 'toggleCard' && 'content' in node) {
-              const inner = (node as { content?: typeof document.content }).content
-              if (inner) walkNodes(inner)
-            }
-          }
-        }
-        walkNodes(document.content)
-        setOutline(nextOutline)
+        setOutline(extractOutlineItems(document))
 
         const linkedLeafDetails = await Promise.all(linkedLeaves.slice(0, 6).map(async (item) => {
           try {
@@ -287,6 +287,16 @@ export function Sidebar({ activeId }: { activeId?: string }) {
       cancelled = true
     }
   }, [activeId, pathname])
+
+  // Live-update outline when editor content changes (no API call needed)
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const doc = (event as CustomEvent<{ document: { content: unknown[] } }>).detail?.document
+      if (doc?.content) setOutline(extractOutlineItems(doc as { content: unknown[] }))
+    }
+    window.addEventListener('leaf-content-changed', handler)
+    return () => window.removeEventListener('leaf-content-changed', handler)
+  }, [])
 
   const metadataRows = useMemo(() => {
     if (!identity) return []

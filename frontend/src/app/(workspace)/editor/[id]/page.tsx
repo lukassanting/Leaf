@@ -297,6 +297,7 @@ export default function EditorPage() {
               setContent(document)
               latestContentRef.current = document
               scheduleSave(document)
+              window.dispatchEvent(new CustomEvent('leaf-content-changed', { detail: { document } }))
             }}
             onCreateSubPage={handleCreateSubPage}
             onCreateDatabase={handleCreateDatabase}

@@ -108,16 +108,15 @@ Best for users who want version history, or who prefer Git over a cloud drive.
 
 Leaf initializes a git repo in your data directory, creates a `.gitignore` (excludes the SQLite DB and metadata files), and starts a background loop: stage changes, commit, pull (rebase), push. The **Git Status** panel on Settings shows branch, remote, last commit, and any errors.
 
-### Sync status indicator
+### Sync status (footer)
 
-The sidebar shows a sync indicator at the bottom:
+The workspace **status bar** (bottom of editor, database, graph, and home pages) shows sync when it is enabled:
 
-- **Green dot** + "Watching" or "Synced Xm ago" — everything is healthy.
-- **Yellow dot** + "Syncing..." — a sync cycle is in progress.
-- **Red dot** + "Sync error" — something went wrong (click to see details in Settings).
-- **Badge** — number of unresolved conflicts.
+- **Green dot** + "Watching" or "Synced Xm ago" / "Git synced …" — healthy.
+- **Yellow dot** + "Syncing…" — a sync cycle is in progress.
+- **Red dot** + "Sync error" — check **Settings** for details.
 
-Click the indicator to jump to Settings.
+Click the sync line to run **Sync now** (same as Settings). Unresolved conflicts are listed on **Settings**.
 
 ### Sync dashboard (Settings page)
 
@@ -240,7 +239,7 @@ Leaf/
 ├── frontend/                    # Next.js 15, Tailwind v4, TipTap
 │   └── src/
 │       ├── app/(workspace)/     # Editor, databases, settings routes
-│       ├── components/          # Editor, sidebar, database surfaces, sync indicator
+│       ├── components/          # Editor, sidebar, database surfaces, StatusBar (sync)
 │       └── lib/                 # API clients, cache, document model
 └── docker-compose.yml           # Optional Docker setup
 ```

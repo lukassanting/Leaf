@@ -122,6 +122,8 @@ export function EmbeddedDatabaseBlock({
     deleteRow,
     updateName,
     updateCell,
+    updateCellValue,
+    reorderRows,
     addColumn,
     setViewType,
     saveColumnDefinition,
@@ -182,6 +184,8 @@ export function EmbeddedDatabaseBlock({
         addRow={addRow}
         updateName={updateName}
         updateCell={updateCell}
+        updateCellValue={updateCellValue}
+        reorderRows={reorderRows}
         deleteRow={deleteRow}
         setViewType={setViewType}
         showAddCol={showAddCol}

@@ -96,6 +96,12 @@ class RowUpdate(BaseModel):
     properties: Optional[dict[str, Any]] = None
 
 
+class RowsReorder(BaseModel):
+    """Full ordered list of row ids for a database (must match all rows exactly)."""
+
+    row_ids: list[str]
+
+
 class LeafHeaderBanner(BaseModel):
     src: str
     objectPosition: str = "50% 50%"
@@ -108,6 +114,7 @@ class Row(BaseModel):
     leaf_title: str = "Untitled"
     properties: dict[str, Any]
     leaf_header_banner: Optional[LeafHeaderBanner] = None
+    order: int = 0
     created_at: datetime
     updated_at: datetime
 

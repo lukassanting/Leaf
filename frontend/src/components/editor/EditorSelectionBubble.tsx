@@ -82,6 +82,34 @@ export function EditorSelectionBubble({ editor }: Props) {
       <div className="mx-0.5 h-4 w-px shrink-0" style={{ background: 'var(--leaf-border-strong)' }} />
       <button
         type="button"
+        title="Add web link"
+        onClick={() => {
+          const href = typeof window !== 'undefined' ? window.prompt('URL', 'https://') : null
+          if (!href?.trim()) return
+          editor.chain().focus().extendMarkRange('link').setLink({ href: href.trim() }).run()
+        }}
+        className="px-1.5 py-0.5 rounded text-xs transition"
+        style={{
+          color: editor.isActive('link') ? 'var(--leaf-green)' : 'var(--leaf-text-muted)',
+          fontWeight: editor.isActive('link') ? 600 : 400,
+        }}
+      >
+        Link
+      </button>
+      {editor.isActive('link') ? (
+        <button
+          type="button"
+          title="Remove link"
+          onClick={() => editor.chain().focus().unsetLink().run()}
+          className="px-1.5 py-0.5 rounded text-xs transition"
+          style={{ color: 'var(--leaf-text-muted)' }}
+        >
+          Unlink
+        </button>
+      ) : null}
+      <div className="mx-0.5 h-4 w-px shrink-0" style={{ background: 'var(--leaf-border-strong)' }} />
+      <button
+        type="button"
         title="Clear text colour"
         onClick={() => editor.chain().focus().unsetColor().run()}
         className="px-1.5 py-0.5 rounded text-xs font-mono transition"

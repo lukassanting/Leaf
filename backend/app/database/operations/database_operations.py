@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import Depends
+from sqlalchemy import func
 
 from app.database.connectors.mysql import MySQLDatabaseConnector, get_db_connector
 from app.database.models.mysql_models import DatabaseModel, DatabaseRowModel, LeafModel
@@ -128,6 +129,7 @@ class DatabaseOperations:
             leaf_title=leaf_title,
             properties=row.properties or {},
             leaf_header_banner=banner,
+            order=getattr(row, "order", None) or 0,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -338,10 +340,18 @@ class DatabaseOperations:
             session.add(leaf)
             session.flush()
 
+            max_o = (
+                session.query(func.max(DatabaseRowModel.order))
+                .filter(DatabaseRowModel.database_id == str(database_id))
+                .scalar()
+            )
+            next_order = (max_o + 1) if max_o is not None else 0
+
             row = DatabaseRowModel(
                 database_id=str(database_id),
                 properties=body.properties or {},
                 leaf_id=leaf.id,
+                order=next_order,
             )
             session.add(row)
             session.commit()
@@ -380,6 +390,7 @@ class DatabaseOperations:
                 session.query(DatabaseRowModel, LeafModel.title, LeafModel.properties)
                 .outerjoin(LeafModel, DatabaseRowModel.leaf_id == LeafModel.id)
                 .filter(DatabaseRowModel.database_id == str(database_id))
+                .order_by(DatabaseRowModel.order.asc(), DatabaseRowModel.created_at.asc())
                 .all()
             )
             return [
@@ -439,3 +450,20 @@ class DatabaseOperations:
         if leaf_id_to_delete:
             get_file_storage().delete_page(leaf_id_to_delete, database_id=str(database_id))
         return True
+
+    def reorder_rows(self, database_id: UUID, row_ids: list[str]) -> list[Row] | None:
+        with self.db.get_db_session() as session:
+            if not self._get_database(session, database_id):
+                return None
+            rows = (
+                session.query(DatabaseRowModel)
+                .filter(DatabaseRowModel.database_id == str(database_id))
+                .all()
+            )
+            by_id = {r.id: r for r in rows}
+            if not row_ids or set(row_ids) != set(by_id.keys()):
+                return None
+            for i, rid in enumerate(row_ids):
+                by_id[rid].order = i
+            session.commit()
+        return self.get_rows(database_id)
