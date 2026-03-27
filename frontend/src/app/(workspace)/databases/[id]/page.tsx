@@ -76,6 +76,8 @@ export default function DatabaseViewPage() {
     setGallerySize,
     deleteDatabase,
     optionColumnActions,
+    saveColumnWidths,
+    nameColumnWidth,
   } = useDatabasePage(id)
 
   if (loading || !db) {
@@ -183,6 +185,8 @@ export default function DatabaseViewPage() {
               gallerySize={gallerySize}
               setGallerySize={setGallerySize}
               optionColumnActions={optionColumnActions}
+              nameColumnWidth={nameColumnWidth}
+              onColumnWidthsCommit={(p) => { void saveColumnWidths(p) }}
             />
           </div>
         </div>

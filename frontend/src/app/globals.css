@@ -509,6 +509,67 @@ html[data-leaf-design="campaign"] .ProseMirror hr::before {
   font-style: italic;
 }
 
+/* Markdown / TipTap tables (resizable columns via ProseMirror) */
+.ProseMirror .tableWrapper {
+  margin: 0.75rem 0;
+  overflow-x: auto;
+}
+.ProseMirror table.leaf-prose-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  font-size: 0.92em;
+}
+.ProseMirror table.leaf-prose-table td,
+.ProseMirror table.leaf-prose-table th {
+  border: 1px solid var(--leaf-border-soft, var(--color-border));
+  padding: 0.45rem 0.6rem;
+  vertical-align: top;
+  position: relative;
+  min-width: 48px;
+  box-sizing: border-box;
+}
+.ProseMirror table.leaf-prose-table th {
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  font-weight: 600;
+  color: var(--leaf-text-title, var(--color-text-dark));
+}
+.ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -3px;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 2;
+  background-color: color-mix(in srgb, var(--leaf-green) 50%, transparent);
+  pointer-events: auto;
+}
+.ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+.ProseMirror.resize-cursor * {
+  cursor: col-resize;
+}
+
+html[data-leaf-design="campaign"] .ProseMirror table.leaf-prose-table th {
+  background: rgba(72, 64, 112, 0.5);
+  border-color: rgba(212, 175, 55, 0.25);
+  color: rgba(248, 246, 240, 0.95);
+  font-family: var(--font-cinzel, Cinzel, serif);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+html[data-leaf-design="campaign"] .ProseMirror table.leaf-prose-table td {
+  border-color: rgba(212, 175, 55, 0.22);
+  color: var(--leaf-text-body);
+  font-family: var(--font-crimson, 'Crimson Pro', Georgia, serif);
+}
+html[data-leaf-design="campaign"] .ProseMirror .column-resize-handle {
+  background: rgba(212, 175, 55, 0.4);
+}
+
 /* Inline story flags (CSS class `leaf-story-tag`; campaign / D&D-style pills) */
 .ProseMirror .leaf-story-tag {
   display: inline-flex;
@@ -744,34 +805,47 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--flavor .leaf-st
   font-size: 1rem;
 }
 
+html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--gray {
+  border-left: 3px solid rgba(180, 184, 198, 0.55);
+  background: rgba(38, 42, 58, 0.72);
+  color: rgba(242, 240, 234, 0.94);
+  font-family: var(--font-crimson, 'Crimson Pro', Georgia, serif);
+}
+html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--blue {
+  border-left: 3px solid rgba(96, 165, 250, 0.8);
+  background: rgba(28, 48, 88, 0.45);
+  color: rgba(236, 244, 255, 0.96);
+  font-family: var(--font-crimson, 'Crimson Pro', Georgia, serif);
+}
+html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--yellow {
+  border-left: 3px solid #d4af37;
+  background: rgba(212, 175, 55, 0.14);
+  color: rgba(255, 252, 238, 0.96);
+  font-family: var(--font-crimson, 'Crimson Pro', Georgia, serif);
+}
 html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--green {
-  border-left: 3px solid #4a8a4a;
-  background: rgba(26, 74, 26, 0.2);
+  border-left: 3px solid #6abf7a;
+  background: rgba(22, 62, 38, 0.42);
+  color: rgba(235, 250, 238, 0.95);
   font-family: var(--font-crimson, 'Crimson Pro', Georgia, serif);
 }
 html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--red {
-  border-left: 3px solid #8b1a1a;
-  background: rgba(74, 10, 10, 0.2);
-  font-family: var(--font-crimson, 'Crimson Pro', Georgia, serif);
-}
-html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--gray,
-html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--blue,
-html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--yellow {
-  border-left: 3px solid rgba(201, 168, 76, 0.45);
-  background: rgba(201, 168, 76, 0.06);
+  border-left: 3px solid #c45c5c;
+  background: rgba(72, 22, 22, 0.42);
+  color: rgba(255, 236, 236, 0.96);
   font-family: var(--font-crimson, 'Crimson Pro', Georgia, serif);
 }
 html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--flavor {
-  border: 1px solid rgba(201, 168, 76, 0.15);
-  background: rgba(201, 168, 76, 0.05);
-  color: #c9a84c;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: rgba(20, 24, 40, 0.65);
+  color: rgba(242, 238, 228, 0.92);
   font-style: italic;
   padding: 1rem 1.15rem 1rem 2.35rem;
 }
 html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--flavor::before {
   content: '→';
-  color: #c9a84c;
-  opacity: 0.65;
+  color: #d4af37;
+  opacity: 0.85;
   left: 0.95rem;
   top: 1rem;
 }
@@ -1247,4 +1321,24 @@ html[data-leaf-design="campaign"] .leaf-toggle-card-title {
 
 .leaf-db-row-action:hover {
   background: var(--leaf-db-chrome-hover-strong);
+}
+
+/* Database table — resizable columns */
+.leaf-db-table-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 5;
+  height: 100%;
+  width: 8px;
+  transform: translateX(50%);
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+.leaf-db-table-resize-handle:hover {
+  background: color-mix(in srgb, var(--leaf-green) 25%, transparent);
+}
+html[data-leaf-design="campaign"] .leaf-db-table-resize-handle:hover {
+  background: rgba(212, 175, 55, 0.2);
 }

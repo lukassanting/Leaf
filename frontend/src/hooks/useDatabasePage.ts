@@ -11,7 +11,7 @@
  * How to read:
  * - `useEffect(... [id])` loads `databasesApi.get(id)` and `databasesApi.listRows(id)`.
  * - `saveDatabase(patch)` delegates to `updateDatabaseAndEmitTitle`.
- * - Local actions (`addRow`, `deleteRow`, `updateName`, `updateCell`, `addColumn`)
+ * - Local actions (`addRow`, `deleteRow`, `updateName`, `updateCell`, `addColumn`, `saveColumnWidths`)
  *   call the appropriate mutation helpers from `lib/databaseMutations.ts` or `databasesApi`.
  *
  * Update:
@@ -353,6 +353,25 @@ export function useDatabasePage(id: string) {
     [setColumnOptions, renameColumnOption, deleteColumnOption, updateCellValue],
   )
 
+  const saveColumnWidths = useCallback(async (payload: { nameColumnWidth: number; columnWidths: Record<string, number> }) => {
+    if (!db) return
+    const properties = db.schema.properties.map((c) => ({
+      ...c,
+      width: payload.columnWidths[c.key] ?? c.width,
+    }))
+    const schema = {
+      ...db.schema,
+      properties,
+      name_column_width: payload.nameColumnWidth,
+    }
+    try {
+      const updated = await saveDatabase({ schema })
+      if (updated) setDb(updated)
+    } catch (error) {
+      console.error(error)
+    }
+  }, [db, saveDatabase])
+
   const saveColumnDefinition = useCallback(async (
     key: string,
     patch: { label: string; type: PropertyDefinition['type']; wrap?: boolean },
@@ -463,5 +482,7 @@ export function useDatabasePage(id: string) {
     renameColumnOption,
     deleteColumnOption,
     optionColumnActions,
+    saveColumnWidths,
+    nameColumnWidth: db?.schema?.name_column_width ?? null,
   }
 }

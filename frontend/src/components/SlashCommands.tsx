@@ -62,6 +62,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   { label: 'Numbered list', description: 'Ordered list',            action: 'ordered', group: 'Structure', keywords: ['numbered', 'ordered', 'ol'] },
   { label: 'To-Do list',    description: 'Checkbox task list',      action: 'todo',    group: 'Structure', keywords: ['todo', 'task', 'checkbox'] },
   { label: 'Quote',         description: 'Block quotation',         action: 'quote',   group: 'Structure', keywords: ['quote', 'blockquote'] },
+  { label: 'Table', description: 'Markdown-style grid — drag column edges to resize', action: 'table', group: 'Structure', keywords: ['table', 'grid', 'rows', 'columns', 'markdown'] },
   // Insert group
   { label: '2 columns',     description: 'Two blocks side by side',   action: 'columns2', group: 'Insert', keywords: ['columns', '2 columns', 'layout'] },
   { label: '3 columns',     description: 'Three blocks side by side', action: 'columns3', group: 'Insert', keywords: ['columns', '3 columns', 'layout'] },

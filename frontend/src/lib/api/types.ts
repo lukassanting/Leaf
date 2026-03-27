@@ -122,6 +122,10 @@ export type LeafNode =
         title3?: string
       }
     }
+  | { type: 'table'; content: LeafNode[] }
+  | { type: 'tableRow'; content: LeafNode[] }
+  | { type: 'tableCell'; content: LeafNode[] }
+  | { type: 'tableHeader'; content: LeafNode[] }
 
 export type LeafDocument = {
   type: 'doc'
@@ -237,12 +241,16 @@ export interface PropertyDefinition {
   type: PropertyType
   /** When true, table cells for this column wrap text instead of staying on one line. */
   wrap?: boolean
+  /** Table view: column width in pixels (user-resizable). */
+  width?: number
   /** For `tags` and `select`: predefined choices with colours; row values are option labels. */
   options?: PropertyOption[]
 }
 
 export interface DatabaseSchema {
   properties: PropertyDefinition[]
+  /** Table view: width of the Name column in pixels. */
+  name_column_width?: number
 }
 
 export type ViewType = 'table' | 'list' | 'gallery' | 'board'

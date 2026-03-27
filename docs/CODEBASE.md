@@ -113,7 +113,7 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | Path | Purpose |
 |------|---------|
 | `app/dtos/leaf_dtos.py` | Pydantic models for leaf CRUD, content patch, tree, graph |
-| `app/dtos/database_dtos.py` | Pydantic models for databases and rows |
+| `app/dtos/database_dtos.py` | Pydantic models for databases and rows (`PropertyDefinition.width`, `DatabaseSchema.name_column_width` for table column sizing) |
 | `app/database/models/mysql_models.py` | SQLAlchemy models (name is legacy; works with SQLite default) |
 | `app/database/connectors/mysql.py` | DB engine/session; SQLite by default via `DATABASE_URL` |
 | `app/database/operations/leaf_operations.py` | Leaf CRUD, tree, content serialization, backlinks, file sync hooks |
@@ -197,7 +197,7 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | `src/components/page/IconPicker.tsx` | Icon selection UI |
 | `src/components/editor/TagsInput.tsx` | Tag chips / suggestions |
 | `src/components/database/DatabaseSurface.tsx` | Shared database canvas |
-| `src/components/database/DatabaseViews.tsx` | View switcher and view implementations; date column type; edit-column modal; gallery cover from `row.leaf_header_banner` |
+| `src/components/database/DatabaseViews.tsx` | View switcher and view implementations; date column type; edit-column modal; **table view** with persisted resizable columns; gallery cover from `row.leaf_header_banner` |
 | `src/components/database/EmbeddedDatabaseBlock.tsx` | Database block inside editor |
 | `src/components/AIAssistant.tsx` | AI assistant entry UI |
 | `src/components/Icons.tsx` | Shared icon components |

@@ -131,6 +131,8 @@ export function EmbeddedDatabaseBlock({
     gallerySize,
     setGallerySize,
     optionColumnActions,
+    saveColumnWidths,
+    nameColumnWidth,
   } = useDatabasePage(id)
 
   if (loading) {
@@ -196,6 +198,8 @@ export function EmbeddedDatabaseBlock({
         gallerySize={gallerySize}
         setGallerySize={setGallerySize}
         optionColumnActions={optionColumnActions}
+        nameColumnWidth={nameColumnWidth}
+        onColumnWidthsCommit={(p) => { void saveColumnWidths(p) }}
       />
     </div>
   )

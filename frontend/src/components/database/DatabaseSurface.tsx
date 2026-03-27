@@ -56,6 +56,8 @@ type Props = {
   gallerySize?: GallerySize
   setGallerySize?: (size: GallerySize) => void
   optionColumnActions?: OptionColumnActions | null
+  nameColumnWidth?: number | null
+  onColumnWidthsCommit?: (payload: { nameColumnWidth: number; columnWidths: Record<string, number> }) => void | Promise<void>
 }
 
 export function DatabaseSurface({
@@ -78,6 +80,8 @@ export function DatabaseSurface({
   gallerySize,
   setGallerySize,
   optionColumnActions,
+  nameColumnWidth,
+  onColumnWidthsCommit,
 }: Props) {
   return (
     <div className="leaf-database-surface">
@@ -105,6 +109,8 @@ export function DatabaseSurface({
           deleteColumn={deleteColumn}
           optionColumnActions={optionColumnActions ?? undefined}
           onReorderRows={reorderRows ? (ids) => { void reorderRows(ids) } : undefined}
+          nameColumnWidth={nameColumnWidth}
+          onColumnWidthsCommit={onColumnWidthsCommit}
         />
       )}
       {activeView === 'board' && (

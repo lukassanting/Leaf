@@ -1259,6 +1259,32 @@ export function DatabaseToolbar({
   )
 }
 
+function bindDbTableColumnResize(
+  e: React.PointerEvent,
+  onDelta: (dx: number) => void,
+  onEnd: () => void,
+) {
+  e.preventDefault()
+  e.stopPropagation()
+  const target = e.currentTarget as HTMLElement
+  target.setPointerCapture(e.pointerId)
+  let lastX = e.clientX
+  const move = (ev: PointerEvent) => {
+    onDelta(ev.clientX - lastX)
+    lastX = ev.clientX
+  }
+  const up = () => {
+    target.releasePointerCapture(e.pointerId)
+    target.removeEventListener('pointermove', move)
+    target.removeEventListener('pointerup', up)
+    target.removeEventListener('pointercancel', up)
+    onEnd()
+  }
+  target.addEventListener('pointermove', move)
+  target.addEventListener('pointerup', up)
+  target.addEventListener('pointercancel', up)
+}
+
 function SortableDatabaseTableRow({
   id,
   row,
@@ -1268,6 +1294,8 @@ function SortableDatabaseTableRow({
   onUpdateCell,
   onDeleteRow,
   optionColumnActions,
+  nameColumnPx,
+  propertyColumnWidths,
 }: {
   id: string
   row: DatabaseRow
@@ -1277,6 +1305,8 @@ function SortableDatabaseTableRow({
   onUpdateCell: (rowId: string, key: string, val: string) => void
   onDeleteRow: (rowId: string) => void
   optionColumnActions?: OptionColumnActions | null
+  nameColumnPx: number
+  propertyColumnWidths: Record<string, number>
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const isHighlighted = Boolean(highlightedRowId && row.leaf_id === highlightedRowId.replace('dbrow:', ''))
@@ -1306,14 +1336,23 @@ function SortableDatabaseTableRow({
           ⋮⋮
         </button>
       </td>
-      <td className="px-3 py-2 align-middle">
+      <td
+        className="px-3 py-2 align-middle"
+        style={{ width: nameColumnPx, minWidth: 72, maxWidth: 560, verticalAlign: 'middle' }}
+      >
         <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
       </td>
       {columns.map((column) => (
         <td
           key={column.key}
           className={`px-3 py-2 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap'}`}
-          style={{ color: 'var(--leaf-text-body)', maxWidth: column.wrap ? 280 : undefined }}
+          style={{
+            color: 'var(--leaf-text-body)',
+            width: propertyColumnWidths[column.key] ?? 140,
+            minWidth: 72,
+            maxWidth: 560,
+            verticalAlign: 'middle',
+          }}
         >
           <Cell
             value={(row.properties || {})[column.key]}
@@ -1342,6 +1381,8 @@ export function TableView({
   rows, columns, onUpdateName, onUpdateCell, onDeleteRow, onAddRow, onAddColumn, highlightedRowId, saveColumnDefinition, deleteColumn,
   optionColumnActions,
   onReorderRows,
+  nameColumnWidth,
+  onColumnWidthsCommit,
 }: {
   rows: DatabaseRow[]
   columns: PropertyDefinition[]
@@ -1355,8 +1396,45 @@ export function TableView({
   deleteColumn?: (key: string) => void | Promise<void>
   optionColumnActions?: OptionColumnActions | null
   onReorderRows?: (rowIds: string[]) => void | Promise<void>
+  /** Persisted table view width for the Name column (px). */
+  nameColumnWidth?: number | null
+  /** Persist widths after the user finishes dragging a column edge. */
+  onColumnWidthsCommit?: (payload: { nameColumnWidth: number; columnWidths: Record<string, number> }) => void | Promise<void>
 }) {
   const [headerMenu, setHeaderMenu] = useState<{ key: string; anchor: HTMLElement } | null>(null)
+  const colWidthSig = useMemo(() => columns.map((c) => `${c.key}:${c.width ?? ''}`).join('|'), [columns])
+  const [tableWidths, setTableWidths] = useState(() => ({
+    name: nameColumnWidth ?? 224,
+    cols: Object.fromEntries(columns.map((c) => [c.key, c.width ?? 140])) as Record<string, number>,
+  }))
+  const schemaWidthsRef = useRef({ name: nameColumnWidth ?? null, sig: '' as string })
+  useEffect(() => {
+    const sn = nameColumnWidth ?? null
+    if (schemaWidthsRef.current.name === sn && schemaWidthsRef.current.sig === colWidthSig) return
+    schemaWidthsRef.current = { name: sn, sig: colWidthSig }
+    setTableWidths({
+      name: nameColumnWidth ?? 224,
+      cols: Object.fromEntries(columns.map((c) => [c.key, c.width ?? 140])),
+    })
+  }, [nameColumnWidth, colWidthSig, columns])
+
+  const tableWidthsLiveRef = useRef(tableWidths)
+  tableWidthsLiveRef.current = tableWidths
+
+  const commitWidthsIfNeeded = useCallback(() => {
+    if (!onColumnWidthsCommit) return
+    const { name, cols: columnWidths } = tableWidthsLiveRef.current
+    const schemaName = nameColumnWidth ?? 224
+    const schemaCols = Object.fromEntries(columns.map((c) => [c.key, c.width ?? 140]))
+    const nameChanged = Math.round(name) !== Math.round(schemaName)
+    const colsChanged = columns.some((c) => Math.round(columnWidths[c.key] ?? 140) !== Math.round(schemaCols[c.key] ?? 140))
+    if (nameChanged || colsChanged) {
+      const roundedCols = Object.fromEntries(
+        Object.entries(columnWidths).map(([k, v]) => [k, Math.round(Number(v))]),
+      )
+      void onColumnWidthsCommit({ nameColumnWidth: Math.round(name), columnWidths: roundedCols })
+    }
+  }, [columns, nameColumnWidth, onColumnWidthsCommit])
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -1380,28 +1458,58 @@ export function TableView({
 
   const headerMenuColumn = headerMenu ? columns.find((c) => c.key === headerMenu.key) : undefined
 
+  const showResize = Boolean(onColumnWidthsCommit)
+
   const tableInner = (
-      <table className="leaf-db-table w-full border-collapse text-sm">
+      <table className="leaf-db-table w-full border-collapse text-sm" style={{ tableLayout: 'fixed' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--leaf-border-soft)' }}>
             {onReorderRows ? (
               <th className="w-8 px-1 py-2" aria-hidden style={{ color: 'var(--leaf-text-muted)' }} />
             ) : null}
-            <th className="w-56 whitespace-nowrap px-3 py-2 text-left text-[11px] font-medium" style={{ color: 'var(--leaf-text-muted)' }}>
+            <th
+              className="relative whitespace-nowrap px-3 py-2 text-left text-[11px] font-medium"
+              style={{
+                color: 'var(--leaf-text-muted)',
+                width: tableWidths.name,
+                minWidth: 72,
+                maxWidth: 560,
+              }}
+            >
               <span className="flex items-center gap-1.5">
                 <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.5 }}>
                   <path d="M4.5 2.75H9.1L11.75 5.38V13.25H4.5V2.75Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                 </svg>
                 Name
               </span>
+              {showResize ? (
+                <span
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Resize name column"
+                  className="leaf-db-table-resize-handle"
+                  onPointerDown={(e) => bindDbTableColumnResize(e, (dx) => {
+                    setTableWidths((w) => ({
+                      ...w,
+                      name: Math.min(560, Math.max(120, w.name + dx)),
+                    }))
+                  }, commitWidthsIfNeeded)}
+                />
+              ) : null}
             </th>
             {columns.map((column) => (
               <th
                 key={column.key}
-                className={`group px-3 py-2 text-left text-[11px] font-medium ${column.wrap ? 'align-top' : 'whitespace-nowrap'}`}
-                style={{ color: 'var(--leaf-text-muted)', cursor: 'pointer', maxWidth: column.wrap ? 280 : undefined }}
+                className={`group relative px-3 py-2 text-left text-[11px] font-medium ${column.wrap ? 'align-top' : 'whitespace-nowrap'}`}
+                style={{
+                  color: 'var(--leaf-text-muted)',
+                  cursor: 'pointer',
+                  width: tableWidths.cols[column.key] ?? 140,
+                  minWidth: 72,
+                  maxWidth: 560,
+                }}
                 onClick={(event) => {
-                  if ((event.target as HTMLElement).closest('.leaf-col-header-menu-btn')) return
+                  if ((event.target as HTMLElement).closest('.leaf-db-table-resize-handle, .leaf-col-header-menu-btn')) return
                   openHeaderMenu(column.key, event.currentTarget)
                 }}
               >
@@ -1424,6 +1532,23 @@ export function TableView({
                     ⋯
                   </button>
                 </div>
+                {showResize ? (
+                  <span
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label={`Resize ${column.label} column`}
+                    className="leaf-db-table-resize-handle"
+                    onPointerDown={(e) => bindDbTableColumnResize(e, (dx) => {
+                      setTableWidths((w) => ({
+                        ...w,
+                        cols: {
+                          ...w.cols,
+                          [column.key]: Math.min(560, Math.max(72, (w.cols[column.key] ?? 140) + dx)),
+                        },
+                      }))
+                    }, commitWidthsIfNeeded)}
+                  />
+                ) : null}
               </th>
             ))}
             <th className="px-3 py-2 text-left" style={{ color: 'var(--leaf-text-muted)' }}>
@@ -1453,6 +1578,8 @@ export function TableView({
                   onUpdateCell={onUpdateCell}
                   onDeleteRow={onDeleteRow}
                   optionColumnActions={optionColumnActions}
+                  nameColumnPx={tableWidths.name}
+                  propertyColumnWidths={tableWidths.cols}
                 />
               ))}
             </tbody>
@@ -1472,14 +1599,23 @@ export function TableView({
                   onMouseEnter={(e) => { if (!isHighlighted) e.currentTarget.style.background = 'var(--leaf-db-row-hover)' }}
                   onMouseLeave={(e) => { if (!isHighlighted) e.currentTarget.style.background = '' }}
                 >
-                  <td className="px-3 py-2 align-middle">
+                  <td
+                    className="px-3 py-2 align-middle"
+                    style={{ width: tableWidths.name, minWidth: 72, maxWidth: 560, verticalAlign: 'middle' }}
+                  >
                     <NameCell row={row} onSave={(title) => onUpdateName(row.id, title)} />
                   </td>
                   {columns.map((column) => (
                     <td
                       key={column.key}
                       className={`px-3 py-2 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap'}`}
-                      style={{ color: 'var(--leaf-text-body)', maxWidth: column.wrap ? 280 : undefined }}
+                      style={{
+                        color: 'var(--leaf-text-body)',
+                        width: tableWidths.cols[column.key] ?? 140,
+                        minWidth: 72,
+                        maxWidth: 560,
+                        verticalAlign: 'middle',
+                      }}
                     >
                       <Cell
                         value={(row.properties || {})[column.key]}

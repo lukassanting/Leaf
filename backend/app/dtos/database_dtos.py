@@ -45,10 +45,12 @@ class PropertyDefinition(BaseModel):
     type: str = "text"  # "text" | "number" | "page_link" | "tags" | "select" | "date"
     wrap: Optional[bool] = None
     options: Optional[list[PropertyOption]] = None
+    width: Optional[int] = None  # table view column width (px)
 
 
 class DatabaseSchema(BaseModel):
     properties: list[PropertyDefinition] = Field(default_factory=list)
+    name_column_width: Optional[int] = None  # table view "Name" column width (px)
 
 
 # ─── Database ─────────────────────────────────────────────────────────────────

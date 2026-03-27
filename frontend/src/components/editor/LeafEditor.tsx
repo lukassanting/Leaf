@@ -58,6 +58,11 @@ import TextAlign from '@tiptap/extension-text-align'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MarkdownIt from 'markdown-it'
 import TurndownService from 'turndown'
+import { tables as turndownTables } from 'turndown-plugin-gfm'
+import Table from '@tiptap/extension-table'
+import TableCell from '@tiptap/extension-table-cell'
+import TableHeader from '@tiptap/extension-table-header'
+import TableRow from '@tiptap/extension-table-row'
 import { leavesApi, type Database, type LeafTreeItem, type LeafDocument } from '@/lib/api'
 import { DatabaseIcon, LeafIcon } from '@/components/Icons'
 import { EditorSelectionBubble } from './EditorSelectionBubble'
@@ -108,6 +113,7 @@ function selectionBubbleShouldShow({
 }
 
 const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' })
+turndown.use([turndownTables])
 turndown.addRule('leafToggleCard', {
   filter(node) {
     return node.nodeName === 'DIV' && (node as HTMLElement).getAttribute('data-type') === 'toggle-card'
@@ -1343,7 +1349,7 @@ export default function LeafEditor({
     LinkCard,
     TextStyle,
     Color,
-    TextAlign.configure({ types: ['heading', 'paragraph', 'blockquote', 'callout'] }),
+    TextAlign.configure({ types: ['heading', 'paragraph', 'blockquote', 'callout', 'tableCell', 'tableHeader'] }),
     WikilinkNode,
     HashtagNode,
     StoryTag,
@@ -1359,6 +1365,15 @@ export default function LeafEditor({
     DatabaseEmbed,
     TaskList,
     TaskItem.configure({ nested: true }),
+    Table.configure({
+      resizable: true,
+      HTMLAttributes: { class: 'leaf-prose-table' },
+      cellMinWidth: 48,
+      handleWidth: 6,
+    }),
+    TableRow,
+    TableHeader,
+    TableCell,
   ], [])
 
   const syncedTagsRef = useRef<Set<string>>(new Set())
@@ -2007,6 +2022,14 @@ export default function LeafEditor({
           { type: 'callout', attrs: { variant: 'gray' }, content: [{ type: 'paragraph' }] },
           { type: 'paragraph' },
         ]).run()
+        return
+      }
+      case 'table': {
+        const $posTable = editor.state.doc.resolve(selectionPos)
+        for (let d = $posTable.depth; d > 0; d--) {
+          if ($posTable.node(d).type.name === 'column') return
+        }
+        editor.chain().focus().setTextSelection(selectionPos).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
         return
       }
     }
