@@ -510,6 +510,118 @@ html[data-leaf-design="campaign"] .ProseMirror hr::before {
 }
 
 /* Markdown / TipTap tables (resizable columns via ProseMirror) */
+.ProseMirror .leaf-table-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0.75rem 0;
+}
+.ProseMirror .leaf-table-main-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+.ProseMirror .leaf-table-main-row > .tableWrapper {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow-x: auto;
+}
+.ProseMirror .leaf-table-add-col {
+  flex: 0 0 28px;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 2px 0 2px 3px;
+  transition: opacity 0.14s ease;
+}
+.ProseMirror .leaf-table-add-col-btn {
+  width: 22px;
+  min-height: 2rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--leaf-text-muted, var(--color-text-muted));
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.ProseMirror .leaf-table-add-col-btn:hover {
+  background: color-mix(in srgb, var(--foreground) 9%, transparent);
+  color: var(--leaf-text-title, var(--color-text-dark));
+}
+.ProseMirror .leaf-table-add-row-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 28px;
+  margin-top: 3px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  transition: opacity 0.14s ease;
+}
+
+/* Fine pointer + hover: hide row/column + chrome until the table is hovered or focused inside */
+@media (hover: hover) and (pointer: fine) {
+  .ProseMirror .leaf-table-root:not(:hover):not(:focus-within) .leaf-table-add-col {
+    flex: 0 0 0;
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .ProseMirror .leaf-table-root:not(:hover):not(:focus-within) .leaf-table-add-row-bar {
+    min-height: 0;
+    height: 0;
+    margin-top: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+.ProseMirror .leaf-table-add-row-btn {
+  width: 100%;
+  margin: 0;
+  padding: 4px 0;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: var(--leaf-text-muted, var(--color-text-muted));
+  background: transparent;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.ProseMirror .leaf-table-add-row-btn:hover {
+  color: var(--leaf-text-title, var(--color-text-dark));
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+
+html[data-leaf-design="campaign"] .ProseMirror .leaf-table-add-col-btn,
+html[data-leaf-design="campaign"] .ProseMirror .leaf-table-add-row-bar {
+  background: rgba(40, 36, 62, 0.75);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-table-add-col-btn {
+  color: rgba(212, 175, 55, 0.75);
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-table-add-col-btn:hover,
+html[data-leaf-design="campaign"] .ProseMirror .leaf-table-add-row-btn:hover {
+  background: rgba(212, 175, 55, 0.1);
+  color: #d4af37;
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-table-add-row-btn {
+  color: rgba(212, 175, 55, 0.65);
+}
+
 .ProseMirror .tableWrapper {
   margin: 0.75rem 0;
   overflow-x: auto;
@@ -529,7 +641,18 @@ html[data-leaf-design="campaign"] .ProseMirror hr::before {
   min-width: 48px;
   box-sizing: border-box;
 }
-.ProseMirror table.leaf-prose-table th {
+.ProseMirror table.leaf-prose-table thead {
+  border-bottom: 2px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+}
+.ProseMirror table.leaf-prose-table thead th {
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+  font-weight: 600;
+  color: var(--leaf-text-title, var(--color-text-dark));
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ProseMirror table.leaf-prose-table tbody th {
   background: color-mix(in srgb, var(--foreground) 5%, transparent);
   font-weight: 600;
   color: var(--leaf-text-title, var(--color-text-dark));
@@ -551,20 +674,48 @@ html[data-leaf-design="campaign"] .ProseMirror hr::before {
   cursor: col-resize;
 }
 
-html[data-leaf-design="campaign"] .ProseMirror table.leaf-prose-table th {
-  background: rgba(72, 64, 112, 0.5);
-  border-color: rgba(212, 175, 55, 0.25);
-  color: rgba(248, 246, 240, 0.95);
+html[data-leaf-design="campaign"] .ProseMirror table.leaf-prose-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+html[data-leaf-design="campaign"] .ProseMirror table.leaf-prose-table thead {
+  border-bottom: 1px solid rgba(212, 175, 55, 0.38);
+}
+html[data-leaf-design="campaign"] .ProseMirror table.leaf-prose-table thead th {
+  background: rgba(56, 48, 92, 0.85);
+  border: none;
+  border-right: 1px solid rgba(212, 175, 55, 0.12);
+  color: rgba(235, 232, 224, 0.95);
   font-family: var(--font-cinzel, Cinzel, serif);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.55rem 0.65rem;
+}
+html[data-leaf-design="campaign"] .ProseMirror table.leaf-prose-table thead th:last-child {
+  border-right: none;
+}
+html[data-leaf-design="campaign"] .ProseMirror table.leaf-prose-table tbody th {
+  background: rgba(56, 48, 92, 0.55);
+  border: none;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+  border-right: 1px solid rgba(212, 175, 55, 0.08);
+  color: rgba(235, 232, 224, 0.92);
+  font-family: var(--font-cinzel, Cinzel, serif);
+  font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 html[data-leaf-design="campaign"] .ProseMirror table.leaf-prose-table td {
-  border-color: rgba(212, 175, 55, 0.22);
+  border: none;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.12);
   color: var(--leaf-text-body);
   font-family: var(--font-crimson, 'Crimson Pro', Georgia, serif);
+}
+html[data-leaf-design="campaign"] .ProseMirror table.leaf-prose-table tbody tr:last-child td {
+  border-bottom: none;
 }
 html[data-leaf-design="campaign"] .ProseMirror .column-resize-handle {
   background: rgba(212, 175, 55, 0.4);

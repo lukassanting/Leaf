@@ -63,6 +63,7 @@ import Table from '@tiptap/extension-table'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import TableRow from '@tiptap/extension-table-row'
+import { LeafTableView } from '@/components/editor/LeafTableView'
 import { leavesApi, type Database, type LeafTreeItem, type LeafDocument } from '@/lib/api'
 import { DatabaseIcon, LeafIcon } from '@/components/Icons'
 import { EditorSelectionBubble } from './EditorSelectionBubble'
@@ -1288,7 +1289,9 @@ export default function LeafEditor({
       return
     }
 
-    const items = rankSlashItems(match.query)
+    const items = rankSlashItems(match.query).filter(
+      (item) => !item.requiresTable || instance.isActive('table'),
+    )
     setSlashMenu((current) => ({
       items,
       selectedIndex: current?.items.length === items.length ? Math.min(current.selectedIndex, Math.max(0, items.length - 1)) : 0,
@@ -1370,6 +1373,7 @@ export default function LeafEditor({
       HTMLAttributes: { class: 'leaf-prose-table' },
       cellMinWidth: 48,
       handleWidth: 6,
+      View: LeafTableView,
     }),
     TableRow,
     TableHeader,
@@ -2032,6 +2036,30 @@ export default function LeafEditor({
         editor.chain().focus().setTextSelection(selectionPos).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
         return
       }
+      case 'table_add_row_after':
+        editor.chain().focus().setTextSelection(selectionPos).addRowAfter().run()
+        return
+      case 'table_add_row_before':
+        editor.chain().focus().setTextSelection(selectionPos).addRowBefore().run()
+        return
+      case 'table_add_column_after':
+        editor.chain().focus().setTextSelection(selectionPos).addColumnAfter().run()
+        return
+      case 'table_add_column_before':
+        editor.chain().focus().setTextSelection(selectionPos).addColumnBefore().run()
+        return
+      case 'table_delete_row':
+        editor.chain().focus().setTextSelection(selectionPos).deleteRow().run()
+        return
+      case 'table_delete_column':
+        editor.chain().focus().setTextSelection(selectionPos).deleteColumn().run()
+        return
+      case 'table_toggle_header_row':
+        editor.chain().focus().setTextSelection(selectionPos).toggleHeaderRow().run()
+        return
+      case 'table_delete_table':
+        editor.chain().focus().setTextSelection(selectionPos).deleteTable().run()
+        return
     }
 
     const storyVariant = parseStoryTagAction(action)

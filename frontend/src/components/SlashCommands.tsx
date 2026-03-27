@@ -11,7 +11,7 @@ import { BLOCK_ICONS } from './Icons'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SlashGroup = 'Text' | 'Style' | 'Structure' | 'Insert' | 'Flags' | 'Toggle Cards'
+export type SlashGroup = 'Text' | 'Style' | 'Structure' | 'Table' | 'Insert' | 'Flags' | 'Toggle Cards'
 
 export type SlashItem = {
   label: string
@@ -19,6 +19,8 @@ export type SlashItem = {
   action: string
   group: SlashGroup
   keywords: string[]
+  /** When set, the item is only shown if the cursor is inside a TipTap table. */
+  requiresTable?: boolean
 }
 
 type SlashMenuPosition = {
@@ -63,6 +65,15 @@ export const SLASH_ITEMS: SlashItem[] = [
   { label: 'To-Do list',    description: 'Checkbox task list',      action: 'todo',    group: 'Structure', keywords: ['todo', 'task', 'checkbox'] },
   { label: 'Quote',         description: 'Block quotation',         action: 'quote',   group: 'Structure', keywords: ['quote', 'blockquote'] },
   { label: 'Table', description: 'Markdown-style grid — drag column edges to resize', action: 'table', group: 'Structure', keywords: ['table', 'grid', 'rows', 'columns', 'markdown'] },
+  // Table group (only while cursor is inside a table — see `requiresTable`)
+  { label: 'Add row below', description: 'New row under the current cell', action: 'table_add_row_after', group: 'Table', keywords: ['row', 'below', 'add'], requiresTable: true },
+  { label: 'Add row above', description: 'New row above the current cell', action: 'table_add_row_before', group: 'Table', keywords: ['row', 'above'], requiresTable: true },
+  { label: 'Add column right', description: 'New column after the current one', action: 'table_add_column_after', group: 'Table', keywords: ['column', 'right', 'col'], requiresTable: true },
+  { label: 'Add column left', description: 'New column before the current one', action: 'table_add_column_before', group: 'Table', keywords: ['column', 'left'], requiresTable: true },
+  { label: 'Delete row', description: 'Remove the row you are in', action: 'table_delete_row', group: 'Table', keywords: ['row', 'delete', 'remove'], requiresTable: true },
+  { label: 'Delete column', description: 'Remove the column you are in', action: 'table_delete_column', group: 'Table', keywords: ['column', 'delete', 'remove'], requiresTable: true },
+  { label: 'Header row', description: 'Toggle header styling on this row (column titles)', action: 'table_toggle_header_row', group: 'Table', keywords: ['header', 'th', 'title', 'heading'], requiresTable: true },
+  { label: 'Delete table', description: 'Remove the whole table', action: 'table_delete_table', group: 'Table', keywords: ['table', 'delete', 'remove'], requiresTable: true },
   // Insert group
   { label: '2 columns',     description: 'Two blocks side by side',   action: 'columns2', group: 'Insert', keywords: ['columns', '2 columns', 'layout'] },
   { label: '3 columns',     description: 'Three blocks side by side', action: 'columns3', group: 'Insert', keywords: ['columns', '3 columns', 'layout'] },
@@ -111,7 +122,7 @@ export function rankSlashItems(query: string): SlashItem[] {
 
 // ─── Menu renderer (used in Editor.tsx) ──────────────────────────────────────
 
-const GROUPS: SlashGroup[] = ['Text', 'Style', 'Structure', 'Insert', 'Flags', 'Toggle Cards']
+const GROUPS: SlashGroup[] = ['Text', 'Style', 'Structure', 'Table', 'Insert', 'Flags', 'Toggle Cards']
 
 export function SlashMenuPanel({
   menu,
