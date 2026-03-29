@@ -4,7 +4,7 @@
  * Shared slash-command metadata and UI panel.
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { STORY_TAG_PRESETS, storyTagAction } from '@/lib/editorRichText'
 import { BLOCK_ICONS } from './Icons'
@@ -124,6 +124,124 @@ export function rankSlashItems(query: string): SlashItem[] {
 
 const GROUPS: SlashGroup[] = ['Text', 'Style', 'Structure', 'Table', 'Insert', 'Flags', 'Toggle Cards']
 
+export const SLASH_MENU_PANEL_WIDTH = 260
+
+const MENU_VERTICAL_GAP = 6
+const VIEWPORT_MARGIN = 8
+
+function slashMenuMaxHeightPx(): number {
+  if (typeof window === 'undefined') return 420
+  return Math.min(window.innerHeight * 0.52, 420)
+}
+
+/** Fixed `top` / `left` for a menu panel; opens upward when the anchor sits in the lower third or when there is more room above. */
+export function computeFixedMenuTopLeft(anchor: { top: number; bottom: number; left: number; right?: number }): { top: number; left: number } {
+  const vh = window.innerHeight
+  const vw = window.innerWidth
+  const maxH = slashMenuMaxHeightPx()
+  const spaceBelow = vh - anchor.bottom - MENU_VERTICAL_GAP
+  const spaceAbove = anchor.top - MENU_VERTICAL_GAP
+  const inBottomThird = anchor.bottom > (vh * 2) / 3
+
+  const preferAbove =
+    (inBottomThird && spaceAbove >= 80) ||
+    (spaceBelow < Math.min(maxH, 280) && spaceAbove > spaceBelow && spaceAbove >= 80)
+
+  let top: number
+  if (preferAbove) {
+    top = anchor.top - MENU_VERTICAL_GAP - maxH
+    top = Math.max(VIEWPORT_MARGIN, top)
+  } else {
+    top = anchor.bottom + MENU_VERTICAL_GAP
+    if (top + maxH > vh - VIEWPORT_MARGIN) {
+      top = Math.max(VIEWPORT_MARGIN, vh - VIEWPORT_MARGIN - maxH)
+    }
+    top = Math.max(VIEWPORT_MARGIN, top)
+  }
+
+  const left = Math.min(anchor.left, vw - SLASH_MENU_PANEL_WIDTH - VIEWPORT_MARGIN)
+  return { top, left: Math.max(VIEWPORT_MARGIN, left) }
+}
+
+export function SlashCommandList({
+  items,
+  selectedIndex,
+  onSelect,
+  scrollRef,
+}: {
+  items: SlashItem[]
+  selectedIndex: number
+  onSelect: (item: SlashItem) => void
+  scrollRef?: RefObject<HTMLDivElement | null>
+}) {
+  const grouped: { group: SlashGroup; items: { item: SlashItem; idx: number }[] }[] = []
+  for (const group of GROUPS) {
+    const groupItems = items
+      .map((item, i) => ({ item, globalI: i }))
+      .filter(({ item }) => item.group === group)
+    if (groupItems.length === 0) continue
+    grouped.push({ group, items: groupItems.map(({ item, globalI }) => ({ item, idx: globalI })) })
+  }
+
+  return (
+    <div
+      ref={scrollRef}
+      className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-0.5"
+      style={{ WebkitOverflowScrolling: 'touch' }}
+    >
+      {grouped.map(({ group, items: groupItems }) => (
+        <div key={group}>
+          <div
+            className="px-3 pt-2.5 pb-1 text-[10px] font-medium tracking-wider uppercase"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
+            {group}
+          </div>
+          {groupItems.map(({ item, idx }) => {
+            const isSelected = idx === selectedIndex
+            return (
+              <button
+                key={`${item.action}-${idx}`}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                data-slash-idx={idx}
+                onMouseDown={(event) => {
+                  event.preventDefault()
+                  onSelect(item)
+                }}
+                className="flex w-full items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors duration-100"
+                style={{ backgroundColor: isSelected ? 'var(--color-hover)' : undefined }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--color-hover)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = isSelected ? 'var(--color-hover)' : ''
+                }}
+              >
+                {BLOCK_ICONS[item.action] ?? null}
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium" style={{ color: 'var(--color-text-dark)' }}>
+                    {item.label}
+                  </span>
+                  <span className="block text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                    {item.description}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      ))}
+      {grouped.length === 0 && (
+        <div className="px-3 py-3 text-sm" style={{ color: 'var(--color-text-muted)' }}>
+          No results
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function SlashMenuPanel({
   menu,
   onSelect,
@@ -133,19 +251,11 @@ export function SlashMenuPanel({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const grouped: { group: SlashGroup; items: { item: SlashItem; idx: number }[] }[] = []
-  for (const group of GROUPS) {
-    const groupItems = menu.items
-      .map((item, i) => ({ item, globalI: i }))
-      .filter(({ item }) => item.group === group)
-    if (groupItems.length === 0) continue
-    grouped.push({ group, items: groupItems.map(({ item, globalI }) => ({ item, idx: globalI })) })
-  }
-
-  // Flip above cursor if too close to bottom
-  const spaceBelow = window.innerHeight - menu.rect.bottom
-  const top = spaceBelow < 240 ? menu.rect.top - 6 - Math.min(240, window.innerHeight * 0.4) : menu.rect.bottom + 6
-  const left = Math.min(menu.rect.left, window.innerWidth - 272)
+  const { top, left } = computeFixedMenuTopLeft({
+    top: menu.rect.top,
+    bottom: menu.rect.bottom,
+    left: menu.rect.left,
+  })
 
   useEffect(() => {
     const root = scrollRef.current
@@ -160,7 +270,7 @@ export function SlashMenuPanel({
       style={{
         top,
         left,
-        width: 260,
+        width: SLASH_MENU_PANEL_WIDTH,
         maxHeight: 'min(52vh, 420px)',
         background: 'var(--leaf-bg-elevated)',
         border: '1px solid var(--color-border)',
@@ -171,57 +281,7 @@ export function SlashMenuPanel({
       role="listbox"
       aria-label="Slash commands"
     >
-      <div
-        ref={scrollRef}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-0.5"
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
-        {grouped.map(({ group, items }) => (
-          <div key={group}>
-            <div
-              className="px-3 pt-2.5 pb-1 text-[10px] font-medium tracking-wider uppercase"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              {group}
-            </div>
-            {items.map(({ item, idx }) => {
-              const isSelected = idx === menu.selectedIndex
-              return (
-                <button
-                  key={item.action}
-                  type="button"
-                  role="option"
-                  aria-selected={isSelected}
-                  data-slash-idx={idx}
-                  onMouseDown={(event) => {
-                    event.preventDefault()
-                    onSelect(item)
-                  }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors duration-100"
-                  style={{ backgroundColor: isSelected ? 'var(--color-hover)' : undefined }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-hover)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isSelected ? 'var(--color-hover)' : '')}
-                >
-                  {BLOCK_ICONS[item.action] ?? null}
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-medium" style={{ color: 'var(--color-text-dark)' }}>
-                      {item.label}
-                    </span>
-                    <span className="block text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-                      {item.description}
-                    </span>
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        ))}
-        {grouped.length === 0 && (
-          <div className="px-3 py-3 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-            No results
-          </div>
-        )}
-      </div>
+      <SlashCommandList items={menu.items} selectedIndex={menu.selectedIndex} onSelect={onSelect} scrollRef={scrollRef} />
     </div>
   )
 

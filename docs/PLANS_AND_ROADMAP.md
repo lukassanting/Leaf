@@ -35,7 +35,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 
 - [x] Schema-first `LeafDocument` content model with HTML migration support.
 - [x] Stable TipTap editor rebuild with `gapcursor`/`dropcursor` disabled.
-- [x] Slash commands and block insertion menu for headings, lists, todos, quotes, sub-pages, databases, column layouts, **markdown tables** (GFM pipe tables in Markdown mode; TipTap `Table` with resizable columns in rich mode), and **callouts** (classic colored panels + campaign-themed variants).
+- [x] Slash commands and block insertion menu for headings, lists, todos, quotes, sub-pages, databases, column layouts, **markdown tables** (GFM pipe tables in Markdown mode; TipTap `Table` with resizable columns in rich mode), and **callouts** (classic colored panels + campaign-themed variants). Gutter **+** uses the same grouped list as `/` slash; menus flip upward near the bottom of the viewport.
 - [x] Text alignment (paragraph, heading, blockquote) and palette text colours (`TextAlign`, `TextStyle`, `Color`); selection bubble + slash **Style** group (no static toolbar).
 - [x] Inline **story flag** atoms (variant + editable label; slash menu group **Flags**; distinct from page **tags** metadata) and **stat strip** block (2–4 kicker/value pairs; gutter grip menu: delete, colour, column count); presets in `lib/editorRichText.ts`.
 - [x] **Toggle cards**: eyebrow/title/subtitle are small TipTap fields with a **filtered slash menu** (text marks, alignment, colours, **Flags**); values persist as string/HTML node attrs. Collapsible body is normal editor content — **full** slash commands (headings, lists, embeds, flags, etc.) work inside the card body.
@@ -195,7 +195,7 @@ Questions still open for the next milestone:
 | `frontend/src/components/editor/ToggleCardHeaderField.tsx` | Toggle card header lines: mini TipTap + filtered slash (Style, Flags) |
 | `frontend/src/components/editor/toggleCardHeaderSlash.ts` | Slash actions and ranking for toggle header fields |
 | `frontend/src/lib/editorRichText.ts` | Story-tag presets and shared colour swatches |
-| `frontend/src/components/SlashCommands.tsx` | Shared slash menu data and menu UI |
+| `frontend/src/components/SlashCommands.tsx` | Slash items, `SlashMenuPanel`, `SlashCommandList`, viewport-aware `computeFixedMenuTopLeft` |
 | `frontend/src/components/database/DatabaseSurface.tsx` | Shared standalone/embedded database renderer |
 | `frontend/src/components/database/EmbeddedDatabaseBlock.tsx` | Inline database block wrapper |
 | `frontend/src/components/database/DatabaseViews.tsx` | Table/board/gallery/list views and toolbar |
@@ -262,4 +262,4 @@ That means platform growth should focus first on:
 
 ---
 
-*Last updated: 2026-03-24. Toggle card headers: mini TipTap + filtered slash (Style, Flags); key-files rows for `ToggleCardHeaderField` / `toggleCardHeaderSlash`. Previous: git-based sync; bidirectional file sync.*
+*Last updated: 2026-03-29. Gutter **+** menu aligned with slash UI and positioning; previous: toggle card header slash; git/file sync.*

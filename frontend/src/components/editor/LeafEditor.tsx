@@ -55,7 +55,8 @@ import TaskList from '@tiptap/extension-task-list'
 import TextStyle from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import MarkdownIt from 'markdown-it'
 import TurndownService from 'turndown'
 import { tables as turndownTables } from 'turndown-plugin-gfm'
@@ -79,7 +80,15 @@ import { databasesApi } from '@/lib/api'
 
 import { LEAF_TEXT_COLOR_SWATCHES, STORY_TAG_PRESETS, parseStoryTagAction } from '@/lib/editorRichText'
 import { createEmptyLeafDocument, getLeafContentText, normalizeLeafDocument } from '@/lib/leafDocument'
-import { rankSlashItems, SLASH_ITEMS, type SlashMenuState, SlashMenuPanel } from '@/components/SlashCommands'
+import {
+  computeFixedMenuTopLeft,
+  rankSlashItems,
+  SLASH_ITEMS,
+  SLASH_MENU_PANEL_WIDTH,
+  SlashCommandList,
+  type SlashMenuState,
+  SlashMenuPanel,
+} from '@/components/SlashCommands'
 import { StoryTag } from '@/components/editor/storyTagExtension'
 import { computeSlashMatch, computeWikilinkMatch, type EditorSlashMatch } from '@/components/editor/slashMatchUtils'
 
@@ -963,38 +972,68 @@ function CalloutView({ node }: NodeViewProps) {
   )
 }
 
-function BlockDropdown({ blockMenu, editor, onSelect, onClose }: {
+function BlockDropdown({
+  blockMenu,
+  editor,
+  anchorRef,
+  onSelect,
+  onClose,
+}: {
   blockMenu: NonNullable<BlockMenuState>
   editor: import('@tiptap/core').Editor | null
+  anchorRef: RefObject<HTMLElement | null>
   onSelect: (action: string) => void
   onClose: () => void
 }) {
-  const groups = ['Text', 'Style', 'Structure', 'Insert', 'Toggle Cards'] as const
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
   const hasColour = blockMenu.nodeType === 'callout' || blockMenu.nodeType === 'statStrip'
   const blockNode = hasColour && editor ? editor.state.doc.nodeAt(blockMenu.nodeStart) : null
   const currentVariant = (blockNode?.attrs.variant as CalloutVariant) || 'gray'
   const isStatStrip = blockMenu.nodeType === 'statStrip'
   const currentColumns = isStatStrip ? (Number(blockNode?.attrs.columns) || 3) : 0
 
-  return (
+  const insertItems = SLASH_ITEMS.filter(
+    (item) => !item.requiresTable || (editor?.isActive('table') ?? false),
+  )
+
+  useLayoutEffect(() => {
+    const el = anchorRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    setMenuPos(
+      computeFixedMenuTopLeft({
+        top: r.top,
+        bottom: r.bottom,
+        left: r.left,
+        right: r.right,
+      }),
+    )
+  }, [anchorRef, blockMenu.top, blockMenu.height, blockMenu.nodeStart])
+
+  return createPortal(
     <>
       <div className="fixed inset-0 z-40" onMouseDown={onClose} />
       <div
-        className="absolute z-50 overflow-y-auto rounded-lg"
+        className="fixed z-[9999] flex flex-col rounded-lg"
         style={{
-          top: 28,
-          left: 0,
-          width: 240,
-          maxHeight: 420,
+          top: menuPos.top,
+          left: menuPos.left,
+          width: SLASH_MENU_PANEL_WIDTH,
+          maxHeight: 'min(52vh, 420px)',
           background: 'var(--leaf-bg-elevated)',
-          border: '1px solid var(--leaf-border-strong)',
-          boxShadow: '0 4px 20px color-mix(in srgb, var(--foreground) 10%, transparent)',
+          border: '1px solid var(--color-border)',
+          boxShadow: '0 4px 20px color-mix(in srgb, var(--foreground) 12%, transparent)',
+          overflow: 'hidden',
         }}
+        onMouseDown={(e) => e.preventDefault()}
       >
         {/* ── Contextual: colour picker (callout + stat strip) ─── */}
         {hasColour && editor && blockNode && (
-          <div>
-            <div className="px-3 pb-1 pt-2.5 text-[10px] font-medium uppercase tracking-wider" style={{ color: 'var(--leaf-text-muted)' }}>
+          <div className="shrink-0">
+            <div
+              className="px-3 pb-1 pt-2.5 text-[10px] font-medium uppercase tracking-wider"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
               Colour
             </div>
             <div className="flex flex-wrap gap-1 px-2.5 pb-2">
@@ -1005,7 +1044,12 @@ function BlockDropdown({ blockMenu, editor, onSelect, onClose }: {
                   title={CALLOUT_VARIANT_META[v].label}
                   style={{
                     background: CALLOUT_VARIANT_META[v].dot,
-                    width: 20, height: 20, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0,
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
                     outline: v === currentVariant ? '2px solid var(--leaf-green)' : 'none',
                     outlineOffset: 1,
                   }}
@@ -1023,8 +1067,11 @@ function BlockDropdown({ blockMenu, editor, onSelect, onClose }: {
 
         {/* ── Contextual: stat strip column count ─── */}
         {isStatStrip && editor && blockNode && (
-          <div>
-            <div className="px-3 pb-1 pt-2.5 text-[10px] font-medium uppercase tracking-wider" style={{ color: 'var(--leaf-text-muted)' }}>
+          <div className="shrink-0">
+            <div
+              className="px-3 pb-1 pt-2.5 text-[10px] font-medium uppercase tracking-wider"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
               Columns
             </div>
             <div className="flex gap-1 px-2.5 pb-2">
@@ -1034,9 +1081,13 @@ function BlockDropdown({ blockMenu, editor, onSelect, onClose }: {
                   type="button"
                   className="flex items-center justify-center rounded-md text-xs font-medium transition-colors duration-100"
                   style={{
-                    width: 32, height: 28, cursor: 'pointer',
-                    border: n === currentColumns ? '1.5px solid var(--leaf-green)' : '1px solid var(--leaf-border-soft)',
-                    background: n === currentColumns ? 'color-mix(in srgb, var(--leaf-green) 12%, transparent)' : 'transparent',
+                    width: 32,
+                    height: 28,
+                    cursor: 'pointer',
+                    border:
+                      n === currentColumns ? '1.5px solid var(--leaf-green)' : '1px solid var(--leaf-border-soft)',
+                    background:
+                      n === currentColumns ? 'color-mix(in srgb, var(--leaf-green) 12%, transparent)' : 'transparent',
                     color: n === currentColumns ? 'var(--leaf-green)' : 'var(--leaf-text-muted)',
                   }}
                   onMouseDown={(e) => {
@@ -1054,58 +1105,45 @@ function BlockDropdown({ blockMenu, editor, onSelect, onClose }: {
         )}
 
         {/* ── Delete ─── */}
-        <div>
+        <div className="shrink-0">
           <button
             type="button"
             className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors duration-100 hover:bg-red-500/10"
-            style={{ color: 'var(--leaf-text-title)' }}
+            style={{ color: 'var(--color-text-dark)' }}
             onMouseDown={(e) => {
               e.preventDefault()
               if (!editor) return
               try {
                 editor.chain().focus().deleteRange({ from: blockMenu.nodeStart, to: blockMenu.endPos }).run()
-              } catch { /* ignore */ }
+              } catch {
+                /* ignore */
+              }
               onClose()
             }}
           >
-            <svg className="w-4 h-4 shrink-0" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--leaf-text-muted)' }}>
-              <path d="M5.5 2h5M2.5 4h11M6 4v8M10 4v8M3.5 4l.75 9.5a1 1 0 001 .5h5.5a1 1 0 001-.5L12.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            <svg className="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--color-text-muted)' }}>
+              <path
+                d="M5.5 2h5M2.5 4h11M6 4v8M10 4v8M3.5 4l.75 9.5a1 1 0 001 .5h5.5a1 1 0 001-.5L12.5 4"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
             Delete
           </button>
         </div>
 
-        {/* ── Separator ─── */}
-        <div className="mx-2 my-1" style={{ borderTop: '1px solid var(--leaf-border-soft)' }} />
+        <div className="mx-2 my-1 shrink-0" style={{ borderTop: '1px solid var(--leaf-border-soft)' }} />
 
-        {/* ── Insert block types ─── */}
-        {groups.map((group) => {
-          const items = SLASH_ITEMS.filter((item) => item.group === group)
-          return (
-            <div key={group}>
-              <div className="px-3 pb-1 pt-2.5 text-[10px] font-medium uppercase tracking-wider" style={{ color: 'var(--leaf-text-muted)' }}>
-                {group}
-              </div>
-              {items.map((item) => (
-                <button
-                  key={item.action}
-                  type="button"
-                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors duration-100"
-                  style={{ color: 'var(--leaf-text-title)' }}
-                  onMouseDown={(event) => {
-                    event.preventDefault()
-                    onSelect(item.action)
-                  }}
-                >
-                  <span className="w-6 text-xs" style={{ color: 'var(--leaf-text-muted)' }}>{item.label.slice(0, 2)}</span>
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          )
-        })}
+        <SlashCommandList
+          items={insertItems}
+          selectedIndex={0}
+          onSelect={(item) => onSelect(item.action)}
+        />
       </div>
-    </>
+    </>,
+    document.body,
   )
 }
 
@@ -1243,6 +1281,7 @@ export default function LeafEditor({
   const imageInsertPosRef = useRef(1)
   const [imageInsertOpen, setImageInsertOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const plusAnchorRef = useRef<HTMLDivElement>(null)
   const pendingInsertPos = useRef<number | null>(null)
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const modeRef = useRef(mode)
@@ -2569,7 +2608,7 @@ export default function LeafEditor({
                   }
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <div ref={plusAnchorRef} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <button
                     type="button"
                     onMouseDown={(event) => {
@@ -2649,7 +2688,18 @@ export default function LeafEditor({
                     </svg>
                   </button>
                 </div>
-                {menuOpen && <BlockDropdown blockMenu={blockMenu} editor={editor} onSelect={handleBlockAction} onClose={() => { setMenuOpen(false); setBlockMenu(null) }} />}
+                {menuOpen && (
+                  <BlockDropdown
+                    blockMenu={blockMenu}
+                    editor={editor}
+                    anchorRef={plusAnchorRef}
+                    onSelect={handleBlockAction}
+                    onClose={() => {
+                      setMenuOpen(false)
+                      setBlockMenu(null)
+                    }}
+                  />
+                )}
               </div>
             )}
             <EditorContent editor={editor} />
