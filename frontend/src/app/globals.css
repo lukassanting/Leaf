@@ -867,6 +867,10 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--boss {
   border-left-color: #3b82f6;
   background: rgba(59, 130, 246, 0.08);
 }
+.ProseMirror .leaf-stat-strip--purple .leaf-stat-strip-cell {
+  border-left-color: #a855f7;
+  background: rgba(168, 85, 247, 0.1);
+}
 .ProseMirror .leaf-stat-strip--yellow .leaf-stat-strip-cell {
   border-left-color: #eab308;
   background: rgba(234, 179, 8, 0.1);
@@ -886,6 +890,34 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--boss {
   padding-left: 0.65rem;
 }
 
+html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--gray .leaf-stat-strip-cell {
+  border-left: 3px solid rgba(180, 184, 198, 0.55);
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  background: rgba(38, 42, 58, 0.55);
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--blue .leaf-stat-strip-cell {
+  border-left: 3px solid rgba(96, 165, 250, 0.8);
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  background: rgba(28, 48, 88, 0.4);
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--purple .leaf-stat-strip-cell {
+  border-left: 3px solid rgba(192, 168, 255, 0.88);
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  background: rgba(48, 28, 72, 0.45);
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--yellow .leaf-stat-strip-cell {
+  border-left: 3px solid #d4af37;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  background: rgba(212, 175, 55, 0.14);
+}
 html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--green .leaf-stat-strip-cell {
   border-left: 3px solid #4a8a4a;
   border-top: none;
@@ -899,15 +931,6 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--red .leaf-stat-
   border-right: none;
   border-bottom: none;
   background: rgba(74, 10, 10, 0.2);
-}
-html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--gray .leaf-stat-strip-cell,
-html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--blue .leaf-stat-strip-cell,
-html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--yellow .leaf-stat-strip-cell {
-  border-left: 3px solid rgba(201, 168, 76, 0.45);
-  border-top: none;
-  border-right: none;
-  border-bottom: none;
-  background: rgba(201, 168, 76, 0.06);
 }
 html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--flavor .leaf-stat-strip-cell {
   border: 1px solid rgba(201, 168, 76, 0.15);
@@ -934,6 +957,10 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-stat-strip--flavor .leaf-st
 .ProseMirror div[data-type="callout"].leaf-callout--blue {
   border-left-color: #3b82f6;
   background: rgba(59, 130, 246, 0.08);
+}
+.ProseMirror div[data-type="callout"].leaf-callout--purple {
+  border-left-color: #a855f7;
+  background: rgba(168, 85, 247, 0.1);
 }
 .ProseMirror div[data-type="callout"].leaf-callout--yellow {
   border-left-color: #eab308;
@@ -974,6 +1001,12 @@ html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-cal
   border-left: 3px solid rgba(96, 165, 250, 0.8);
   background: rgba(28, 48, 88, 0.45);
   color: rgba(236, 244, 255, 0.96);
+  font-family: var(--font-crimson, 'Crimson Pro', Georgia, serif);
+}
+html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--purple {
+  border-left: 3px solid rgba(192, 168, 255, 0.9);
+  background: rgba(48, 28, 82, 0.48);
+  color: rgba(245, 240, 255, 0.96);
   font-family: var(--font-crimson, 'Crimson Pro', Georgia, serif);
 }
 html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-callout--yellow {

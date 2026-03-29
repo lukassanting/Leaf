@@ -4,13 +4,14 @@
  */
 import { Node, mergeAttributes } from '@tiptap/core'
 
-export const CALLOUT_VARIANTS = ['gray', 'blue', 'red', 'yellow', 'green', 'flavor'] as const
+export const CALLOUT_VARIANTS = ['gray', 'blue', 'purple', 'yellow', 'green', 'red', 'flavor'] as const
 export type CalloutVariant = (typeof CALLOUT_VARIANTS)[number]
 
 /** Visible labels + border colors used in the inline picker. */
 export const CALLOUT_VARIANT_META: Record<CalloutVariant, { label: string; dot: string }> = {
   gray:   { label: 'Neutral',   dot: '#a1a1aa' },
   blue:   { label: 'Info',      dot: '#3b82f6' },
+  purple: { label: 'Arcane',    dot: '#a855f7' },
   yellow: { label: 'Caution',   dot: '#eab308' },
   green:  { label: 'Success',   dot: '#22c55e' },
   red:    { label: 'Danger',    dot: '#ef4444' },
