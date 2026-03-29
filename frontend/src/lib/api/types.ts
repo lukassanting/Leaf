@@ -55,7 +55,14 @@ export type LeafHashtagNode = {
   }
 }
 
-export type StoryTagVariant = 'combat' | 'political' | 'character' | 'lore' | 'boss' | 'neutral'
+export type StoryTagVariant =
+  | 'combat'
+  | 'political'
+  | 'character'
+  | 'lore'
+  | 'environment'
+  | 'boss'
+  | 'neutral'
 
 export type LeafStoryTagNode = {
   type: 'storyTag'

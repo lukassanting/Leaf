@@ -176,6 +176,7 @@ export const BLOCK_ICONS: Record<string, React.ReactNode> = {
   storyTag_political: <BlockIcon label="◎" />,
   storyTag_character: <BlockIcon label="◇" />,
   storyTag_lore: <BlockIcon label="✦" />,
+  storyTag_environment: <BlockIcon label="⌂" />,
   storyTag_boss: <BlockIcon label="☠" />,
   storyTag_neutral: <BlockIcon label="◇" />,
   subpage: (

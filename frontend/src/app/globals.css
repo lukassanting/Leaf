@@ -776,6 +776,11 @@ html[data-leaf-design="campaign"] .ProseMirror .column-resize-handle {
   background: color-mix(in srgb, #9b4fd8 30%, var(--leaf-bg-elevated, #fff));
   border-color: color-mix(in srgb, #9b4fd8 48%, transparent);
 }
+.ProseMirror .leaf-story-tag--environment {
+  color: #9a3412;
+  background: color-mix(in srgb, #ea580c 34%, var(--leaf-bg-elevated, #fff));
+  border-color: color-mix(in srgb, #ea580c 58%, transparent);
+}
 .ProseMirror .leaf-story-tag--boss {
   color: #831843;
   background: color-mix(in srgb, #9d174d 36%, var(--leaf-bg-elevated, #fff));
@@ -799,6 +804,9 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--character {
 }
 html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--lore {
   color: #e9d5ff;
+}
+html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--environment {
+  color: #ffedd5;
 }
 html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--boss {
   color: #fce7f3;
