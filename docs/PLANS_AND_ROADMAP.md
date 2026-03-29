@@ -37,7 +37,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Stable TipTap editor rebuild with `gapcursor`/`dropcursor` disabled.
 - [x] Slash commands and block insertion menu for headings, lists, todos, quotes, sub-pages, databases, column layouts, **markdown tables** (GFM pipe tables in Markdown mode; TipTap `Table` with resizable columns in rich mode), and **callouts** (classic colored panels + campaign-themed variants). Gutter **+** uses the same grouped list as `/` slash; menus flip upward near the bottom of the viewport.
 - [x] Text alignment (paragraph, heading, blockquote) and palette text colours (`TextAlign`, `TextStyle`, `Color`); selection bubble + slash **Style** group (no static toolbar).
-- [x] Inline **story flag** atoms (variant + editable label; slash menu group **Flags**; distinct from page **tags** metadata) and **stat strip** block (2–4 kicker/value pairs; gutter grip menu: delete, colour, column count); presets in `lib/editorRichText.ts`.
+- [x] Inline **story flag** atoms (variant + editable label; slash menu group **Flags**; distinct from page **tags** metadata) and **stat strip** block (2–6 kicker/value pairs; gutter grip menu: delete, colour, column count); presets in `lib/editorRichText.ts`.
 - [x] **Toggle cards**: eyebrow/title/subtitle are small TipTap fields with a **filtered slash menu** (text marks, alignment, colours, **Flags**); values persist as string/HTML node attrs. Collapsible body is normal editor content — **full** slash commands (headings, lists, embeds, flags, etc.) work inside the card body.
 - [x] Rich/Markdown mode switching plus Markdown import/export.
 - [x] Page embeds as dedicated block nodes.

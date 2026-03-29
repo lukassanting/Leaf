@@ -812,7 +812,7 @@ html[data-leaf-design="campaign"] .ProseMirror .leaf-story-tag--boss {
   color: #fce7f3;
 }
 
-/* Stat strip (2–4 kicker + value cards) */
+/* Stat strip (2–6 kicker + value cards) */
 .ProseMirror .leaf-stat-strip {
   margin: 0.85em 0;
 }

@@ -127,6 +127,10 @@ export type LeafNode =
         title2: string
         kicker3?: string
         title3?: string
+        kicker4?: string
+        title4?: string
+        kicker5?: string
+        title5?: string
       }
     }
   | { type: 'table'; content: LeafNode[] }

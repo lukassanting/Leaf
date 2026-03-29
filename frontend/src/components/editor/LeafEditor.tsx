@@ -856,13 +856,15 @@ const ToggleCard = Node.create({
 })
 
 function StatStripView({ node, updateAttributes }: NodeViewProps) {
-  const cols = Math.min(4, Math.max(2, Number(node.attrs.columns) || 3))
+  const cols = Math.min(6, Math.max(2, Number(node.attrs.columns) || 3))
   const variant = (node.attrs.variant as CalloutVariant) || 'gray'
   const allPairs: [string, string][] = [
     ['kicker0', 'title0'],
     ['kicker1', 'title1'],
     ['kicker2', 'title2'],
     ['kicker3', 'title3'],
+    ['kicker4', 'title4'],
+    ['kicker5', 'title5'],
   ]
   const pairs = allPairs.slice(0, cols)
   return (
@@ -913,6 +915,10 @@ const StatStrip = Node.create({
       title2: { default: '' },
       kicker3: { default: '' },
       title3: { default: '' },
+      kicker4: { default: '' },
+      title4: { default: '' },
+      kicker5: { default: '' },
+      title5: { default: '' },
     }
   },
   parseHTML() {
@@ -929,6 +935,8 @@ const StatStrip = Node.create({
             kicker1: g('kicker1'), title1: g('title1'),
             kicker2: g('kicker2'), title2: g('title2'),
             kicker3: g('kicker3'), title3: g('title3'),
+            kicker4: g('kicker4'), title4: g('title4'),
+            kicker5: g('kicker5'), title5: g('title5'),
           }
         },
       },
@@ -947,6 +955,8 @@ const StatStrip = Node.create({
           'data-kicker1': a.kicker1 ?? '', 'data-title1': a.title1 ?? '',
           'data-kicker2': a.kicker2 ?? '', 'data-title2': a.title2 ?? '',
           'data-kicker3': a.kicker3 ?? '', 'data-title3': a.title3 ?? '',
+          'data-kicker4': a.kicker4 ?? '', 'data-title4': a.title4 ?? '',
+          'data-kicker5': a.kicker5 ?? '', 'data-title5': a.title5 ?? '',
           class: 'leaf-stat-strip-host',
         },
         HTMLAttributes,
@@ -1074,8 +1084,8 @@ function BlockDropdown({
             >
               Columns
             </div>
-            <div className="flex gap-1 px-2.5 pb-2">
-              {[2, 3, 4].map((n) => (
+            <div className="flex flex-wrap gap-1 px-2.5 pb-2">
+              {[2, 3, 4, 5, 6].map((n) => (
                 <button
                   key={n}
                   type="button"
@@ -2032,6 +2042,10 @@ export default function LeafEditor({
               title2: '',
               kicker3: '',
               title3: '',
+              kicker4: '',
+              title4: '',
+              kicker5: '',
+              title5: '',
             },
           },
           { type: 'paragraph' },
