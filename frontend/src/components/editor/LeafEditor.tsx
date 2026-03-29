@@ -203,7 +203,7 @@ type BlockMenuState = {
   gutterLeft: number
 } | null
 
-/** One gutter per container; nested content uses the parent chrome so hover doesn’t jump to inner blocks. */
+/** Gutter targets: promotion to these ancestors avoids leaf blocks stealing hover; gaps before/after a nested target still bind to that node (e.g. statStrip inside toggleCard). */
 const GUTTER_CONTAINER_TYPES = new Set([
   'callout',
   'toggleCard',
@@ -213,29 +213,13 @@ const GUTTER_CONTAINER_TYPES = new Set([
   'databaseEmbed',
 ])
 
-function computeGutterMenuState(view: EditorView, $pos: ResolvedPos, container: HTMLElement): BlockMenuState | null {
-  let blockDepth = -1
-  for (let d = $pos.depth; d > 0; d--) {
-    const node = $pos.node(d)
-    if (node.isBlock && node.type.name !== 'doc') {
-      blockDepth = d
-      break
-    }
-  }
-  if (blockDepth < 0) return null
-
-  let gutterDepth = blockDepth
-  for (let d = blockDepth; d > 0; d--) {
-    if (GUTTER_CONTAINER_TYPES.has($pos.node(d).type.name)) {
-      gutterDepth = d
-      break
-    }
-  }
-
-  const nodeStart = $pos.before(gutterDepth)
-  const endPos = $pos.after(gutterDepth)
-  const nodeType = $pos.node(gutterDepth).type.name
-
+function gutterMenuStateFromNodeBounds(
+  view: EditorView,
+  container: HTMLElement,
+  nodeStart: number,
+  endPos: number,
+  nodeType: string,
+): BlockMenuState | null {
   let blockRect: DOMRect | null = null
   const dom = view.nodeDOM(nodeStart)
   if (dom instanceof HTMLElement) {
@@ -271,6 +255,46 @@ function computeGutterMenuState(view: EditorView, $pos: ResolvedPos, container: 
     nodeType,
     gutterLeft,
   }
+}
+
+function computeGutterMenuState(view: EditorView, $pos: ResolvedPos, container: HTMLElement): BlockMenuState | null {
+  // Gaps before/after nested gutter blocks (e.g. statStrip inside toggleCard): the shallowest
+  // "block" at $pos is the parent, so prefer the adjacent sibling when it is a gutter target.
+  const nb = $pos.nodeAfter
+  if (nb && nb.isBlock && GUTTER_CONTAINER_TYPES.has(nb.type.name)) {
+    const nodeStart = $pos.pos
+    return gutterMenuStateFromNodeBounds(view, container, nodeStart, nodeStart + nb.nodeSize, nb.type.name)
+  }
+  const na = $pos.nodeBefore
+  if (na && na.isBlock && GUTTER_CONTAINER_TYPES.has(na.type.name)) {
+    const endPos = $pos.pos
+    const nodeStart = endPos - na.nodeSize
+    return gutterMenuStateFromNodeBounds(view, container, nodeStart, endPos, na.type.name)
+  }
+
+  let blockDepth = -1
+  for (let d = $pos.depth; d > 0; d--) {
+    const node = $pos.node(d)
+    if (node.isBlock && node.type.name !== 'doc') {
+      blockDepth = d
+      break
+    }
+  }
+  if (blockDepth < 0) return null
+
+  let gutterDepth = blockDepth
+  for (let d = blockDepth; d > 0; d--) {
+    if (GUTTER_CONTAINER_TYPES.has($pos.node(d).type.name)) {
+      gutterDepth = d
+      break
+    }
+  }
+
+  const nodeStart = $pos.before(gutterDepth)
+  const endPos = $pos.after(gutterDepth)
+  const nodeType = $pos.node(gutterDepth).type.name
+
+  return gutterMenuStateFromNodeBounds(view, container, nodeStart, endPos, nodeType)
 }
 
 /** When the pointer is over the gutter strip or the gap left of the block, ProseMirror often returns no coords — still keep the block menu open. */
@@ -2315,7 +2339,19 @@ export default function LeafEditor({
     const view = editor.view
     const doc = editor.state.doc
 
-    const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
+    let coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
+    if (!coords) {
+      const hit = document.elementFromPoint(event.clientX, event.clientY)
+      const statStripEl = hit?.closest?.('.leaf-stat-strip')
+      if (statStripEl && container.contains(statStripEl)) {
+        try {
+          const pos = view.posAtDOM(statStripEl as Node, 0)
+          if (typeof pos === 'number' && pos >= 0) coords = { pos, inside: 0 }
+        } catch {
+          /* ignore */
+        }
+      }
+    }
     if (!coords) {
       const t = event.target
       if (gutterStripRef.current && t instanceof Node && gutterStripRef.current.contains(t)) {
@@ -2350,6 +2386,17 @@ export default function LeafEditor({
       if (!container) return
       try {
         const view = editor.view
+        if (GUTTER_CONTAINER_TYPES.has(node.type.name)) {
+          const next = gutterMenuStateFromNodeBounds(
+            view,
+            container,
+            from,
+            from + node.nodeSize,
+            node.type.name,
+          )
+          if (next) setBlockMenu(next)
+          return
+        }
         const doc = editor.state.doc
         const sz = doc.content.size
         if (sz < 2) return
