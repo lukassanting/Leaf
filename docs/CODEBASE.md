@@ -170,7 +170,7 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | Path | Purpose |
 |------|---------|
 | `src/components/Editor.tsx` | Re-exports main editor (TipTap) |
-| `src/components/editor/LeafEditor.tsx` | Main document TipTap (`TextStyle`, `Color`, `TextAlign`, `storyTagExtension`, `statStrip`, `calloutExtension`), slash menu (full commands in nested toggle **body**), `ToggleCardHeaderField` for toggle **headers**, selection bubble, embeds, `toggleCard`, columns, resizable **tables** (`LeafTableView` + row/column **+** chrome), document model; block gutter (+ / grip) uses `posAtCoords` + innermost `isBlock` depth so nested blocks (toggle **body**, columns, etc.) align the gutter to **that** block’s DOM (`nodeDOM` / `coordsAtPos` fallback); `NodeSelection` still syncs the menu when an atom is selected; listens for `leaf-outline-jump` to scroll to headings |
+| `src/components/editor/LeafEditor.tsx` | Main document TipTap (`TextStyle`, `Color`, `TextAlign`, `storyTagExtension`, `statStrip`, `calloutExtension`), slash menu (full commands in nested toggle **body**), `ToggleCardHeaderField` for toggle **headers**, selection bubble, embeds, `toggleCard`, columns, resizable **tables** (`LeafTableView` + row/column **+** chrome), document model; block gutter (+ / grip): `computeGutterMenuState` promotes to parent **callout** / **toggleCard** / **statStrip** / **blockquote** / **pageEmbed** / **databaseEmbed** so inner nodes don’t steal hover; those containers use an **inset** gutter; other blocks use the margin gutter (`nodeDOM` / `coordsAtPos`); rendered after `EditorContent` for hit-testing; `NodeSelection` sync uses the same helper; listens for `leaf-outline-jump` to scroll to headings |
 | `src/components/editor/LeafTableView.ts` | Custom TipTap `Table` node view: default resizing + **+** append row (below) / column (right) using `prosemirror-tables` `addRow` / `addColumn` |
 | `src/components/editor/ImageInsertDialog.tsx` | Slash **Image**: URL or **Upload from device** (read as data URL; max ~3 MB); `LeafImage` already allows base64 |
 | `src/components/editor/calloutExtension.ts` | TipTap `callout` block (`data-type="callout"`, `data-variant`: gray, blue, purple, yellow, green, red, flavor); classic + campaign styling in `globals.css` |
@@ -269,4 +269,4 @@ Browser UI (pages + components)
 - [FRAMEWORK_DIRECTION.md](FRAMEWORK_DIRECTION.md) — web/desktop/mobile posture (if present in your tree)  
 - Root [README.md](../README.md) — commands and quick start  
 
-*Last updated: 2026-03-29 — gutter targets nested blocks (toggle/columns) via innermost block depth; **+** menu shares `SlashCommandList` + `computeFixedMenuTopLeft`.*
+*Last updated: 2026-03-29 — gutter: inset + promotion for callout, toggle, stat strip, blockquote, page/db embeds; **+** menu shares `SlashCommandList` + `computeFixedMenuTopLeft`.*

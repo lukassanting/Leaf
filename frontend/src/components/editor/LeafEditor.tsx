@@ -47,6 +47,8 @@ import { BubbleMenu, EditorContent, NodeViewWrapper, NodeViewContent, ReactNodeV
 import { Node, mergeAttributes, InputRule, isTextSelection } from '@tiptap/core'
 import { DOMSerializer } from '@tiptap/pm/model'
 import { NodeSelection, TextSelection } from '@tiptap/pm/state'
+import type { ResolvedPos } from '@tiptap/pm/model'
+import type { EditorView } from '@tiptap/pm/view'
 import StarterKit from '@tiptap/starter-kit'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Link from '@tiptap/extension-link'
@@ -197,7 +199,97 @@ type BlockMenuState = {
   endPos: number
   nodeStart: number
   nodeType: string
+  /** Absolute `left` for the gutter strip (px, relative to editor container). Negative = margin; positive = inside callout / card / stat strip. */
+  gutterLeft: number
 } | null
+
+/** One gutter per container; nested content uses the parent chrome so hover doesn’t jump to inner blocks. */
+const GUTTER_CONTAINER_TYPES = new Set([
+  'callout',
+  'toggleCard',
+  'statStrip',
+  'blockquote',
+  'pageEmbed',
+  'databaseEmbed',
+])
+
+function computeGutterMenuState(view: EditorView, $pos: ResolvedPos, container: HTMLElement): BlockMenuState | null {
+  let blockDepth = -1
+  for (let d = $pos.depth; d > 0; d--) {
+    const node = $pos.node(d)
+    if (node.isBlock && node.type.name !== 'doc') {
+      blockDepth = d
+      break
+    }
+  }
+  if (blockDepth < 0) return null
+
+  let gutterDepth = blockDepth
+  for (let d = blockDepth; d > 0; d--) {
+    if (GUTTER_CONTAINER_TYPES.has($pos.node(d).type.name)) {
+      gutterDepth = d
+      break
+    }
+  }
+
+  const nodeStart = $pos.before(gutterDepth)
+  const endPos = $pos.after(gutterDepth)
+  const nodeType = $pos.node(gutterDepth).type.name
+
+  let blockRect: DOMRect | null = null
+  const dom = view.nodeDOM(nodeStart)
+  if (dom instanceof HTMLElement) {
+    blockRect = dom.getBoundingClientRect()
+  } else if (dom && dom.parentElement instanceof HTMLElement) {
+    blockRect = dom.parentElement.getBoundingClientRect()
+  }
+
+  const containerRect = container.getBoundingClientRect()
+
+  if (!blockRect || (blockRect.width === 0 && blockRect.height === 0)) {
+    try {
+      const c1 = view.coordsAtPos(nodeStart)
+      const c2 = view.coordsAtPos(Math.max(nodeStart, endPos - 1))
+      const top = Math.min(c1.top, c2.top)
+      const bottom = Math.max(c1.bottom, c2.bottom)
+      const left = Math.min(c1.left, c2.left)
+      const right = Math.max(c1.right, c2.right)
+      blockRect = new DOMRect(left, top, right - left, bottom - top)
+    } catch {
+      return null
+    }
+  }
+
+  const useInset = GUTTER_CONTAINER_TYPES.has(nodeType)
+  const gutterLeft = useInset ? blockRect.left - containerRect.left + 10 : -54
+
+  return {
+    top: blockRect.top - containerRect.top,
+    height: Math.max(blockRect.height, 28),
+    endPos,
+    nodeStart,
+    nodeType,
+    gutterLeft,
+  }
+}
+
+/** When the pointer is over the gutter strip or the gap left of the block, ProseMirror often returns no coords — still keep the block menu open. */
+function pointerInBlockGutterZone(
+  clientX: number,
+  clientY: number,
+  container: HTMLElement,
+  bm: NonNullable<BlockMenuState>,
+): boolean {
+  const cr = container.getBoundingClientRect()
+  const vPad = 20
+  const top = cr.top + bm.top - vPad
+  const bottom = cr.top + bm.top + Math.max(bm.height, 32) + vPad
+  const gl = bm.gutterLeft
+  const inset = gl >= 0
+  const left = cr.left + gl - (inset ? 8 : 28)
+  const right = inset ? cr.left + gl + 200 : cr.left + gl + 96
+  return clientX >= left && clientX <= right && clientY >= top && clientY <= bottom
+}
 
 type EmbedNodeAttrs = {
   id: string
@@ -1292,6 +1384,8 @@ export default function LeafEditor({
   const [imageInsertOpen, setImageInsertOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const plusAnchorRef = useRef<HTMLDivElement>(null)
+  const gutterStripRef = useRef<HTMLDivElement | null>(null)
+  const blockMenuRef = useRef<BlockMenuState>(null)
   const pendingInsertPos = useRef<number | null>(null)
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const modeRef = useRef(mode)
@@ -2206,6 +2300,7 @@ export default function LeafEditor({
 
   const menuOpenRef = useRef(false)
   menuOpenRef.current = menuOpen
+  blockMenuRef.current = blockMenu
 
   const handleMouseMove = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (menuOpenRef.current) return
@@ -2219,66 +2314,28 @@ export default function LeafEditor({
 
     const view = editor.view
     const doc = editor.state.doc
-    const containerRect = container.getBoundingClientRect()
 
     const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
     if (!coords) {
+      const t = event.target
+      if (gutterStripRef.current && t instanceof Node && gutterStripRef.current.contains(t)) {
+        return
+      }
+      const bm = blockMenuRef.current
+      if (bm && pointerInBlockGutterZone(event.clientX, event.clientY, container, bm)) {
+        return
+      }
       setBlockMenu(null)
       return
     }
 
     const $pos = doc.resolve(coords.pos)
-
-    // Innermost block under the cursor (paragraph, statStrip, callout, …) so nested blocks inside
-    // toggle cards / columns get a gutter aligned to that block — not only the top-level doc child.
-    let blockDepth = -1
-    for (let d = $pos.depth; d > 0; d--) {
-      const node = $pos.node(d)
-      if (node.isBlock && node.type.name !== 'doc') {
-        blockDepth = d
-        break
-      }
-    }
-
-    if (blockDepth < 0) {
+    const next = computeGutterMenuState(view, $pos, container)
+    if (!next) {
       setBlockMenu(null)
       return
     }
-
-    const nodeStart = $pos.before(blockDepth)
-    const endPos = $pos.after(blockDepth)
-    const nodeType = $pos.node(blockDepth).type.name
-
-    let blockRect: DOMRect | null = null
-    const dom = view.nodeDOM(nodeStart)
-    if (dom instanceof HTMLElement) {
-      blockRect = dom.getBoundingClientRect()
-    } else if (dom && dom.parentElement instanceof HTMLElement) {
-      blockRect = dom.parentElement.getBoundingClientRect()
-    }
-
-    if (!blockRect || (blockRect.width === 0 && blockRect.height === 0)) {
-      try {
-        const c1 = view.coordsAtPos(nodeStart)
-        const c2 = view.coordsAtPos(Math.max(nodeStart, endPos - 1))
-        const top = Math.min(c1.top, c2.top)
-        const bottom = Math.max(c1.bottom, c2.bottom)
-        const left = Math.min(c1.left, c2.left)
-        const right = Math.max(c1.right, c2.right)
-        blockRect = new DOMRect(left, top, right - left, bottom - top)
-      } catch {
-        setBlockMenu(null)
-        return
-      }
-    }
-
-    setBlockMenu({
-      top: blockRect.top - containerRect.top,
-      height: Math.max(blockRect.height, 28),
-      endPos,
-      nodeStart,
-      nodeType,
-    })
+    setBlockMenu(next)
   }, [editor, mode])
 
   useEffect(() => {
@@ -2287,24 +2344,19 @@ export default function LeafEditor({
       if (menuOpenRef.current) return
       const sel = editor.state.selection
       if (!(sel instanceof NodeSelection)) return
-      const { node, from, to } = sel
+      const { node, from } = sel
       if (!node.type.isBlock) return
       const container = containerRef.current
       if (!container) return
       try {
         const view = editor.view
-        const c1 = view.coordsAtPos(from)
-        const c2 = view.coordsAtPos(Math.max(from, to - 1))
-        const topClient = Math.min(c1.top, c2.top)
-        const bottomClient = Math.max(c1.bottom, c2.bottom)
-        const containerRect = container.getBoundingClientRect()
-        setBlockMenu({
-          top: topClient - containerRect.top,
-          height: Math.max(bottomClient - topClient, 28),
-          nodeStart: from,
-          endPos: to,
-          nodeType: node.type.name,
-        })
+        const doc = editor.state.doc
+        const sz = doc.content.size
+        if (sz < 2) return
+        const inner = Math.min(Math.max(from + 1, 1), sz - 1)
+        const $pos = doc.resolve(inner)
+        const next = computeGutterMenuState(view, $pos, container)
+        if (next) setBlockMenu(next)
       } catch {
         /* ignore */
       }
@@ -2501,7 +2553,7 @@ export default function LeafEditor({
       {mode === 'rich' ? (
         <div
           className="relative"
-          style={{ paddingLeft: 60 }}
+          style={{ paddingLeft: 52 }}
           onMouseMove={(event) => {
             if (hideTimer.current) {
               clearTimeout(hideTimer.current)
@@ -2555,19 +2607,32 @@ export default function LeafEditor({
                 }}
               />
             )}
+            <EditorContent editor={editor} />
+            {/* After ProseMirror so this layer receives clicks (PM was painting on top and eating pointer events). */}
             {blockMenu && (
               <div
-                style={{
-                  position: 'absolute',
-                  top: blockMenu.top - 2,
-                  left: -56,
-                  height: Math.max(blockMenu.height, 28),
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: blockMenu.height > 60 ? 'flex-start' : 'flex-start',
-                  paddingTop: blockMenu.height > 60 ? 4 : 0,
-                }}
+                ref={gutterStripRef}
+                style={(() => {
+                  const inset = blockMenu.gutterLeft >= 0
+                  return {
+                    position: 'absolute' as const,
+                    top: inset ? blockMenu.top + 10 : blockMenu.top - 10,
+                    left: blockMenu.gutterLeft,
+                    width: inset ? 'auto' : 76,
+                    minWidth: inset ? 64 : undefined,
+                    minHeight: inset ? undefined : Math.max(blockMenu.height, 28) + 16,
+                    height: inset ? 'auto' : undefined,
+                    display: 'flex',
+                    flexDirection: 'column' as const,
+                    alignItems: inset ? ('flex-start' as const) : ('flex-end' as const),
+                    justifyContent: 'flex-start' as const,
+                    padding: inset ? '4px 6px 6px 8px' : '8px 2px 8px 14px',
+                    gap: 0,
+                    boxSizing: 'border-box' as const,
+                    zIndex: 45,
+                    pointerEvents: 'auto' as const,
+                  }
+                })()}
                 onMouseEnter={() => {
                   if (hideTimer.current) {
                     clearTimeout(hideTimer.current)
@@ -2575,15 +2640,24 @@ export default function LeafEditor({
                   }
                 }}
               >
-                <div ref={plusAnchorRef} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <div
+                  ref={plusAnchorRef}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    paddingTop: blockMenu.gutterLeft >= 0 ? 0 : blockMenu.height > 60 ? 4 : 0,
+                  }}
+                >
                   <button
                     type="button"
                     onMouseDown={(event) => {
                       event.preventDefault()
+                      event.stopPropagation()
                       pendingInsertPos.current = blockMenu.endPos
                       setMenuOpen((current) => !current)
                     }}
-                    className="flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-150 hover:bg-black/5"
+                    className="flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-md transition-colors duration-150 hover:bg-black/10 dark:hover:bg-white/10"
                     style={{ color: 'var(--leaf-text-muted)' }}
                     title="Insert block"
                   >
@@ -2593,24 +2667,22 @@ export default function LeafEditor({
                   </button>
                   <button
                     type="button"
-                    className="flex h-7 w-7 items-center justify-center rounded-md cursor-grab transition-colors duration-150 hover:bg-black/5 active:cursor-grabbing"
+                    className="flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-md cursor-grab transition-colors duration-150 hover:bg-black/10 dark:hover:bg-white/10 active:cursor-grabbing"
                     style={{ color: 'var(--leaf-text-muted)' }}
                     title="Drag to move · Click for options"
                     draggable
                     onClick={(e) => {
                       e.preventDefault()
+                      e.stopPropagation()
                       pendingInsertPos.current = blockMenu.endPos
                       setMenuOpen((current) => !current)
                     }}
                     onDragStart={(event) => {
                       if (!editor) return
                       try {
-                        const $pos = editor.state.doc.resolve(Math.max(0, blockMenu.endPos - 1))
-                        const depth = $pos.depth > 0 ? 1 : 0
-                        const nodeStart = $pos.before(depth)
-                        const nodeEnd = $pos.after(depth)
+                        const nodeStart = blockMenu.nodeStart
+                        const nodeEnd = blockMenu.endPos
 
-                        // Select the block so ProseMirror knows what to delete on move-drop
                         editor.view.dispatch(
                           editor.state.tr.setSelection(TextSelection.create(editor.state.doc, nodeStart, nodeEnd)),
                         )
@@ -2669,7 +2741,6 @@ export default function LeafEditor({
                 )}
               </div>
             )}
-            <EditorContent editor={editor} />
           </div>
         </div>
       ) : (
