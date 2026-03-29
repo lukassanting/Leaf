@@ -2218,114 +2218,67 @@ export default function LeafEditor({
     if (!container) return
 
     const view = editor.view
-    const proseMirror = view.dom
-
-    // Walk up from target to the direct child of .ProseMirror (block root). More reliable than
-    // closest('.ProseMirror > *') inside React node views (atom blocks like statStrip).
-    let element: HTMLElement | null = null
-    let cur: HTMLElement | null = event.target as HTMLElement
-    while (cur && cur.parentElement) {
-      if (cur.parentElement === proseMirror || cur.parentElement.classList.contains('ProseMirror')) {
-        element = cur
-        break
-      }
-      cur = cur.parentElement
-    }
-
-    if (!element) {
-      const result = view.posAtCoords({ left: event.clientX, top: event.clientY })
-      if (!result) return
-      const domInfo = view.domAtPos(result.pos)
-      let nodeEl = (domInfo.node.nodeType === 3 ? domInfo.node.parentElement : domInfo.node) as HTMLElement | null
-      while (nodeEl && nodeEl.parentElement && !nodeEl.parentElement.classList.contains('ProseMirror')) {
-        nodeEl = nodeEl.parentElement
-      }
-      element = nodeEl
-    }
-
-    if (!element || !element.parentElement?.classList.contains('ProseMirror')) return
-
-    const containerRect = container.getBoundingClientRect()
     const doc = editor.state.doc
-    const pmChildren = Array.from(proseMirror.children) as HTMLElement[]
+    const containerRect = container.getBoundingClientRect()
 
-    let blockEl: HTMLElement = element
-    let blockRect = blockEl.getBoundingClientRect()
-    let childIndex = pmChildren.indexOf(blockEl)
-
-    if (childIndex < 0) {
-      for (const n of document.elementsFromPoint(event.clientX, event.clientY)) {
-        if (!(n instanceof HTMLElement)) continue
-        if (n.parentElement !== proseMirror) continue
-        const idx = pmChildren.indexOf(n)
-        if (idx >= 0) {
-          childIndex = idx
-          blockEl = n
-          blockRect = n.getBoundingClientRect()
-          break
-        }
-      }
-    }
-
-    const applyMenuFromPmPos = (pmPos: number) => {
-      const $resolved = editor.state.doc.resolve(pmPos)
-      const depth = $resolved.depth > 0 ? 1 : 0
-      const nodeStart = $resolved.before(depth)
-      const endPos = $resolved.after(depth)
-      const nodeType = $resolved.node(depth).type.name
-      setBlockMenu({ top: blockRect.top - containerRect.top, height: blockRect.height, endPos, nodeStart, nodeType })
-    }
-
-    // Atom React node views (stat strip, embeds) often return null from posAtCoords over inner DOM.
-    // Map the ProseMirror block wrapper to doc.child(index) — DOM order matches document order here.
-    if (childIndex >= 0 && childIndex < doc.childCount) {
-      // Doc content positions are 0 .. doc.content.size; child i starts at sum of prior nodeSizes (not 1).
-      let nodeStart = 0
-      for (let i = 0; i < childIndex; i++) nodeStart += doc.child(i).nodeSize
-      const node = doc.child(childIndex)
-      const endPos = nodeStart + node.nodeSize
-      setBlockMenu({
-        top: blockRect.top - containerRect.top,
-        height: blockRect.height,
-        endPos,
-        nodeStart,
-        nodeType: node.type.name,
-      })
+    const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
+    if (!coords) {
+      setBlockMenu(null)
       return
     }
 
-    const innerX = Math.min(blockRect.left + 4, blockRect.right - 1)
-    const innerY = blockRect.top + Math.min(Math.max(blockRect.height / 2, 1), blockRect.height - 1)
+    const $pos = doc.resolve(coords.pos)
 
-    const coordsHit = view.posAtCoords({ left: innerX, top: innerY })
-    if (coordsHit) {
-      try {
-        applyMenuFromPmPos(coordsHit.pos)
-        return
-      } catch {
-        /* fall through */
+    // Innermost block under the cursor (paragraph, statStrip, callout, …) so nested blocks inside
+    // toggle cards / columns get a gutter aligned to that block — not only the top-level doc child.
+    let blockDepth = -1
+    for (let d = $pos.depth; d > 0; d--) {
+      const node = $pos.node(d)
+      if (node.isBlock && node.type.name !== 'doc') {
+        blockDepth = d
+        break
       }
     }
 
-    const centerHit = view.posAtCoords({
-      left: blockRect.left + blockRect.width / 2,
-      top: blockRect.top + blockRect.height / 2,
-    })
-    if (centerHit) {
-      try {
-        applyMenuFromPmPos(centerHit.pos)
-        return
-      } catch {
-        /* fall through */
-      }
-    }
-
-    try {
-      const pmPos = view.posAtDOM(element, 0)
-      applyMenuFromPmPos(pmPos)
-    } catch {
+    if (blockDepth < 0) {
       setBlockMenu(null)
+      return
     }
+
+    const nodeStart = $pos.before(blockDepth)
+    const endPos = $pos.after(blockDepth)
+    const nodeType = $pos.node(blockDepth).type.name
+
+    let blockRect: DOMRect | null = null
+    const dom = view.nodeDOM(nodeStart)
+    if (dom instanceof HTMLElement) {
+      blockRect = dom.getBoundingClientRect()
+    } else if (dom && dom.parentElement instanceof HTMLElement) {
+      blockRect = dom.parentElement.getBoundingClientRect()
+    }
+
+    if (!blockRect || (blockRect.width === 0 && blockRect.height === 0)) {
+      try {
+        const c1 = view.coordsAtPos(nodeStart)
+        const c2 = view.coordsAtPos(Math.max(nodeStart, endPos - 1))
+        const top = Math.min(c1.top, c2.top)
+        const bottom = Math.max(c1.bottom, c2.bottom)
+        const left = Math.min(c1.left, c2.left)
+        const right = Math.max(c1.right, c2.right)
+        blockRect = new DOMRect(left, top, right - left, bottom - top)
+      } catch {
+        setBlockMenu(null)
+        return
+      }
+    }
+
+    setBlockMenu({
+      top: blockRect.top - containerRect.top,
+      height: Math.max(blockRect.height, 28),
+      endPos,
+      nodeStart,
+      nodeType,
+    })
   }, [editor, mode])
 
   useEffect(() => {
