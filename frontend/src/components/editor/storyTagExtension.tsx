@@ -33,7 +33,7 @@ export const StoryTag = Node.create({
   draggable: false,
   addAttributes() {
     return {
-      label: { default: 'FLAG' },
+      label: { default: 'Gray' },
       variant: { default: 'neutral' },
     }
   },
@@ -44,7 +44,7 @@ export const StoryTag = Node.create({
         getAttrs: (element) => {
           if (!(element instanceof HTMLElement)) return false
           return {
-            label: element.getAttribute('data-label') || element.textContent?.trim() || 'FLAG',
+            label: element.getAttribute('data-label') || element.textContent?.trim() || 'Gray',
             variant: element.getAttribute('data-variant') || 'neutral',
           }
         },
@@ -52,7 +52,7 @@ export const StoryTag = Node.create({
     ]
   },
   renderHTML({ node, HTMLAttributes }) {
-    const label = String(node.attrs.label ?? 'FLAG')
+    const label = String(node.attrs.label ?? 'Gray')
     const variant = String(node.attrs.variant ?? 'neutral')
     return [
       'span',

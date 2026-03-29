@@ -2239,7 +2239,7 @@ export default function LeafEditor({
       editor.chain().focus().setTextSelection(selectionPos).insertContent([
         {
           type: 'storyTag',
-          attrs: { label: preset?.label ?? 'FLAG', variant: storyVariant },
+          attrs: { label: preset?.label ?? 'Gray', variant: storyVariant },
         },
         { type: 'text', text: ' ' },
       ]).run()

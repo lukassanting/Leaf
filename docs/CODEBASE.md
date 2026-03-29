@@ -178,7 +178,7 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | `src/components/editor/toggleCardHeaderFieldExtensions.ts` | StarterKit subset + single-paragraph doc, marks, hard break on Enter, placeholder |
 | `src/components/editor/toggleCardHeaderSlash.ts` | Allowed slash actions for headers (no block inserts); `applyToggleHeaderSlashAction` |
 | `src/components/editor/slashMatchUtils.ts` | `computeSlashMatch`, `computeWikilinkMatch` for main editor and nested fields |
-| `src/components/editor/storyTagExtension.tsx` | `StoryTag` atom + React node view (story flags) |
+| `src/components/editor/storyTagExtension.tsx` | `StoryTag` atom + React node view (story flags; slash labels are colour names from `STORY_TAG_PRESETS` in `editorRichText.ts`) |
 | `src/components/SlashCommands.tsx` | Slash command definitions; `SlashMenuPanel` + `SlashCommandList` (shared with block gutter **+** menu); `computeFixedMenuTopLeft` flips the panel upward in the lower viewport third |
 | `src/components/editor/EditorSelectionBubble.tsx` | Selection bubble: alignment, clear colour, swatches (TipTap `BubbleMenu`; no static toolbar) |
 | `src/lib/editorRichText.ts` | Story-flag variants/presets (slash: “Flag · …”), text-colour swatches, slash action helpers |
