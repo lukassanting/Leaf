@@ -199,8 +199,10 @@ type BlockMenuState = {
   endPos: number
   nodeStart: number
   nodeType: string
-  /** Absolute `left` for the gutter strip (px, relative to editor container). Negative = margin; positive = inside callout / card / stat strip. */
+  /** Absolute `left` for the gutter strip (px, relative to editor container). Negative = margin; positive = inside callout / card / stat strip / column. */
   gutterLeft: number
+  /** Inset gutter beside blocks inside a column layout (distinct from callout/embed chrome styling). */
+  columnInset?: boolean
 } | null
 
 /** Gutter targets: promotion to these ancestors avoids leaf blocks stealing hover; gaps before/after a nested target still bind to that node (e.g. statStrip inside toggleCard). */
@@ -220,6 +222,27 @@ const GUTTER_MARGIN_CLEARANCE_PX = 8
 const GUTTER_MARGIN_LEFT_PX = -(GUTTER_MARGIN_STRIP_WIDTH_PX + GUTTER_MARGIN_CLEARANCE_PX)
 /** Parent `paddingLeft` must cover `abs(GUTTER_MARGIN_LEFT_PX)` so the strip is not clipped. */
 const EDITOR_GUTTER_RESERVE_PX = 104
+
+function isColumnStructureType(name: string): boolean {
+  return name === 'column' || name === 'columnList'
+}
+
+/** True when `nodeStart` belongs to a block inside a column — use inset gutter beside that block. */
+function blockIsInsideColumn(view: EditorView, nodeStart: number): boolean {
+  try {
+    const doc = view.state.doc
+    const sz = doc.content.size
+    if (sz < 2) return false
+    const inner = Math.min(Math.max(nodeStart + 1, 1), sz - 1)
+    const $p = doc.resolve(inner)
+    for (let d = $p.depth; d > 0; d--) {
+      if ($p.node(d).type.name === 'column') return true
+    }
+  } catch {
+    /* ignore */
+  }
+  return false
+}
 
 function gutterMenuStateFromNodeBounds(
   view: EditorView,
@@ -252,8 +275,9 @@ function gutterMenuStateFromNodeBounds(
     }
   }
 
-  const useInset = GUTTER_CONTAINER_TYPES.has(nodeType)
-  const gutterLeft = useInset ? blockRect.left - containerRect.left + 10 : GUTTER_MARGIN_LEFT_PX
+  const inColumn = blockIsInsideColumn(view, nodeStart)
+  const useInset = GUTTER_CONTAINER_TYPES.has(nodeType) || inColumn
+  const gutterLeft = useInset ? blockRect.left - containerRect.left + (inColumn ? 6 : 10) : GUTTER_MARGIN_LEFT_PX
 
   return {
     top: blockRect.top - containerRect.top,
@@ -262,6 +286,7 @@ function gutterMenuStateFromNodeBounds(
     nodeStart,
     nodeType,
     gutterLeft,
+    columnInset: inColumn && !GUTTER_CONTAINER_TYPES.has(nodeType),
   }
 }
 
@@ -283,12 +308,31 @@ function computeGutterMenuState(view: EditorView, $pos: ResolvedPos, container: 
   let blockDepth = -1
   for (let d = $pos.depth; d > 0; d--) {
     const node = $pos.node(d)
-    if (node.isBlock && node.type.name !== 'doc') {
+    if (node.isBlock && node.type.name !== 'doc' && !isColumnStructureType(node.type.name)) {
       blockDepth = d
       break
     }
   }
-  if (blockDepth < 0) return null
+  if (blockDepth < 0) {
+    const nb = $pos.nodeAfter
+    const na = $pos.nodeBefore
+    if (nb?.isBlock && !isColumnStructureType(nb.type.name)) {
+      const nodeStart = $pos.pos
+      return gutterMenuStateFromNodeBounds(
+        view,
+        container,
+        nodeStart,
+        nodeStart + nb.nodeSize,
+        nb.type.name,
+      )
+    }
+    if (na?.isBlock && !isColumnStructureType(na.type.name)) {
+      const endPos = $pos.pos
+      const nodeStart = endPos - na.nodeSize
+      return gutterMenuStateFromNodeBounds(view, container, nodeStart, endPos, na.type.name)
+    }
+    return null
+  }
 
   let gutterDepth = blockDepth
   for (let d = blockDepth; d > 0; d--) {
@@ -2792,21 +2836,22 @@ export default function LeafEditor({
               <div
                 ref={gutterStripRef}
                 style={(() => {
-                  const inset = blockMenu.gutterLeft >= 0
+                  const columnInset = blockMenu.columnInset === true
+                  const containerChromeInset = blockMenu.gutterLeft >= 0 && !columnInset
                   const blockH = Math.max(blockMenu.height, 28)
                   return {
                     position: 'absolute' as const,
-                    top: inset ? blockMenu.top + 10 : blockMenu.top,
+                    top: containerChromeInset ? blockMenu.top + 10 : blockMenu.top,
                     left: blockMenu.gutterLeft,
-                    width: inset ? 'auto' : GUTTER_MARGIN_STRIP_WIDTH_PX,
-                    minWidth: inset ? 64 : undefined,
-                    minHeight: inset ? undefined : blockH,
-                    height: inset ? 'auto' : blockH,
+                    width: columnInset ? GUTTER_MARGIN_STRIP_WIDTH_PX : inset ? 'auto' : GUTTER_MARGIN_STRIP_WIDTH_PX,
+                    minWidth: containerChromeInset ? 64 : undefined,
+                    minHeight: columnInset ? undefined : containerChromeInset ? undefined : blockH,
+                    height: columnInset ? blockH : containerChromeInset ? 'auto' : blockH,
                     display: 'flex',
                     flexDirection: 'column' as const,
-                    alignItems: inset ? ('flex-start' as const) : ('flex-end' as const),
-                    justifyContent: inset ? ('flex-start' as const) : ('center' as const),
-                    padding: inset ? '4px 6px 6px 8px' : '4px 4px 4px 10px',
+                    alignItems: containerChromeInset ? ('flex-start' as const) : ('flex-end' as const),
+                    justifyContent: containerChromeInset ? ('flex-start' as const) : ('center' as const),
+                    padding: containerChromeInset ? '4px 6px 6px 8px' : '4px 4px 4px 10px',
                     gap: 0,
                     boxSizing: 'border-box' as const,
                     zIndex: 45,
