@@ -6,7 +6,7 @@
  *   - “quick access” buttons (Graph view, Journal DB, Notes Dump, etc.)
  *   - pinned items (persisted in localStorage)
  *   - “new page” action
- *   - workspace navigation actions (search/recent/settings placeholders)
+ *   - workspace navigation actions (search/settings placeholders)
  *
  * How to read:
  * - On mount, it calls `ensureWorkspaceDefaults()` to create/bootstrap defaults
@@ -158,12 +158,6 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
       <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
         <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.2" />
         <path d="M10.5 10.5L13 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
-    ) },
-    { label: 'Recent', icon: (
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-        <path d="M8 4.5V8L10.5 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-        <circle cx="8" cy="8" r="5" stroke="currentColor" strokeWidth="1.2" />
       </svg>
     ) },
     { label: 'Settings', href: '/settings', icon: (

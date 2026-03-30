@@ -276,8 +276,14 @@ function gutterMenuStateFromNodeBounds(
   }
 
   const inColumn = blockIsInsideColumn(view, nodeStart)
-  const useInset = GUTTER_CONTAINER_TYPES.has(nodeType) || inColumn
-  const gutterLeft = useInset ? blockRect.left - containerRect.left + (inColumn ? 6 : 10) : GUTTER_MARGIN_LEFT_PX
+  const blockLeftRel = blockRect.left - containerRect.left
+  const isContainerChrome = GUTTER_CONTAINER_TYPES.has(nodeType)
+  // Column: place the strip fully to the left of the block text (same width/clearance as margin gutter).
+  const gutterLeft = isContainerChrome
+    ? blockLeftRel + 10
+    : inColumn
+      ? blockLeftRel - GUTTER_MARGIN_STRIP_WIDTH_PX - GUTTER_MARGIN_CLEARANCE_PX
+      : GUTTER_MARGIN_LEFT_PX
 
   return {
     top: blockRect.top - containerRect.top,
