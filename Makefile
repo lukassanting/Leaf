@@ -47,7 +47,7 @@ shell-frontend:
 
 # Terminal 1: start the backend API on http://localhost:8000
 api: env
-	cd $(BACKEND_DIR) && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	cd $(BACKEND_DIR) && python -m uvicorn app.main:app --reload --reload-dir app --host 0.0.0.0 --port 8000
 
 # Terminal 2: start the frontend on http://localhost:3000
 frontend:

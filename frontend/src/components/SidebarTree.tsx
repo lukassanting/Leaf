@@ -6,7 +6,7 @@
  * - Supports:
  *   - expansion/collapse
  *   - search filtering
- *   - context menu actions (rename/delete/create child)
+ *   - context menu actions (rename/move to/delete/create child)
  *   - drag/drop reorder for pages
  *
  * How to read:
@@ -28,6 +28,7 @@
 
 'use client'
 
+import { SidebarMoveTargetDialog } from './SidebarMoveTargetDialog'
 import { SidebarTreeContextMenu } from './SidebarTreeContextMenu'
 import { SidebarTreeRow } from './SidebarTreeRow'
 import { useSidebarTreeModel } from '@/hooks/useSidebarTreeModel'
@@ -63,6 +64,10 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
     onDrop,
     setDropTargetId,
     startNavigation,
+    moveSource,
+    openMoveDialog,
+    cancelMoveDialog,
+    confirmMoveTo,
   } = useSidebarTreeModel(activeId)
 
   if (loading) {
@@ -156,7 +161,15 @@ export function SidebarTree({ activeId }: { activeId?: string }) {
           setRenameId(node.id)
           setRenameValue(node.title)
         }}
+        onMoveTo={openMoveDialog}
         onDelete={(id, kind) => { void handleDelete(id, kind) }}
+      />
+
+      <SidebarMoveTargetDialog
+        source={moveSource}
+        nodes={nodes}
+        onCancel={cancelMoveDialog}
+        onConfirm={(targetId) => { void confirmMoveTo(targetId) }}
       />
     </div>
   )

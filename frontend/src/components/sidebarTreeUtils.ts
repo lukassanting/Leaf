@@ -66,6 +66,34 @@ export function mapLeafNodes(raw: LeafTreeItem[]): SidebarNode[] {
   }))
 }
 
+/** Descendant page sidebar ids (non–db-row pages) for cycle checks when reparenting. */
+export function collectDescendantPageIds(pageId: string, nodes: SidebarNode[]): Set<string> {
+  const out = new Set<string>()
+  const walk = (id: string) => {
+    for (const n of nodes) {
+      if (n.kind === 'page' && !n.isDbRow && n.parent_id === id) {
+        out.add(n.id)
+        walk(n.id)
+      }
+    }
+  }
+  walk(pageId)
+  return out
+}
+
+/** Breadcrumb-style path for picker labels (walks parent_id through mixed page/database nodes). */
+export function sidebarPagePathLabel(nodeId: string, nodes: SidebarNode[]): string {
+  const parts: string[] = []
+  let cur: SidebarNode | undefined = nodes.find((n) => n.id === nodeId)
+  const seen = new Set<string>()
+  while (cur && !seen.has(cur.id)) {
+    seen.add(cur.id)
+    parts.unshift(cur.title)
+    cur = cur.parent_id ? nodes.find((n) => n.id === cur.parent_id) : undefined
+  }
+  return parts.join(' / ')
+}
+
 export function mapDbNodes(raw: Database[]): SidebarNode[] {
   return raw.map((database, index) => ({
     id: database.id,

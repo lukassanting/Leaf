@@ -24,6 +24,8 @@ pydantic-settings = "^2.9.1"
 pyyaml = "^6.0"
 markdownify = "^0.12"
 watchdog = "^4.0"
+# Lets uvicorn use WatchFilesReload instead of StatReload (avoids OOM from `rglob('*.py')` in Docker + bind mounts).
+watchfiles = "^0.24.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.2"

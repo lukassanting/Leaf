@@ -8,6 +8,7 @@
  * How to read:
  * - It returns `null` when `contextNode` is null.
  * - The “Rename” action calls `onStartRename(node)` then closes.
+ * - “Move to…” opens the destination picker (not shown for database row entries).
  * - The “Delete” action calls `onDelete(id, kind)` then closes.
  *
  * Update:
@@ -30,12 +31,14 @@ export function SidebarTreeContextMenu({
   nodes,
   onClose,
   onStartRename,
+  onMoveTo,
   onDelete,
 }: {
   contextNode: { id: string; kind: 'page' | 'database'; x: number; y: number } | null
   nodes: SidebarNode[]
   onClose: () => void
   onStartRename: (node: SidebarNode) => void
+  onMoveTo: (node: SidebarNode) => void
   onDelete: (id: string, kind: 'page' | 'database') => void
 }) {
   if (!contextNode) return null
@@ -66,6 +69,25 @@ export function SidebarTreeContextMenu({
         >
           Rename
         </button>
+        {(() => {
+          const node = nodes.find((item) => item.id === contextNode.id)
+          if (!node || node.isDbRow) return null
+          return (
+            <button
+              type="button"
+              className="w-full px-3 py-1.5 text-left text-sm transition-colors duration-150"
+              style={{ color: 'var(--color-text-body)' }}
+              onMouseEnter={(event) => (event.currentTarget.style.backgroundColor = 'var(--color-hover)')}
+              onMouseLeave={(event) => (event.currentTarget.style.backgroundColor = '')}
+              onClick={() => {
+                onMoveTo(node)
+                onClose()
+              }}
+            >
+              Move to…
+            </button>
+          )
+        })()}
         <button
           type="button"
           className="w-full px-3 py-1.5 text-left text-sm transition-colors duration-150"

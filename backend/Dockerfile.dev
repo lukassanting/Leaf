@@ -1,26 +1,28 @@
-FROM python:3.11-buster as builder
+FROM python:3.11-bookworm as builder
 
-RUN pip install poetry==1.7.1
+# python:3.11-bookworm already has curl + ca-certificates; install poetry directly.
+RUN POETRY_VERSION=2.3.2 curl -fsSL --connect-timeout 30 --max-time 600 https://install.python-poetry.org | python3 - \
+    && /root/.local/bin/poetry --version
 
-ENV POETRY_NO_INTERACTION=1 \
+ENV PATH="/root/.local/bin:${PATH}" \
+    POETRY_NO_INTERACTION=1 \
     POETRY_VIRTUALENVS_IN_PROJECT=1 \
     POETRY_VIRTUALENVS_CREATE=1 \
-    POETRY_CACHE_DIR=/tmp/poetry_cache
+    POETRY_CACHE_DIR=/tmp/poetry_cache \
+    PIP_DEFAULT_TIMEOUT=120 \
+    POETRY_INSTALLER_PARALLEL=false
 
 WORKDIR /app
 
 # Copy poetry configuration files
 COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies
-RUN poetry install --no-root --only main
+# -v so build logs show progress (first install can take several minutes; looks “stuck” otherwise)
+RUN poetry --version && poetry install --no-root --only main -v
 
 # Copy application code
 COPY . .
 RUN sed -i 's/\r//' wait-for-it.sh && chmod +x wait-for-it.sh
-
-# Install the project
-RUN poetry install --only main
 
 # Final stage
 FROM python:3.11-slim

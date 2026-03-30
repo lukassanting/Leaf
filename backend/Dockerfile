@@ -1,25 +1,30 @@
-FROM python:3.11-buster as builder
+FROM python:3.11-bookworm as builder
 
-RUN pip install poetry==1.7.1
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && POETRY_VERSION=2.3.2 curl -fsSL --connect-timeout 30 --max-time 600 https://install.python-poetry.org | python3 - \
+    && /root/.local/bin/poetry --version
 
-ENV POETRY_NO_INTERACTION=1 \
+ENV PATH="/root/.local/bin:${PATH}" \
+    POETRY_NO_INTERACTION=1 \
     POETRY_VIRTUALENVS_IN_PROJECT=1 \
     POETRY_VIRTUALENVS_CREATE=1 \
-    POETRY_CACHE_DIR=/tmp/poetry_cache
+    POETRY_CACHE_DIR=/tmp/poetry_cache \
+    PIP_DEFAULT_TIMEOUT=120
 
 WORKDIR /app
 
 # Copy poetry configuration files
 COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies
-RUN poetry install --no-root --no-dev
+# Install dependencies (--no-dev removed in Poetry 2; dev deps live in group "dev")
+RUN poetry install --no-root --only main -v
 
 # Copy application code
 COPY . .
 
 # Install the project
-RUN poetry install --no-dev
+RUN poetry install --only main -v
 
 # Final stage
 FROM python:3.11-slim

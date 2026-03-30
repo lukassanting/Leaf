@@ -262,6 +262,10 @@ make logs          # Follow logs
 
 Note: Docker uses its own data volume, separate from your local `backend/data/`. For production packaging, Leaf will be distributed as a desktop app (Electron/Tauri) — not as a Docker container.
 
+**Low memory / `ENOMEM` on `scandir`:** Give Docker Desktop more RAM (often 4 GiB+ helps on Windows with bind-mounted repos). Compose runs the API **without** uvicorn `--reload` so file watching stays lighter; use `make api` and `make frontend` in separate terminals if you need hot reload on the host.
+
+**API image build “stuck” installing Poetry:** The Dockerfiles use Poetry’s official installer (not `pip install poetry`), which avoids a long pip resolve. The installer still needs outbound HTTPS to `install.python-poetry.org` and GitHub; flaky networks may need retries or a proxy.
+
 ## Project layout
 
 ```

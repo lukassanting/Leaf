@@ -6,7 +6,7 @@
  *   - fetching/merging leaves + databases into a single tree
  *   - offline-first initial render via cached tree
  *   - expansion/collapse state persisted to localStorage
- *   - rename, delete, drag-and-drop reorder, and “create child” flows
+ *   - rename, delete, context-menu “Move to…”, drag-and-drop reorder, and “create child” flows
  *   - search-driven filtering (via helpers in `sidebarTreeUtils`)
  *
  * How to read:
@@ -39,6 +39,7 @@ import { getCachedTree, setCachedTree } from '@/lib/leafCache'
 import { warmEditorRoute } from '@/lib/warmEditorRoute'
 import {
   buildTree,
+  collectDescendantPageIds,
   defaultExpanded,
   flattenTreeWithSearch,
   mapDbNodes,
@@ -74,6 +75,7 @@ export function useSidebarTreeModel(activeId?: string) {
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
   const [hoverNodeId, setHoverNodeId] = useState<string | null>(null)
   const [creatingChildOf, setCreatingChildOf] = useState<string | null>(null)
+  const [moveSource, setMoveSource] = useState<SidebarNode | null>(null)
 
   const isInitialMount = useRef(true)
   useEffect(() => {
@@ -303,6 +305,44 @@ export function useSidebarTreeModel(activeId?: string) {
     setDropTargetId(null)
   }, [nodes])
 
+  const handleMoveDatabase = useCallback(async (dbId: string, apiParentLeafId: string | null) => {
+    try {
+      await databasesApi.update(dbId, { parent_leaf_id: apiParentLeafId })
+      emitLeafTreeChanged()
+    } catch {
+      console.error('Move database failed')
+    }
+  }, [])
+
+  const openMoveDialog = useCallback((node: SidebarNode) => {
+    setMoveSource(node)
+  }, [])
+
+  const cancelMoveDialog = useCallback(() => setMoveSource(null), [])
+
+  const confirmMoveTo = useCallback(async (targetSidebarId: string | null) => {
+    const src = moveSource
+    if (!src) return
+    setMoveSource(null)
+
+    if (src.kind === 'page') {
+      if (src.isDbRow) return
+      if (
+        targetSidebarId &&
+        (targetSidebarId === src.id || collectDescendantPageIds(src.id, nodes).has(targetSidebarId))
+      ) {
+        window.alert('Cannot move a page under itself or a descendant.')
+        return
+      }
+      await handleMove(src.id, targetSidebarId)
+      if (targetSidebarId) setExpanded((prev) => ({ ...prev, [targetSidebarId]: true }))
+    } else {
+      const apiParent = targetSidebarId ? sidebarNodeIdToLeafApiId(targetSidebarId) : null
+      await handleMoveDatabase(src.id, apiParent)
+      if (targetSidebarId) setExpanded((prev) => ({ ...prev, [targetSidebarId]: true }))
+    }
+  }, [moveSource, nodes, handleMove, handleMoveDatabase])
+
   const reorderRootPages = useCallback(async (draggedId: string, targetId: string) => {
     const rootPages = nodes
       .filter((n) => n.kind === 'page' && n.parent_id == null && !n.isDbRow)
@@ -402,5 +442,9 @@ export function useSidebarTreeModel(activeId?: string) {
     startNavigation,
     handleReorder,
     reorderRootPages,
+    moveSource,
+    openMoveDialog,
+    cancelMoveDialog,
+    confirmMoveTo,
   }
 }
