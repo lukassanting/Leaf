@@ -10,6 +10,8 @@ All commands below are from the **repo root** (`Leaf/`).
 
 ### Option A — Docker (one terminal)
 
+Campaign theme fonts are committed under `frontend/public/fonts/` (small `.woff2` files), so the stack does not need to reach Google Fonts at install or runtime — clone and run works on a normal network.
+
 ```bash
 make docker     # build + start API (:8000) and frontend (:3000); Ctrl+C to stop
 make down       # stop containers (docker compose down)

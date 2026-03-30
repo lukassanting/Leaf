@@ -1190,16 +1190,23 @@ html[data-leaf-design="campaign"] .ProseMirror pre code {
    inside [data-node-view-content], so the actual column children are
    grandchildren.  We must make BOTH the outer and inner containers flex-row. */
 
-[data-node-view-content].column-list-inner,
+/* column-list-inner is a plain block; the TipTap React content wrapper
+   ([data-node-view-content-react]) is what becomes the flex row. */
+[data-node-view-content].column-list-inner {
+  display: block !important;
+}
+
 [data-node-view-content].column-list-inner > [data-node-view-content-react] {
   display: flex !important;
   flex-direction: row !important;
   gap: 16px !important;
   flex-wrap: nowrap !important;
+  width: 100%;
 }
 
 [data-node-view-content].column-list-inner [data-type="column"] {
-  flex: 1 1 0% !important;
+  flex: 1 1 0%;
+  /* No !important — inline style from column resize must be able to override. */
   min-width: 100px !important;
   border-radius: 6px;
   padding: 4px 8px;
@@ -1256,10 +1263,9 @@ html[data-leaf-design="campaign"] .ProseMirror pre code {
 
 /* Stack columns on narrow screens */
 @media (max-width: 640px) {
-  .column-list-inner,
-  .column-list-inner > [data-node-view-content-react] {
-    flex-direction: column;
-    gap: 8px;
+  [data-node-view-content].column-list-inner > [data-node-view-content-react] {
+    flex-direction: column !important;
+    gap: 8px !important;
   }
   .column-resize-handle {
     display: none;

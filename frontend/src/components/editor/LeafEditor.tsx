@@ -1403,6 +1403,8 @@ export default function LeafEditor({
   const [columnDropZone, setColumnDropZone] = useState<{ top: number; left: number; width: number; height: number; side: 'left' | 'right' } | null>(null)
   const columnDropRef = useRef<{ targetNodePos: number; targetNodeEnd: number; side: 'left' | 'right' } | null>(null)
   const dragSourceRef = useRef<{ pos: number; end: number } | null>(null)
+  const [blockReorderZone, setBlockReorderZone] = useState<{ top: number; left: number; width: number; insertAfter: boolean } | null>(null)
+  const mouseMoveRafRef = useRef<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const imageInsertPosRef = useRef(1)
   const [imageInsertOpen, setImageInsertOpen] = useState(false)
@@ -1729,43 +1731,105 @@ export default function LeafEditor({
     handleDrop: (view: import('@tiptap/pm/view').EditorView, event: DragEvent) => {
       // ProseMirror sets view.dragging = null BEFORE calling this handler,
       // so we rely on our own refs to detect column-zone drops.
-      const dropInfo = columnDropRef.current
       const source = dragSourceRef.current
-      if (!dropInfo || !source) return false
+      if (!source) return false
 
-      // Column-zone drop — handle it here so ProseMirror doesn't process it
+      // Capture drop info BEFORE clearing refs
+      const dropInfo = columnDropRef.current
+
       event.preventDefault()
       setColumnDropZone(null)
+      setBlockReorderZone(null)
       columnDropRef.current = null
       dragSourceRef.current = null
 
-      const { targetNodePos, targetNodeEnd, side } = dropInfo
       const { pos: sourcePos, end: sourceEnd } = source
 
-      if (sourcePos === targetNodePos) {
+      if (dropInfo) {
+        // ─── Column-zone drop: wrap source+target into a new columnList ───
+        if (sourcePos === dropInfo.targetNodePos) return true
+
+        const targetNode = view.state.doc.nodeAt(dropInfo.targetNodePos)
+        const sourceNode = view.state.doc.nodeAt(sourcePos)
+        if (!targetNode || !sourceNode) return true
+
+        const { targetNodePos, targetNodeEnd, side } = dropInfo
+        const schema = view.state.schema
+        const leftContent = side === 'left' ? sourceNode : targetNode
+        const rightContent = side === 'left' ? targetNode : sourceNode
+        const leftColumn = schema.nodes.column.create(null, [leftContent.copy(leftContent.content)])
+        const rightColumn = schema.nodes.column.create(null, [rightContent.copy(rightContent.content)])
+        const columnListNode = schema.nodes.columnList.create(null, [leftColumn, rightColumn])
+
+        const { tr } = view.state
+        if (sourcePos > targetNodePos) {
+          // Source is after target: delete source first (doesn't affect target positions),
+          // then replace target with columnList.
+          tr.delete(sourcePos, sourceEnd)
+          tr.replaceWith(targetNodePos, targetNodeEnd, columnListNode)
+        } else {
+          // Source is before target: replace target first (doesn't affect source positions
+          // since source < target), then delete source.
+          tr.replaceWith(targetNodePos, targetNodeEnd, columnListNode)
+          tr.delete(sourcePos, sourceEnd)
+        }
+        view.dispatch(tr)
         return true
       }
 
-      const targetNode = view.state.doc.nodeAt(targetNodePos)
+      // ─── Center drop: block reordering ───────────────────────────────────
+      const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
+      if (!coords) return true
+
       const sourceNode = view.state.doc.nodeAt(sourcePos)
-      if (!targetNode || !sourceNode) {
+      if (!sourceNode) return true
+
+      const doc = view.state.doc
+      const $drop = doc.resolve(Math.min(coords.pos, doc.content.size))
+      const dropDepth = $drop.depth >= 1 ? 1 : 0
+      let targetBlockStart: number
+      let targetBlockEnd: number
+      try {
+        targetBlockStart = dropDepth >= 1 ? $drop.before(dropDepth) : 0
+        targetBlockEnd = dropDepth >= 1 ? $drop.after(dropDepth) : doc.content.size
+      } catch {
         return true
       }
 
-      const schema = view.state.schema
-      const leftContent = side === 'left' ? sourceNode : targetNode
-      const rightContent = side === 'left' ? targetNode : sourceNode
-      const leftColumn = schema.nodes.column.create(null, [leftContent.copy(leftContent.content)])
-      const rightColumn = schema.nodes.column.create(null, [rightContent.copy(rightContent.content)])
-      const columnListNode = schema.nodes.columnList.create(null, [leftColumn, rightColumn])
+      // Don't drop on itself
+      if (targetBlockStart === sourcePos) return true
 
+      // Determine insert position: before or after the target block
+      let insertPos: number
+      try {
+        const domNode = view.nodeDOM(targetBlockStart)
+        if (domNode instanceof Element) {
+          const rect = domNode.getBoundingClientRect()
+          const midY = (rect.top + rect.bottom) / 2
+          insertPos = event.clientY < midY ? targetBlockStart : targetBlockEnd
+        } else {
+          insertPos = targetBlockEnd
+        }
+      } catch {
+        insertPos = targetBlockEnd
+      }
+
+      // Don't insert within the source range
+      if (insertPos > sourcePos && insertPos < sourceEnd) return true
+
+      const nodeSize = sourceEnd - sourcePos
       const { tr } = view.state
-      if (sourcePos > targetNodePos) {
+
+      if (sourcePos < insertPos) {
+        // Moving block DOWN: delete source first, then insert at adjusted position.
+        // After deletion, insertPos shifts left by nodeSize (since insertPos > sourceEnd).
         tr.delete(sourcePos, sourceEnd)
-        tr.replaceWith(targetNodePos, targetNodeEnd, columnListNode)
+        tr.insert(Math.max(0, insertPos - nodeSize), sourceNode)
       } else {
-        tr.replaceWith(targetNodePos, targetNodeEnd, columnListNode)
-        tr.delete(sourcePos, sourceEnd)
+        // Moving block UP: insert first, then delete at adjusted position.
+        // After insertion, sourcePos shifts right by nodeSize (since sourcePos >= insertPos).
+        tr.insert(insertPos, sourceNode)
+        tr.delete(sourcePos + nodeSize, sourceEnd + nodeSize)
       }
 
       view.dispatch(tr)
@@ -2333,45 +2397,52 @@ export default function LeafEditor({
       return
     }
 
-    const container = containerRef.current
-    if (!container) return
+    if (mouseMoveRafRef.current !== null) return
+    const x = event.clientX
+    const y = event.clientY
 
-    const view = editor.view
-    const doc = editor.state.doc
+    mouseMoveRafRef.current = requestAnimationFrame(() => {
+      mouseMoveRafRef.current = null
+      const container = containerRef.current
+      if (!container) return
 
-    let coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
-    if (!coords) {
-      const hit = document.elementFromPoint(event.clientX, event.clientY)
-      const statStripEl = hit?.closest?.('.leaf-stat-strip')
-      if (statStripEl && container.contains(statStripEl)) {
-        try {
-          const pos = view.posAtDOM(statStripEl as Node, 0)
-          if (typeof pos === 'number' && pos >= 0) coords = { pos, inside: 0 }
-        } catch {
-          /* ignore */
+      const view = editor.view
+      const doc = editor.state.doc
+
+      let coords = view.posAtCoords({ left: x, top: y })
+      if (!coords) {
+        const hit = document.elementFromPoint(x, y)
+        const statStripEl = hit?.closest?.('.leaf-stat-strip')
+        if (statStripEl && container.contains(statStripEl)) {
+          try {
+            const pos = view.posAtDOM(statStripEl as unknown as globalThis.Node, 0)
+            if (typeof pos === 'number' && pos >= 0) coords = { pos, inside: 0 }
+          } catch {
+            /* ignore */
+          }
         }
       }
-    }
-    if (!coords) {
-      const t = event.target
-      if (gutterStripRef.current && t instanceof Node && gutterStripRef.current.contains(t)) {
+      if (!coords) {
+        const hit = document.elementFromPoint(x, y)
+        if (gutterStripRef.current && hit instanceof Node && gutterStripRef.current.contains(hit)) {
+          return
+        }
+        const bm = blockMenuRef.current
+        if (bm && pointerInBlockGutterZone(x, y, container, bm)) {
+          return
+        }
+        setBlockMenu(null)
         return
       }
-      const bm = blockMenuRef.current
-      if (bm && pointerInBlockGutterZone(event.clientX, event.clientY, container, bm)) {
-        return
-      }
-      setBlockMenu(null)
-      return
-    }
 
-    const $pos = doc.resolve(coords.pos)
-    const next = computeGutterMenuState(view, $pos, container)
-    if (!next) {
-      setBlockMenu(null)
-      return
-    }
-    setBlockMenu(next)
+      const $pos = doc.resolve(coords.pos)
+      const next = computeGutterMenuState(view, $pos, container)
+      if (!next) {
+        setBlockMenu(null)
+        return
+      }
+      setBlockMenu(next)
+    })
   }, [editor, mode])
 
   useEffect(() => {
@@ -2446,6 +2517,7 @@ export default function LeafEditor({
 
     if (!targetEl) {
       setColumnDropZone(null)
+      setBlockReorderZone(null)
       columnDropRef.current = null
       return
     }
@@ -2457,14 +2529,27 @@ export default function LeafEditor({
       relX <= EDGE_ZONE ? 'left' :
       relX >= blockRect.width - EDGE_ZONE ? 'right' : null
 
+    // Accept the drop in all cases so the browser fires the drop event
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+
     if (!side) {
       setColumnDropZone(null)
       columnDropRef.current = null
+
+      // Show horizontal reorder indicator in the center zone
+      const midY = (blockRect.top + blockRect.bottom) / 2
+      const insertAfter = event.clientY >= midY
+      setBlockReorderZone({
+        top: insertAfter ? blockRect.bottom - containerRect.top : blockRect.top - containerRect.top,
+        left: blockRect.left - containerRect.left,
+        width: blockRect.width,
+        insertAfter,
+      })
       return
     }
 
-    event.preventDefault()
-    event.dataTransfer.dropEffect = 'move'
+    setBlockReorderZone(null)
 
     // Resolve the ProseMirror position of this target block
     const pos = editor.view.posAtDOM(targetEl, 0)
@@ -2477,6 +2562,7 @@ export default function LeafEditor({
       // Don't allow dropping onto itself
       if (dragSourceRef.current && dragSourceRef.current.pos === nodeStart) {
         setColumnDropZone(null)
+        setBlockReorderZone(null)
         columnDropRef.current = null
         return
       }
@@ -2492,6 +2578,7 @@ export default function LeafEditor({
         targetNode.type.name === 'pageEmbed'
       )) {
         setColumnDropZone(null)
+        setBlockReorderZone(null)
         columnDropRef.current = null
         return
       }
@@ -2519,11 +2606,13 @@ export default function LeafEditor({
     const container = containerRef.current
     if (container && event.relatedTarget && container.contains(event.relatedTarget as globalThis.Node)) return
     setColumnDropZone(null)
+    setBlockReorderZone(null)
     columnDropRef.current = null
   }, [])
 
   const handleEditorDragEnd = useCallback(() => {
     setColumnDropZone(null)
+    setBlockReorderZone(null)
     columnDropRef.current = null
     dragSourceRef.current = null
   }, [])
@@ -2651,6 +2740,23 @@ export default function LeafEditor({
                   zIndex: 20,
                   transition: 'top 0.12s ease, left 0.12s ease, height 0.12s ease',
                   boxShadow: '0 0 8px rgba(16, 185, 129, 0.4)',
+                }}
+              />
+            )}
+            {blockReorderZone && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: blockReorderZone.top - 2,
+                  left: blockReorderZone.left,
+                  width: blockReorderZone.width,
+                  height: 3,
+                  background: 'var(--leaf-green)',
+                  borderRadius: 2,
+                  pointerEvents: 'none',
+                  zIndex: 20,
+                  transition: 'top 0.1s ease',
+                  boxShadow: '0 0 6px rgba(16, 185, 129, 0.4)',
                 }}
               />
             )}

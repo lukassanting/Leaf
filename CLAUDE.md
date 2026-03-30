@@ -73,6 +73,7 @@ Leaf/
 │   │   └── config.py
 │   └── migrations/versions/
 └── frontend/                   # Next.js 15 App Router
+    ├── public/fonts/           # vendored campaign .woff2 (committed; `npm run fonts` to refresh)
     └── src/
         ├── app/
         │   ├── layout.tsx                          # root: fonts + DesignThemeProvider + theme script

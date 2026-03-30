@@ -155,7 +155,8 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 
 | Path | Purpose |
 |------|---------|
-| `src/app/layout.tsx` | Root layout: fonts (Geist + campaign fonts), `DesignThemeScript` in `<head>`, `DesignThemeProvider`, `globals.css` |
+| `src/app/layout.tsx` | Root layout: fonts (Geist npm package + `next/font/local` campaign faces from vendored `public/fonts/*.woff2`), `DesignThemeScript` in `<head>`, `DesignThemeProvider`, `globals.css` |
+| `public/fonts/*.woff2` | Vendored campaign fonts (offline-friendly). Optional refresh from Google: `npm run fonts` (`scripts/download-fonts.js`) |
 | `src/app/globals.css` | Tailwind v4 import, `--leaf-*` design tokens, ProseMirror/column CSS, `html[data-leaf-design="campaign"]` theme overrides + starfield |
 | `src/app/(workspace)/layout.tsx` | Workspace chrome: sidebars, providers, shortcuts |
 | `src/app/(workspace)/page.tsx` | Home / workspace landing |

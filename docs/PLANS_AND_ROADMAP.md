@@ -16,6 +16,7 @@ A single reference for where Leaf stands after the v3 redesign, what is verified
 ## 2. Current architecture
 
 - **Frontend:** Next.js 15 App Router, React, TipTap, Tailwind CSS v4.
+- **Fonts:** Geist ships via the `geist` npm package; campaign theme uses **vendored** `.woff2` files in `frontend/public/fonts/` so installs and Docker builds do not need to reach Google Fonts. Maintainers can refresh files with `npm run fonts` in `frontend/`.
 - **Backend:** FastAPI, SQLAlchemy, default SQLite runtime (`DATABASE_URL`) with legacy MySQL-oriented Alembic config still present.
 - **Persistence:** page content is stored as `LeafDocument` JSON with a legacy HTML migration path; database metadata is stored alongside schema payloads.
 - **Caching:** IndexedDB-first cache with localStorage fallback and pending-save queueing.
@@ -208,6 +209,8 @@ Questions still open for the next milestone:
 | `frontend/src/lib/api/types.ts` | Shared page/database/document types |
 | `frontend/src/lib/leafDocument.ts` | Structured content parsing and normalization; `statStrip` HTML includes `columns`, `variant`, fourth pair |
 | `frontend/e2e/workspace.spec.ts` | Browser regression coverage |
+| `frontend/public/fonts/*.woff2` | Vendored campaign fonts (offline Docker / `npm install`) |
+| `frontend/scripts/download-fonts.js` | Optional refresh from Google Fonts (`npm run fonts`) |
 | `docs/FRAMEWORK_DIRECTION.md` | Web framework decision and platform expansion guidance |
 
 ### Backend

@@ -10,7 +10,7 @@
  * - Then check the `RootLayout` component: it renders the `<html>` and `<body>` tags.
  *
  * Update:
- * - To change global fonts, update the `next/font/google` blocks in this file.
+ * - To change global fonts, update the `next/font/local` blocks in this file. Campaign `.woff2` files are vendored in `public/fonts/` (refresh via `npm run fonts` if you bump URLs in `scripts/download-fonts.js`).
  * - To change page-wide styling, adjust the `<body>` className or related global CSS (`globals.css`).
  *
  * Debug:
@@ -20,38 +20,36 @@
 
 
 import type { Metadata } from 'next'
-import { Cinzel, Cinzel_Decorative, Crimson_Pro, Geist, Geist_Mono } from 'next/font/google'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
+import localFont from 'next/font/local'
 import { DesignThemeProvider } from '@/components/DesignThemeProvider'
 import { DesignThemeScript } from '@/components/DesignThemeScript'
 import './globals.css'
 
-const geistSans = Geist({
-  subsets: ['latin'],
-  variable: '--font-geist-sans',
-})
+const geistSans = GeistSans
+const geistMono = GeistMono
 
-const geistMono = Geist_Mono({
-  subsets: ['latin'],
-  variable: '--font-geist-mono',
-})
-
-const cinzel = Cinzel({
-  subsets: ['latin'],
+const cinzel = localFont({
+  src: '../../public/fonts/cinzel.woff2',
   variable: '--font-cinzel',
-  weight: ['400', '600', '700'],
+  weight: '400 700',
 })
 
-const cinzelDecorative = Cinzel_Decorative({
-  subsets: ['latin'],
+const cinzelDecorative = localFont({
+  src: [
+    { path: '../../public/fonts/cinzel-decorative-400.woff2', weight: '400' },
+    { path: '../../public/fonts/cinzel-decorative-700.woff2', weight: '700' },
+  ],
   variable: '--font-cinzel-decorative',
-  weight: ['400', '700'],
 })
 
-const crimsonPro = Crimson_Pro({
-  subsets: ['latin'],
+const crimsonPro = localFont({
+  src: [
+    { path: '../../public/fonts/crimson-pro-normal.woff2', weight: '400 600', style: 'normal' },
+    { path: '../../public/fonts/crimson-pro-italic.woff2', weight: '400 600', style: 'italic' },
+  ],
   variable: '--font-crimson',
-  weight: ['400', '600'],
-  style: ['normal', 'italic'],
 })
 
 export const metadata: Metadata = {
