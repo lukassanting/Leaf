@@ -45,7 +45,7 @@ import 'tippy.js/dist/tippy.css'
 import { useRouter } from 'next/navigation'
 import { BubbleMenu, EditorContent, NodeViewWrapper, NodeViewContent, ReactNodeViewRenderer, useEditor, type NodeViewProps } from '@tiptap/react'
 import { Node, mergeAttributes, InputRule, isTextSelection } from '@tiptap/core'
-import { DOMSerializer } from '@tiptap/pm/model'
+import { DOMSerializer, Fragment } from '@tiptap/pm/model'
 import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import type { ResolvedPos } from '@tiptap/pm/model'
 import type { EditorView } from '@tiptap/pm/view'
@@ -581,7 +581,7 @@ function EmbeddedDatabaseView({
 
   if (status !== 'ready' || !id) {
     return (
-      <NodeViewWrapper className="my-2">
+      <NodeViewWrapper className="my-2" data-drag-handle="">
         <div
           contentEditable={false}
           className="group flex items-center gap-3 rounded-xl border px-4 py-3"
@@ -1740,6 +1740,35 @@ export default function LeafEditor({
 
   const editorProps = useMemo(() => ({
     attributes: { class: 'leaf-prose max-w-none min-h-[50vh] focus:outline-none' },
+    handleDOMEvents: {
+      // PM clears `view.dragging` before `handleDrop`; `handleDrop` needs `dragSourceRef` for column + reorder logic.
+      // Gutter drags set the ref on the grip button; native block drags (embeds, etc.) only set NodeSelection — sync here.
+      dragstart: (view, event) => {
+        if (!(event instanceof DragEvent)) return false
+        const sel = view.state.selection
+        if (sel instanceof NodeSelection && sel.node.isBlock) {
+          dragSourceRef.current = { pos: sel.from, end: sel.from + sel.node.nodeSize }
+          return false
+        }
+        const t = event.target
+        if (!(t instanceof Element) || !view.dom.contains(t)) return false
+        if (!t.closest('[data-drag-handle]')) return false
+        try {
+          const pos = view.posAtDOM(t, 0)
+          if (typeof pos !== 'number' || pos < 0) return false
+          const $p = view.state.doc.resolve(pos)
+          for (let d = $p.depth; d > 0; d--) {
+            const n = $p.node(d)
+            if (!n.isBlock || n.type.name === 'doc') continue
+            dragSourceRef.current = { pos: $p.before(d), end: $p.after(d) }
+            break
+          }
+        } catch {
+          /* ignore */
+        }
+        return false
+      },
+    },
     handleClick: (_view: unknown, _pos: number, event: MouseEvent) => {
       const target = event.target as HTMLElement
 
@@ -1879,8 +1908,12 @@ export default function LeafEditor({
         const schema = view.state.schema
         const leftContent = side === 'left' ? sourceNode : targetNode
         const rightContent = side === 'left' ? targetNode : sourceNode
-        const leftColumn = schema.nodes.column.create(null, [leftContent.copy(leftContent.content)])
-        const rightColumn = schema.nodes.column.create(null, [rightContent.copy(rightContent.content)])
+        const leftColumn = schema.nodes.column.create(null, [
+          leftContent.isLeaf ? leftContent.copy(Fragment.empty) : leftContent.copy(leftContent.content),
+        ])
+        const rightColumn = schema.nodes.column.create(null, [
+          rightContent.isLeaf ? rightContent.copy(Fragment.empty) : rightContent.copy(rightContent.content),
+        ])
         const columnListNode = schema.nodes.columnList.create(null, [leftColumn, rightColumn])
 
         const { tr } = view.state
@@ -2702,15 +2735,13 @@ export default function LeafEditor({
         return
       }
 
-      // Don't allow dropping on columnList or embed nodes
+      // Don't allow dropping on columnList or heavy chrome blocks (embeds can pair into new columns like paragraphs).
       const targetNode = editor.state.doc.nodeAt(nodeStart)
       if (targetNode && (
         targetNode.type.name === 'columnList' ||
         targetNode.type.name === 'toggleCard' ||
         targetNode.type.name === 'callout' ||
-        targetNode.type.name === 'statStrip' ||
-        targetNode.type.name === 'databaseEmbed' ||
-        targetNode.type.name === 'pageEmbed'
+        targetNode.type.name === 'statStrip'
       )) {
         setColumnDropZone(null)
         setBlockReorderZone(null)
