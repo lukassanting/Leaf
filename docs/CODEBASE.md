@@ -104,8 +104,8 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | `app/api/routes/api.py` | Aggregates routers (leaf + database) |
 | `app/api/routes/leaf/leaf_crud_controller.py` | REST endpoints for leaves, tree, content patch, backlinks, graph; soft-delete to Trash; `POST /leaves/{id}/restore` |
 | `app/api/routes/database/database_controller.py` | REST for databases and rows; soft-delete + restore; `DELETE /databases/{id}/properties/{key}` removes a column and strips that key from all rows |
-| `app/api/routes/trash/trash_controller.py` | `GET /trash` (purge expired, then list) |
-| `app/database/operations/trash_operations.py` | Permanent delete + purge after retention; used by trash API and startup |
+| `app/api/routes/trash/trash_controller.py` | `GET /trash` (purge expired, then list); `DELETE /trash/leaves/{id}` / `DELETE /trash/databases/{id}` (permanent delete if trashed); `POST /trash/purge-all` |
+| `app/database/operations/trash_operations.py` | Hard-delete trashed items, purge after retention, purge-all; used by trash API and startup |
 | `app/dtos/trash_dtos.py` | Trash list response DTOs |
 
 ### Domain & persistence

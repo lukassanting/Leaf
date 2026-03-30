@@ -17,7 +17,7 @@ from loguru import logger
 
 from app.database.connectors.mysql import MySQLDatabaseConnector, get_db_connector
 from app.database.models.mysql_models import DatabaseModel, DatabaseRowModel, LeafModel
-from app.dtos.trash_dtos import TrashListResponse, TrashDatabaseItem, TrashLeafItem
+from app.dtos.trash_dtos import TrashListResponse, TrashDatabaseItem, TrashLeafItem, TrashPurgeStats
 from app.storage import get_file_storage
 
 
@@ -84,6 +84,54 @@ class TrashOperations:
 
         get_file_storage().delete_page(leaf_id, database_id=leaf_db_id)
         return True
+
+    def permanently_delete_trashed_leaf(self, leaf_id: str) -> bool:
+        """Hard-delete one leaf only if it is currently soft-deleted (in Trash)."""
+        lid = str(leaf_id)
+        with self.db.get_db_session() as session:
+            leaf = session.query(LeafModel).filter(LeafModel.id == lid).first()
+            if not leaf or leaf.deleted_at is None:
+                return False
+        return self.hard_delete_leaf(lid)
+
+    def permanently_delete_trashed_database(self, database_id: str) -> bool:
+        """Hard-delete one database only if it is currently soft-deleted."""
+        did = str(database_id)
+        with self.db.get_db_session() as session:
+            db = session.query(DatabaseModel).filter(DatabaseModel.id == did).first()
+            if not db or db.deleted_at is None:
+                return False
+        return self.hard_delete_database(did)
+
+    def purge_all_trashed(self) -> TrashPurgeStats:
+        """Permanently remove every soft-deleted database and leaf (databases first)."""
+        with self.db.get_db_session() as session:
+            db_ids = [d.id for d in session.query(DatabaseModel).filter(DatabaseModel.deleted_at.isnot(None)).all()]
+            leaves = session.query(LeafModel).filter(LeafModel.deleted_at.isnot(None)).all()
+            by_id = {l.id: l for l in leaves}
+            ids = set(by_id.keys())
+
+            def trash_depth(nid: str) -> int:
+                d = 0
+                cur = by_id.get(nid)
+                while cur and cur.parent_id and cur.parent_id in ids:
+                    d += 1
+                    cur = by_id.get(cur.parent_id)
+                return d
+
+            sorted_leaf_ids = sorted(ids, key=trash_depth, reverse=True)
+
+        purged_dbs = 0
+        for did in db_ids:
+            if self.hard_delete_database(did):
+                purged_dbs += 1
+        purged_leaves = 0
+        for lid in sorted_leaf_ids:
+            if self.permanently_delete_trashed_leaf(lid):
+                purged_leaves += 1
+        if purged_dbs or purged_leaves:
+            logger.info("Trash purge-all: {} databases, {} leaves", purged_dbs, purged_leaves)
+        return TrashPurgeStats(purged_leaves=purged_leaves, purged_databases=purged_dbs)
 
     def purge_expired(self, retention_days: int) -> tuple[int, int]:
         """

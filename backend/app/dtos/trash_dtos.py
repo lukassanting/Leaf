@@ -28,3 +28,7 @@ class TrashListResponse(BaseModel):
 class TrashPurgeStats(BaseModel):
     purged_leaves: int = 0
     purged_databases: int = 0
+
+
+# Alias for POST /trash/purge-all response (same shape as internal purge stats).
+TrashPurgeAllResponse = TrashPurgeStats

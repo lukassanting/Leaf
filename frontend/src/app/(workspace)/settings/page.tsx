@@ -70,6 +70,7 @@ export default function SettingsPage() {
   } | null>(null)
   const [trashLoading, setTrashLoading] = useState(false)
   const [trashBusy, setTrashBusy] = useState<string | null>(null)
+  const [trashListExpanded, setTrashListExpanded] = useState(false)
 
   // Draft state for editable config
   const [draftMode, setDraftMode] = useState<SyncMode>('off')
@@ -237,80 +238,161 @@ export default function SettingsPage() {
       {/* ─── Trash ──────────────────────────────────────────────────── */}
       <SectionTitle>Trash</SectionTitle>
       <p className="mb-3 text-xs leading-relaxed" style={{ color: 'var(--leaf-text-muted)' }}>
-        Deleted pages and databases appear here for {trash?.retention_days ?? 7} days, then are permanently removed.
-        Opening Settings runs cleanup for anything past that window.
+        Deleted pages and databases are kept for {trash?.retention_days ?? 7} days, then removed automatically.
+        Opening Settings runs cleanup for anything past that window. You can restore items, delete one permanently,
+        or empty Trash immediately.
       </p>
-      <div className="mb-4 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => { void refreshTrash() }}
-          disabled={trashLoading}
-          className="rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
-          style={{
-            background: 'var(--leaf-bg-elevated)',
-            color: 'var(--leaf-text-body)',
-            border: '1px solid var(--leaf-border-soft)',
-          }}
-        >
-          {trashLoading ? 'Refreshing…' : 'Refresh trash'}
-        </button>
-      </div>
-      {trashLoading && trashRows.length === 0 ? (
+
+      {trashLoading && !trash ? (
         <p className="mb-8 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>
-          Loading trash…
+          Checking trash…
         </p>
       ) : trashRows.length === 0 ? (
         <p className="mb-8 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>
           Trash is empty.
         </p>
       ) : (
-        <ul className="mb-8 flex flex-col gap-2">
-          {trashRows.map((row) => (
-            <li
-              key={`${row.kind}-${row.id}`}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2.5"
-              style={{
-                background: 'var(--leaf-bg-elevated)',
-                border: '1px solid var(--leaf-border-soft)',
-              }}
+        <div className="mb-8">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-sm" style={{ color: 'var(--leaf-text-body)' }}>
+              {trashRows.length} {trashRows.length === 1 ? 'item' : 'items'} in Trash
+            </span>
+            <button
+              type="button"
+              onClick={() => setTrashListExpanded((e) => !e)}
+              className="rounded-md px-2.5 py-1 text-xs font-medium underline-offset-2 transition-colors hover:underline"
+              style={{ color: 'var(--leaf-green)' }}
             >
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium" style={{ color: 'var(--leaf-text-body)' }}>
-                  {row.title || 'Untitled'}
-                </div>
-                <div className="text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
-                  {row.kind === 'database' ? 'Database' : 'Page'} · {trashPurgeLabel(row.purge_at)}
-                </div>
+              {trashListExpanded ? 'Hide list' : 'Show deleted items'}
+            </button>
+          </div>
+
+          {trashListExpanded ? (
+            <>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { void refreshTrash() }}
+                  disabled={trashLoading || trashBusy !== null}
+                  className="rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
+                  style={{
+                    background: 'var(--leaf-bg-elevated)',
+                    color: 'var(--leaf-text-body)',
+                    border: '1px solid var(--leaf-border-soft)',
+                  }}
+                >
+                  {trashLoading ? 'Refreshing…' : 'Refresh list'}
+                </button>
+                <button
+                  type="button"
+                  disabled={trashBusy !== null || trashRows.length === 0}
+                  onClick={() => {
+                    const n = trashRows.length
+                    if (!window.confirm(
+                      `Permanently delete all ${n} item(s) in Trash now? This cannot be undone.`,
+                    )) return
+                    setTrashBusy('purge-all')
+                    void trashApi
+                      .purgeAll()
+                      .then(() => {
+                        emitLeafTreeChanged()
+                        return refreshTrash()
+                      })
+                      .catch(console.error)
+                      .finally(() => setTrashBusy(null))
+                  }}
+                  className="rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
+                  style={{
+                    background: 'color-mix(in srgb, var(--leaf-red, #ef4444) 10%, transparent)',
+                    color: 'var(--leaf-red, #ef4444)',
+                    border: '1px solid color-mix(in srgb, var(--leaf-red, #ef4444) 35%, transparent)',
+                  }}
+                >
+                  Empty Trash now…
+                </button>
               </div>
-              <button
-                type="button"
-                disabled={trashBusy !== null}
-                onClick={() => {
-                  setTrashBusy(`${row.kind}:${row.id}`)
-                  const p =
-                    row.kind === 'database'
-                      ? databasesApi.restore(row.id)
-                      : leavesApi.restore(row.id)
-                  void p
-                    .then(() => {
-                      emitLeafTreeChanged()
-                      return refreshTrash()
-                    })
-                    .catch(console.error)
-                    .finally(() => setTrashBusy(null))
-                }}
-                className="shrink-0 rounded-md px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50"
-                style={{
-                  background: 'color-mix(in srgb, var(--leaf-green) 12%, transparent)',
-                  color: 'var(--leaf-green)',
-                  border: '1px solid color-mix(in srgb, var(--leaf-green) 35%, transparent)',
-                }}
-              >
-                Restore
-              </button>
-            </li>
-          ))}
-        </ul>
+              <ul className="flex flex-col gap-2">
+                {trashRows.map((row) => (
+                  <li
+                    key={`${row.kind}-${row.id}`}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2.5"
+                    style={{
+                      background: 'var(--leaf-bg-elevated)',
+                      border: '1px solid var(--leaf-border-soft)',
+                    }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium" style={{ color: 'var(--leaf-text-body)' }}>
+                        {row.title || 'Untitled'}
+                      </div>
+                      <div className="text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
+                        {row.kind === 'database' ? 'Database' : 'Page'} · {trashPurgeLabel(row.purge_at)}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={trashBusy !== null}
+                        onClick={() => {
+                          setTrashBusy(`restore:${row.kind}:${row.id}`)
+                          const p =
+                            row.kind === 'database'
+                              ? databasesApi.restore(row.id)
+                              : leavesApi.restore(row.id)
+                          void p
+                            .then(() => {
+                              emitLeafTreeChanged()
+                              return refreshTrash()
+                            })
+                            .catch(console.error)
+                            .finally(() => setTrashBusy(null))
+                        }}
+                        className="rounded-md px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50"
+                        style={{
+                          background: 'color-mix(in srgb, var(--leaf-green) 12%, transparent)',
+                          color: 'var(--leaf-green)',
+                          border: '1px solid color-mix(in srgb, var(--leaf-green) 35%, transparent)',
+                        }}
+                      >
+                        Restore
+                      </button>
+                      <button
+                        type="button"
+                        disabled={trashBusy !== null}
+                        onClick={() => {
+                          const label = row.title || 'Untitled'
+                          if (!window.confirm(
+                            `Permanently delete “${label}”? This cannot be undone.`,
+                          )) return
+                          setTrashBusy(`delete:${row.kind}:${row.id}`)
+                          const p =
+                            row.kind === 'database'
+                              ? trashApi.permanentDeleteDatabase(row.id)
+                              : trashApi.permanentDeleteLeaf(row.id)
+                          void p
+                            .then(() => {
+                              emitLeafTreeChanged()
+                              return refreshTrash()
+                            })
+                            .catch(console.error)
+                            .finally(() => setTrashBusy(null))
+                        }}
+                        className="rounded-md px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50"
+                        style={{
+                          background: 'transparent',
+                          color: 'var(--leaf-text-muted)',
+                          border: '1px solid var(--leaf-border-strong)',
+                        }}
+                      >
+                        Delete permanently
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </div>
       )}
 
       <Divider />

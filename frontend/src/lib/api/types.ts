@@ -344,3 +344,8 @@ export interface TrashListResponse {
   databases: TrashDatabaseItem[]
   retention_days: number
 }
+
+export interface TrashPurgeAllResponse {
+  purged_leaves: number
+  purged_databases: number
+}
