@@ -36,6 +36,22 @@ make down       # stop containers (docker compose down)
 
 4. **Stop**: Ctrl+C in each terminal (or `make down-api` / `make down-frontend` on Windows-friendly port cleanup).
 
+### Dev: “Failed to load chunk” / Turbopack errors
+
+Next.js dev (especially with `--turbopack`) can occasionally fail to load a cached chunk after upgrades or interrupted builds. From `frontend/`:
+
+```bash
+# macOS / Linux / Git Bash
+rm -rf .next && npm run dev
+```
+
+```powershell
+# Windows PowerShell
+Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue; npm run dev
+```
+
+If problems persist, restart the dev server and hard-refresh the browser (Ctrl+Shift+R).
+
 ## Debugging workflow
 
 - Use `docs/DEBUGGING_PLAYBOOK.md` for a repeatable cross-stack workflow (route -> hook -> API client -> backend controller -> operations).
@@ -183,13 +199,60 @@ Leaf is now on the v3 shell and editor architecture:
 - **Stack:** Next.js 15 (App Router), FastAPI, SQLite, Tailwind CSS v4, TipTap.
 - **Themes:** CSS variables in `globals.css`; `html[data-leaf-design="campaign"]` remaps tokens. Root layout loads Geist plus Cinzel / Cinzel Decorative / Crimson Pro for the campaign look.
 
-## Next steps
+## Roadmap (planned)
 
-The next recommended phase is:
+Higher-level direction also lives in **`docs/PLANS_AND_ROADMAP.md`**. Below is a concise wish list (not committed timeline).
 
-1. Build search and a quick switcher (`Cmd+K`) on top of the structured content model.
-2. Expand database capabilities with sort/filter/group configuration and richer property types.
-3. CI workflow and production deployment hardening.
+### Fixes
+
+- Gutter icon positioning (including columns and nested blocks)
+- Speed improvements on initial renders
+- Page outline: clicking headings should jump accurately within the page
+
+### Customization
+
+- Page templates (with key-bindable shortcuts)
+- Coloured text highlighting
+- Custom styles, fonts, and colours
+- Better icons
+
+### Databases
+
+- Page templates for database rows
+- Search
+- Filtering (and richer sort/group configuration)
+
+### Apps
+
+- Windows desktop application
+- Android application
+
+### Graph view
+
+- Improved positioning and visibility of nodes
+- Draggable nodes
+
+### Design
+
+- Cleanup of the highlighted-text (selection) bubble menu
+- Preview of drop position while dragging blocks
+
+### Features
+
+- Mood tracker
+- Tasks, to-dos, reminders
+
+### AI
+
+- AI search across pages
+- AI generation (text, markdown objects, database creation, page creation, etc.)
+- External tool integration (calendar, drive, email, Medium, and more)
+- Auto tag detection and suggestions
+
+### Engineering
+
+- Quick switcher / command palette (e.g. `Cmd+K`) on top of structured content
+- CI workflow and production deployment hardening
 
 ## Framework direction
 

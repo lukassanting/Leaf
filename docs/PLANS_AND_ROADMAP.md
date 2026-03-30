@@ -119,7 +119,9 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 
 ## 4. Recommended next phase
 
-These are the next best steps after the completed redesign.
+These rows are a **sequencing lens**, not a promise of order: later phases can start early when dependencies allow. **Nothing is removed when shipped** — strikethrough rows stay as history. A broader, reader-friendly wish list (same ideas, different grouping) lives in **README.md → Roadmap (planned)**.
+
+**Spine (near-term engineering):** Phases **4 → 7** — editor polish, retrieval, database depth, sync/ship hardening. **Expansion (product breadth):** Phases **8 → 11** — customization, productivity extras, AI, native clients — often parallelizable after the API and document model stay stable.
 
 ### Phase 4 — Structured editing depth
 
@@ -128,32 +130,72 @@ These are the next best steps after the completed redesign.
 | ~~4.1~~ | ~~Upgrade column layouts from lightweight text columns to true nested block columns~~ | ✅ Done — drag-to-create columns + minimal rendering |
 | ~~4.2~~ | ~~Add a real document block drag handle and block reorder flow~~ | ✅ Done — block drag handle with column-drop zones |
 | 4.3 | Add scroll-position memory and small editor polish around status/focus states | High user value, low risk |
+| 4.4 | Gutter / block chrome polish: margin + column inset positioning, nested targets, hover/stick behaviour | Keeps block actions predictable as layouts get richer |
+| 4.5 | Initial render and route-transition performance (editor + workspace shell) | Perceived speed; pairs with cache strategy in §5 |
+| 4.6 | Page outline: click-to-scroll to heading with accurate in-page target (nested scroll containers) | Right sidebar outline is high-traffic |
+| 4.7 | Block drag-and-drop: clearer preview / drop affordance (where the block will land) | Complements existing gutter drag + column zones |
 
-### Phase 5 — Search and knowledge graph
+### Phase 5 — Search, navigation, and graph
 
 | # | Item | Why next |
 |---|------|----------|
 | 5.1 | Quick switcher (`Cmd+K`) over cached tree + API search | Fast navigation payoff |
 | 5.2 | Full-text search endpoint over structured page content | Unlocks real workspace retrieval |
 | 5.3 | `[[wikilinks]]` insertion and stronger backlinks UX | Natural fit with the new structured model |
+| 5.4 | Graph view: layout, readability, and node positioning | Current graph is useful but cramped; needs pass before interaction depth |
+| 5.5 | Graph view: draggable nodes (and persistence / layout hints if needed) | Builds on 5.4; avoid churn until base layout is stable |
 
 ### Phase 6 — Database depth
 
 | # | Item | Why next |
 |---|------|----------|
 | 6.1 | Sort/filter/group configuration for databases | Most obvious workflow gap after visual parity |
-| 6.2 | Richer property types (dates, relations, status) | Needed before advanced planning workflows |
+| 6.2 | Richer property types (dates, relations, status) | Needed before advanced planning workflows (note: basic **date** columns already exist — extend semantics, rollups, relations) |
 | 6.3 | Stronger board interactions and persisted grouping config | Makes board view truly first-class |
+| 6.4 | Database entry **page templates** (row-backed pages) and shortcuttable insert flows | Same row model; faster capture for repeated shapes |
+| 6.5 | Database-scoped search (within one DB / view) | Complements 5.2 workspace-wide search |
 
-### Phase 7 — Sync and hardening
+### Phase 7 — Release hardening and sync UX
 
 | # | Item | Why next |
 |---|------|----------|
 | ~~7.1~~ | ~~Conflict-resolution UI for `updated_at` mismatches~~ | ✅ Done — bidirectional file sync + cloud conflict detection + settings page |
 | ~~7.4~~ | ~~Git-based sync (auto-commit + push/pull to remote)~~ | ✅ Done — git init/commit/pull/push cycle, periodic scheduler, test connection, git status panel |
-| 7.5 | GitHub Device Flow OAuth + auto-repo creation | One-click GitHub sync: user authorizes via device code flow, backend auto-creates a private repo and configures git sync — no manual PAT or repo setup. Best fit for self-hosted/local tools (no callback server needed). `client_id` configurable per deployment. |
 | 7.2 | CI workflow for lint + backend tests + Playwright smoke suite | Keeps redesign stable |
 | 7.3 | Production deployment path and env hardening | Needed before wider usage |
+| 7.5 | GitHub Device Flow OAuth + auto-repo creation | One-click GitHub sync: user authorizes via device code flow, backend auto-creates a private repo and configures git sync — no manual PAT or repo setup. Best fit for self-hosted/local tools (no callback server needed). `client_id` configurable per deployment. |
+
+### Phase 8 — Customization and design system
+
+| # | Item | Why next |
+|---|------|----------|
+| 8.1 | Page templates with key-bindable shortcuts | Faster authoring; pairs with slash/gutter mental model |
+| 8.2 | User-defined design profiles: fonts, colours, styles (beyond classic / campaign presets) | README roadmap; depends on stable token surface in `globals.css` |
+| 8.3 | Icons and visual identity: better defaults, picker depth, consistency across shell + DB | Surface polish across dense UI |
+| 8.4 | Text highlighting / highlighter UX and selection bubble design pass | Selection bubble exists — elevate clarity, contrast, and discoverability |
+
+### Phase 9 — Productivity and lifestyle
+
+| # | Item | Why next |
+|---|------|----------|
+| 9.1 | Tasks, todos, reminders (data model + surfaces) | Cross-cuts editor, DB, and notifications; scope carefully vs existing todo blocks |
+| 9.2 | Mood tracker | Distinct surface; likely optional module |
+
+### Phase 10 — AI and external integrations
+
+| # | Item | Why next |
+|---|------|----------|
+| 10.1 | AI-assisted search across pages (see also 5.2) | Retrieval quality + trust UX (citations, scope) |
+| 10.2 | Generative AI: prose, structured blocks, database scaffolding, page creation | Same API/document contract; strong guardrails |
+| 10.3 | External tool integrations (calendar, drive, email, publishing, …) | Long tail; prefer narrow vertical slices |
+| 10.4 | Auto tag detection and suggestions | Metadata loop with pages + databases |
+
+### Phase 11 — Native clients
+
+| # | Item | Why next |
+|---|------|----------|
+| 11.1 | Windows desktop application | Align with `docs/FRAMEWORK_DIRECTION.md` — package web + backend |
+| 11.2 | Android application | Separate client vs shared API / `LeafDocument` |
 
 ---
 
@@ -174,6 +216,8 @@ Questions still open for the next milestone:
 3. Should search be cache-first with API fallback, or fully API-backed once indexing exists?
 4. Which database property types matter most immediately after `text/number/tags/select`?
 5. Is real-time collaboration still out of scope for the next milestone, or do we need to preserve a path for it now?
+6. AI: local-only models, cloud APIs with user keys, hosted Leaf service, or hybrid — which default matches the product promise (local-first)?
+7. Native clients: prioritize **desktop** packaging vs **mobile** companion first given the current editor complexity?
 
 ---
 
@@ -265,4 +309,4 @@ That means platform growth should focus first on:
 
 ---
 
-*Last updated: 2026-03-29. Gutter **+** menu aligned with slash UI and positioning; previous: toggle card header slash; git/file sync.*
+*Last updated: 2026-03-30. §4 phase tables reorganized (7.x numeric order, new 4.4–11.x rows, README cross-link); §5 AI + native questions added.*
