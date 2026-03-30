@@ -2843,7 +2843,7 @@ export default function LeafEditor({
                     position: 'absolute' as const,
                     top: containerChromeInset ? blockMenu.top + 10 : blockMenu.top,
                     left: blockMenu.gutterLeft,
-                    width: columnInset ? GUTTER_MARGIN_STRIP_WIDTH_PX : inset ? 'auto' : GUTTER_MARGIN_STRIP_WIDTH_PX,
+                    width: columnInset ? GUTTER_MARGIN_STRIP_WIDTH_PX : containerChromeInset ? 'auto' : GUTTER_MARGIN_STRIP_WIDTH_PX,
                     minWidth: containerChromeInset ? 64 : undefined,
                     minHeight: columnInset ? undefined : containerChromeInset ? undefined : blockH,
                     height: columnInset ? blockH : containerChromeInset ? 'auto' : blockH,
