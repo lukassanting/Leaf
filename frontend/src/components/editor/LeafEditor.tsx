@@ -213,6 +213,14 @@ const GUTTER_CONTAINER_TYPES = new Set([
   'databaseEmbed',
 ])
 
+/** Margin gutter: + and drag (min-w-9 each) + gap + strip padding (border-box). Right edge must stay left of prose (≤ 0 in container coords). */
+const GUTTER_MARGIN_STRIP_WIDTH_PX = 92
+const GUTTER_MARGIN_CLEARANCE_PX = 8
+/** `left` for the strip so `left + stripWidth + clearance ≈ 0` (strip sits fully in the reserved margin). */
+const GUTTER_MARGIN_LEFT_PX = -(GUTTER_MARGIN_STRIP_WIDTH_PX + GUTTER_MARGIN_CLEARANCE_PX)
+/** Parent `paddingLeft` must cover `abs(GUTTER_MARGIN_LEFT_PX)` so the strip is not clipped. */
+const EDITOR_GUTTER_RESERVE_PX = 104
+
 function gutterMenuStateFromNodeBounds(
   view: EditorView,
   container: HTMLElement,
@@ -245,7 +253,7 @@ function gutterMenuStateFromNodeBounds(
   }
 
   const useInset = GUTTER_CONTAINER_TYPES.has(nodeType)
-  const gutterLeft = useInset ? blockRect.left - containerRect.left + 10 : -54
+  const gutterLeft = useInset ? blockRect.left - containerRect.left + 10 : GUTTER_MARGIN_LEFT_PX
 
   return {
     top: blockRect.top - containerRect.top,
@@ -297,22 +305,28 @@ function computeGutterMenuState(view: EditorView, $pos: ResolvedPos, container: 
   return gutterMenuStateFromNodeBounds(view, container, nodeStart, endPos, nodeType)
 }
 
-/** When the pointer is over the gutter strip or the gap left of the block, ProseMirror often returns no coords — still keep the block menu open. */
-function pointerInBlockGutterZone(
+/**
+ * True while the pointer stays on the same vertical band as `bm`'s block (the "row"), spanning
+ * from the margin gutter through the editor width. Lets users move horizontally to +/grip without
+ * ProseMirror resolving a different nested node or null coords and dismissing the gutter.
+ */
+function shouldStickBlockMenu(
   clientX: number,
   clientY: number,
   container: HTMLElement,
   bm: NonNullable<BlockMenuState>,
 ): boolean {
   const cr = container.getBoundingClientRect()
-  const vPad = 20
+  const vPad = 12
   const top = cr.top + bm.top - vPad
   const bottom = cr.top + bm.top + Math.max(bm.height, 32) + vPad
+  if (clientY < top || clientY > bottom) return false
+
   const gl = bm.gutterLeft
   const inset = gl >= 0
-  const left = cr.left + gl - (inset ? 8 : 28)
-  const right = inset ? cr.left + gl + 200 : cr.left + gl + 96
-  return clientX >= left && clientX <= right && clientY >= top && clientY <= bottom
+  const left = inset ? cr.left + gl - 16 : cr.left + gl - 40
+  const right = cr.right + 24
+  return clientX >= left && clientX <= right
 }
 
 type EmbedNodeAttrs = {
@@ -2406,12 +2420,18 @@ export default function LeafEditor({
       const container = containerRef.current
       if (!container) return
 
+      const hitTop = document.elementFromPoint(x, y)
+      if (gutterStripRef.current && hitTop instanceof Node && gutterStripRef.current.contains(hitTop)) {
+        return
+      }
+
       const view = editor.view
       const doc = editor.state.doc
+      const stickBm = blockMenuRef.current
 
       let coords = view.posAtCoords({ left: x, top: y })
       if (!coords) {
-        const hit = document.elementFromPoint(x, y)
+        const hit = hitTop
         const statStripEl = hit?.closest?.('.leaf-stat-strip')
         if (statStripEl && container.contains(statStripEl)) {
           try {
@@ -2423,12 +2443,7 @@ export default function LeafEditor({
         }
       }
       if (!coords) {
-        const hit = document.elementFromPoint(x, y)
-        if (gutterStripRef.current && hit instanceof Node && gutterStripRef.current.contains(hit)) {
-          return
-        }
-        const bm = blockMenuRef.current
-        if (bm && pointerInBlockGutterZone(x, y, container, bm)) {
+        if (stickBm && shouldStickBlockMenu(x, y, container, stickBm)) {
           return
         }
         setBlockMenu(null)
@@ -2438,9 +2453,20 @@ export default function LeafEditor({
       const $pos = doc.resolve(coords.pos)
       const next = computeGutterMenuState(view, $pos, container)
       if (!next) {
+        if (stickBm && shouldStickBlockMenu(x, y, container, stickBm)) {
+          return
+        }
         setBlockMenu(null)
         return
       }
+
+      if (stickBm && shouldStickBlockMenu(x, y, container, stickBm)) {
+        if (next.nodeStart === stickBm.nodeStart && next.endPos === stickBm.endPos) {
+          setBlockMenu(next)
+        }
+        return
+      }
+
       setBlockMenu(next)
     })
   }, [editor, mode])
@@ -2689,7 +2715,7 @@ export default function LeafEditor({
       {mode === 'rich' ? (
         <div
           className="relative"
-          style={{ paddingLeft: 52 }}
+          style={{ paddingLeft: EDITOR_GUTTER_RESERVE_PX }}
           onMouseMove={(event) => {
             if (hideTimer.current) {
               clearTimeout(hideTimer.current)
@@ -2767,19 +2793,20 @@ export default function LeafEditor({
                 ref={gutterStripRef}
                 style={(() => {
                   const inset = blockMenu.gutterLeft >= 0
+                  const blockH = Math.max(blockMenu.height, 28)
                   return {
                     position: 'absolute' as const,
-                    top: inset ? blockMenu.top + 10 : blockMenu.top - 10,
+                    top: inset ? blockMenu.top + 10 : blockMenu.top,
                     left: blockMenu.gutterLeft,
-                    width: inset ? 'auto' : 76,
+                    width: inset ? 'auto' : GUTTER_MARGIN_STRIP_WIDTH_PX,
                     minWidth: inset ? 64 : undefined,
-                    minHeight: inset ? undefined : Math.max(blockMenu.height, 28) + 16,
-                    height: inset ? 'auto' : undefined,
+                    minHeight: inset ? undefined : blockH,
+                    height: inset ? 'auto' : blockH,
                     display: 'flex',
                     flexDirection: 'column' as const,
                     alignItems: inset ? ('flex-start' as const) : ('flex-end' as const),
-                    justifyContent: 'flex-start' as const,
-                    padding: inset ? '4px 6px 6px 8px' : '8px 2px 8px 14px',
+                    justifyContent: inset ? ('flex-start' as const) : ('center' as const),
+                    padding: inset ? '4px 6px 6px 8px' : '4px 4px 4px 10px',
                     gap: 0,
                     boxSizing: 'border-box' as const,
                     zIndex: 45,
@@ -2799,7 +2826,6 @@ export default function LeafEditor({
                     display: 'flex',
                     alignItems: 'center',
                     gap: 4,
-                    paddingTop: blockMenu.gutterLeft >= 0 ? 0 : blockMenu.height > 60 ? 4 : 0,
                   }}
                 >
                   <button
