@@ -52,7 +52,7 @@ export function SidebarMoveTargetDialog({
   const candidates = useMemo(() => {
     if (!source) return []
     const pages = nodes.filter(
-      (n) => n.kind === 'page' && !n.isDbRow && !excluded.has(n.id),
+      (n) => !n.isDbRow && !excluded.has(n.id),
     )
     const q = filter.trim().toLowerCase()
     return pages
