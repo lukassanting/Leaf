@@ -250,10 +250,8 @@ type BlockMenuState = {
   endPos: number
   nodeStart: number
   nodeType: string
-  /** Absolute `left` for the gutter strip (px, relative to editor container). Negative = margin; positive = inside callout / card / stat strip / column. */
+  /** Absolute `left` for the gutter strip (px, relative to editor container). Placed just left of the block edge for columns + callout/card/embed chrome; top-level margin blocks use a fixed negative offset. */
   gutterLeft: number
-  /** Inset gutter beside blocks inside a column layout (distinct from callout/embed chrome styling). */
-  columnInset?: boolean
 } | null
 
 /** Gutter targets: promotion to these ancestors avoids leaf blocks stealing hover; gaps before/after a nested target still bind to that node (e.g. statStrip inside toggleCard). */
@@ -275,6 +273,19 @@ const GUTTER_MARGIN_LEFT_PX = -(GUTTER_MARGIN_STRIP_WIDTH_PX + GUTTER_MARGIN_CLE
 const EDITOR_GUTTER_RESERVE_PX = 104
 /** Extra gap between column inset gutter and text (beyond `GUTTER_MARGIN_CLEARANCE_PX`). */
 const COLUMN_GUTTER_EXTRA_CLEARANCE_PX = 4
+
+/** Place the strip fully to the left of `blockLeftRel` (same as column inset + margin geometry). */
+function gutterStripLeftOutsideBlock(blockLeftRel: number): number {
+  return (
+    blockLeftRel -
+    GUTTER_MARGIN_STRIP_WIDTH_PX -
+    GUTTER_MARGIN_CLEARANCE_PX -
+    COLUMN_GUTTER_EXTRA_CLEARANCE_PX
+  )
+}
+
+/** Horizontal padding west of `gutterLeft` for `shouldStickBlockMenu` (match margin gutter feel for all blocks). */
+const GUTTER_STICK_EXTRA_LEFT_PX = 40
 
 function isColumnStructureType(name: string): boolean {
   return name === 'column' || name === 'columnList'
@@ -331,15 +342,9 @@ function gutterMenuStateFromNodeBounds(
   const inColumn = blockIsInsideColumn(view, nodeStart)
   const blockLeftRel = blockRect.left - containerRect.left
   const isContainerChrome = GUTTER_CONTAINER_TYPES.has(nodeType)
-  // Column: place the strip fully to the left of the block text (same width/clearance as margin gutter).
-  const gutterLeft = isContainerChrome
-    ? blockLeftRel + 10
-    : inColumn
-      ? blockLeftRel -
-        GUTTER_MARGIN_STRIP_WIDTH_PX -
-        GUTTER_MARGIN_CLEARANCE_PX -
-        COLUMN_GUTTER_EXTRA_CLEARANCE_PX
-      : GUTTER_MARGIN_LEFT_PX
+  // Callout / card / embed / stat strip / blockquote: same outside placement as column (not pinned inside chrome).
+  const gutterLeft =
+    isContainerChrome || inColumn ? gutterStripLeftOutsideBlock(blockLeftRel) : GUTTER_MARGIN_LEFT_PX
 
   return {
     top: blockRect.top - containerRect.top,
@@ -348,7 +353,6 @@ function gutterMenuStateFromNodeBounds(
     nodeStart,
     nodeType,
     gutterLeft,
-    columnInset: inColumn && !GUTTER_CONTAINER_TYPES.has(nodeType),
   }
 }
 
@@ -428,9 +432,7 @@ function shouldStickBlockMenu(
   const bottom = cr.top + bm.top + Math.max(bm.height, 32) + vPad
   if (clientY < top || clientY > bottom) return false
 
-  const gl = bm.gutterLeft
-  const inset = gl >= 0
-  const left = inset ? cr.left + gl - 16 : cr.left + gl - 40
+  const left = cr.left + bm.gutterLeft - GUTTER_STICK_EXTRA_LEFT_PX
   const right = cr.right + 24
   return clientX >= left && clientX <= right
 }
@@ -2899,22 +2901,19 @@ export default function LeafEditor({
               <div
                 ref={gutterStripRef}
                 style={(() => {
-                  const columnInset = blockMenu.columnInset === true
-                  const containerChromeInset = blockMenu.gutterLeft >= 0 && !columnInset
                   const blockH = Math.max(blockMenu.height, 28)
                   return {
                     position: 'absolute' as const,
-                    top: containerChromeInset ? blockMenu.top + 10 : blockMenu.top,
+                    top: blockMenu.top,
                     left: blockMenu.gutterLeft,
-                    width: columnInset ? GUTTER_MARGIN_STRIP_WIDTH_PX : containerChromeInset ? 'auto' : GUTTER_MARGIN_STRIP_WIDTH_PX,
-                    minWidth: containerChromeInset ? 64 : undefined,
-                    minHeight: columnInset ? undefined : containerChromeInset ? undefined : blockH,
-                    height: columnInset ? blockH : containerChromeInset ? 'auto' : blockH,
+                    width: GUTTER_MARGIN_STRIP_WIDTH_PX,
+                    minHeight: blockH,
+                    height: blockH,
                     display: 'flex',
                     flexDirection: 'column' as const,
-                    alignItems: containerChromeInset ? ('flex-start' as const) : ('flex-end' as const),
-                    justifyContent: containerChromeInset ? ('flex-start' as const) : ('center' as const),
-                    padding: containerChromeInset ? '4px 6px 6px 8px' : '4px 4px 4px 10px',
+                    alignItems: 'flex-end' as const,
+                    justifyContent: 'center' as const,
+                    padding: '4px 4px 4px 10px',
                     gap: 0,
                     boxSizing: 'border-box' as const,
                     zIndex: 45,
