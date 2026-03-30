@@ -287,9 +287,11 @@ export default function EditorPage() {
             headerBanner={parseHeaderBanner(properties)}
             onHeaderBannerChange={(next) => { void handleHeaderBannerSave(next) }}
           />
-          <div style={{ marginTop: 6, marginBottom: 8, fontSize: 11, color: 'var(--leaf-text-muted)' }}>
-            Indexed content length: {contentTextLength} chars
-          </div>
+          {process.env.NODE_ENV === 'development' ? (
+            <div style={{ marginTop: 6, marginBottom: 8, fontSize: 11, color: 'var(--leaf-text-muted)' }}>
+              Indexed content length: {contentTextLength} chars
+            </div>
+          ) : null}
           <Editor
             content={content}
             leafId={leafId}

@@ -131,6 +131,16 @@ function extractOutlineItems(document: { content: any[] }): OutlineItem[] {
       } else if (node.type === 'toggleCard' && 'content' in node) {
         const inner = (node as { content?: typeof document.content }).content
         if (inner) walk(inner)
+      } else if (node.type === 'blockquote' && 'content' in node) {
+        const inner = (node as { content?: typeof document.content }).content
+        if (inner) walk(inner)
+      } else if (node.type === 'table' && 'content' in node) {
+        walk((node as { content: typeof document.content }).content)
+      } else if (node.type === 'tableRow' && 'content' in node) {
+        walk((node as { content: typeof document.content }).content)
+      } else if ((node.type === 'tableCell' || node.type === 'tableHeader') && 'content' in node) {
+        const inner = (node as { content?: typeof document.content }).content
+        if (inner) walk(inner)
       }
     }
   }

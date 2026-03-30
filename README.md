@@ -36,22 +36,6 @@ make down       # stop containers (docker compose down)
 
 4. **Stop**: Ctrl+C in each terminal (or `make down-api` / `make down-frontend` on Windows-friendly port cleanup).
 
-### Dev: “Failed to load chunk” / Turbopack errors
-
-Next.js dev (especially with `--turbopack`) can occasionally fail to load a cached chunk after upgrades or interrupted builds. From `frontend/`:
-
-```bash
-# macOS / Linux / Git Bash
-rm -rf .next && npm run dev
-```
-
-```powershell
-# Windows PowerShell
-Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue; npm run dev
-```
-
-If problems persist, restart the dev server and hard-refresh the browser (Ctrl+Shift+R).
-
 ## Debugging workflow
 
 - Use `docs/DEBUGGING_PLAYBOOK.md` for a repeatable cross-stack workflow (route -> hook -> API client -> backend controller -> operations).
@@ -308,3 +292,23 @@ Leaf/
 │       └── lib/                 # API clients, cache, document model
 └── docker-compose.yml           # Optional Docker setup
 ```
+
+## Known issues
+
+### Next.js dev: “Failed to load chunk” (Turbopack)
+
+**Default:** `npm run dev` uses the **webpack** dev server. **Turbopack** is optional (`npm run dev:turbo` in `frontend/`).
+
+If you use Turbopack and see `Failed to load chunk … react-server-dom-turbopack …` (often after upgrades or a bad cache), from `frontend/` clear the build cache and restart:
+
+```bash
+# macOS / Linux / Git Bash
+rm -rf .next && npm run dev
+```
+
+```powershell
+# Windows PowerShell
+Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue; npm run dev
+```
+
+Then hard-refresh the browser (Ctrl+Shift+R).

@@ -96,6 +96,57 @@ import { computeSlashMatch, computeWikilinkMatch, type EditorSlashMatch } from '
 
 import { Callout, CALLOUT_VARIANTS, CALLOUT_VARIANT_META, type CalloutVariant } from '@/components/editor/calloutExtension'
 
+/** Center `el` in the nearest vertical scroll ancestor (matches the editor page shell, not only the ProseMirror root). */
+function scrollElementIntoNearestScrollContainer(el: HTMLElement) {
+  const targetRect = el.getBoundingClientRect()
+  let parent: HTMLElement | null = el.parentElement
+  while (parent && parent !== document.documentElement) {
+    const st = getComputedStyle(parent)
+    const yScroll =
+      (st.overflowY === 'auto' || st.overflowY === 'scroll') &&
+      parent.scrollHeight > parent.clientHeight + 1
+    if (yScroll) {
+      const prect = parent.getBoundingClientRect()
+      const targetMid = targetRect.top + targetRect.height / 2
+      const visibleMid = prect.top + parent.clientHeight / 2
+      parent.scrollBy({ top: targetMid - visibleMid, behavior: 'smooth' })
+      return
+    }
+    parent = parent.parentElement
+  }
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+function resolveHeadingDomForScroll(view: EditorView, posBeforeHeading: number): HTMLElement | null {
+  const directRaw = view.nodeDOM(posBeforeHeading) as unknown as globalThis.Node | null
+  let el: HTMLElement | null = null
+  if (directRaw) {
+    el =
+      directRaw instanceof HTMLElement
+        ? directRaw
+        : directRaw.parentElement instanceof HTMLElement
+          ? directRaw.parentElement
+          : null
+  }
+  if (!el) {
+    try {
+      const d = view.domAtPos(posBeforeHeading + 1)
+      const domN = d.node as globalThis.Node
+      el =
+        domN instanceof HTMLElement
+          ? domN
+          : domN.parentElement instanceof HTMLElement
+            ? domN.parentElement
+            : null
+    } catch {
+      return null
+    }
+  }
+  if (!(el instanceof HTMLElement)) return null
+  const h = el.closest('h1, h2, h3, h4, h5, h6')
+  return h instanceof HTMLElement ? h : el
+}
+
 function selectionBubbleShouldShow({
   editor,
   view,
@@ -222,6 +273,8 @@ const GUTTER_MARGIN_CLEARANCE_PX = 8
 const GUTTER_MARGIN_LEFT_PX = -(GUTTER_MARGIN_STRIP_WIDTH_PX + GUTTER_MARGIN_CLEARANCE_PX)
 /** Parent `paddingLeft` must cover `abs(GUTTER_MARGIN_LEFT_PX)` so the strip is not clipped. */
 const EDITOR_GUTTER_RESERVE_PX = 104
+/** Extra gap between column inset gutter and text (beyond `GUTTER_MARGIN_CLEARANCE_PX`). */
+const COLUMN_GUTTER_EXTRA_CLEARANCE_PX = 4
 
 function isColumnStructureType(name: string): boolean {
   return name === 'column' || name === 'columnList'
@@ -282,7 +335,10 @@ function gutterMenuStateFromNodeBounds(
   const gutterLeft = isContainerChrome
     ? blockLeftRel + 10
     : inColumn
-      ? blockLeftRel - GUTTER_MARGIN_STRIP_WIDTH_PX - GUTTER_MARGIN_CLEARANCE_PX
+      ? blockLeftRel -
+        GUTTER_MARGIN_STRIP_WIDTH_PX -
+        GUTTER_MARGIN_CLEARANCE_PX -
+        COLUMN_GUTTER_EXTRA_CLEARANCE_PX
       : GUTTER_MARGIN_LEFT_PX
 
   return {
@@ -1928,12 +1984,13 @@ export default function LeafEditor({
         return true
       })
       if (foundPos === null) return
-      const inner = foundPos + 1
+      const posBeforeHeading = foundPos
+      const inner = posBeforeHeading + 1
       editor.chain().focus().setTextSelection(inner).run()
-      // Use DOM scrolling — ProseMirror's scrollIntoView doesn't reach the outer scroll container
-      const domAtPos = editor.view.domAtPos(foundPos)
-      const el = domAtPos.node instanceof HTMLElement ? domAtPos.node : domAtPos.node.parentElement
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      requestAnimationFrame(() => {
+        const headingEl = resolveHeadingDomForScroll(editor.view, posBeforeHeading)
+        if (headingEl) scrollElementIntoNearestScrollContainer(headingEl)
+      })
     }
     window.addEventListener('leaf-outline-jump', handler as EventListener)
     return () => window.removeEventListener('leaf-outline-jump', handler as EventListener)
