@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from starlette.responses import Response
 
 from app.config import ConfigSettings
+from app.runtime_config import inject_app_settings
 from app.database.operations.trash_operations import TrashOperations
 from app.dtos.trash_dtos import TrashListResponse, TrashPurgeAllResponse
 
@@ -12,7 +13,7 @@ router = APIRouter()
 
 @router.get("/trash", response_model=TrashListResponse)
 def list_trash(
-    cfg: ConfigSettings = Depends(ConfigSettings),
+    cfg: ConfigSettings = Depends(inject_app_settings),
     ops: TrashOperations = Depends(TrashOperations),
 ):
     """Items older than `TRASH_RETENTION_DAYS` are permanently deleted before listing."""

@@ -28,6 +28,7 @@ from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import sessionmaker, Session
 
 from app.config import ConfigSettings
+from app.runtime_config import get_app_settings, inject_app_settings
 
 
 def _configure_sqlite(engine):
@@ -46,7 +47,7 @@ def _configure_sqlite(engine):
 class MySQLDatabaseConnector:
     """Database connector — SQLite-backed despite the legacy class name."""
 
-    def __init__(self, config: ConfigSettings = Depends(ConfigSettings)):
+    def __init__(self, config: ConfigSettings = Depends(inject_app_settings)):
         self.config = config
         self.engine = self._get_engine()
         self.SessionLocal = sessionmaker(
@@ -112,5 +113,4 @@ class MySQLDatabaseConnector:
 
 @lru_cache()
 def get_db_connector() -> MySQLDatabaseConnector:
-    config = ConfigSettings()
-    return MySQLDatabaseConnector(config)
+    return MySQLDatabaseConnector(get_app_settings())

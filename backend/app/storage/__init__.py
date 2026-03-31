@@ -16,11 +16,11 @@ Debug:
 """
 
 from functools import lru_cache
-from app.config import ConfigSettings
+
+from app.runtime_config import get_app_settings
 from app.storage.file_storage import FileStorage
 
 
 @lru_cache()
 def get_file_storage() -> FileStorage:
-    config = ConfigSettings()
-    return FileStorage(config.DATA_DIR)
+    return FileStorage(get_app_settings().DATA_DIR)

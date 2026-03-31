@@ -89,6 +89,7 @@ class SyncConfig(BaseModel):
 
 class SyncConfigUpdate(BaseModel):
     mode: Optional[SyncMode] = None
+    data_dir: Optional[str] = None
     watch_enabled: Optional[bool] = None
     git_remote_url: Optional[str] = None
     git_auth_token: Optional[str] = None

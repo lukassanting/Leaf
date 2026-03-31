@@ -69,3 +69,34 @@ class ConfigSettings():
 
         # Trash: soft-deleted pages/databases are purged after this many days
         self.TRASH_RETENTION_DAYS = self.config("TRASH_RETENTION_DAYS", cast=int, default=7)
+
+
+def default_sqlite_url_for_data_dir(data_dir: str) -> str:
+    """SQLite URL for ``<data_dir>/.leaf.db`` (resolved paths)."""
+    p = Path(data_dir).expanduser().resolve()
+    return f"sqlite:///{(p / '.leaf.db').as_posix()}"
+
+
+def sqlite_url_database_path(url: str) -> Path | None:
+    """Return resolved path to the SQLite file, or None if not a sqlite URL."""
+    if not url.startswith("sqlite"):
+        return None
+    # Four-slash form is used for absolute paths on Unix; check it first.
+    if url.startswith("sqlite:////"):
+        return Path(url[len("sqlite:////") :]).resolve()
+    if url.startswith("sqlite:///"):
+        return Path(url[len("sqlite:///") :]).resolve()
+    return None
+
+
+def repoint_default_sqlite_if_needed(cfg: ConfigSettings, old_data_dir: str, new_data_dir: str) -> None:
+    """
+    If DATABASE_URL points at the default ``.leaf.db`` under old_data_dir,
+    repoint it to the default file under new_data_dir. Custom DATABASE_URL unchanged.
+    """
+    cur = sqlite_url_database_path(cfg.DATABASE_URL)
+    if cur is None:
+        return
+    old_default = (Path(old_data_dir).expanduser().resolve() / ".leaf.db").resolve()
+    if cur == old_default:
+        cfg.DATABASE_URL = default_sqlite_url_for_data_dir(new_data_dir)

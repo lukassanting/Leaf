@@ -15,6 +15,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from app.config import repoint_default_sqlite_if_needed
 from app.dtos.sync_dtos import (
     ConflictResolution,
     GitStatus,
@@ -121,17 +122,33 @@ async def get_sync_config(request: Request):
 @router.put("/config", response_model=SyncConfig)
 async def update_sync_config(body: SyncConfigUpdate, request: Request):
     """
-    Update sync config at runtime. Persists changes to .env in DATA_DIR.
-    Note: some changes (like SYNC_MODE) take full effect after restart.
+    Update sync config at runtime. Persists to ``DATA_DIR/.sync-config.json``
+    (and mirrors to the env bootstrap ``DATA_DIR`` when it differs).
+    Changing ``data_dir`` rebuilds the sync subsystem and, when using the default
+    SQLite layout, repoints ``DATABASE_URL`` to the new ``.leaf.db`` path.
     """
     sync = _get_sync_state(request)
     if sync is None:
         raise HTTPException(status_code=503, detail="Sync service not initialized")
 
     config = sync["config"]
+    data_dir_changed = False
 
     if body.mode is not None:
         config.SYNC_MODE = body.mode.value
+    if body.data_dir is not None:
+        raw = body.data_dir.strip()
+        if raw:
+            try:
+                new_dir = str(Path(raw).expanduser().resolve())
+            except OSError as exc:
+                raise HTTPException(status_code=400, detail=f"Invalid data directory: {exc}") from exc
+            old_resolved = str(Path(config.DATA_DIR).resolve())
+            if new_dir != old_resolved:
+                Path(new_dir).mkdir(parents=True, exist_ok=True)
+                repoint_default_sqlite_if_needed(config, config.DATA_DIR, new_dir)
+                config.DATA_DIR = new_dir
+                data_dir_changed = True
     if body.watch_enabled is not None:
         config.SYNC_WATCH_ENABLED = body.watch_enabled
     if body.git_remote_url is not None:
@@ -144,25 +161,27 @@ async def update_sync_config(body: SyncConfigUpdate, request: Request):
     if body.git_sync_interval is not None:
         config.GIT_SYNC_INTERVAL = body.git_sync_interval
 
-    # Persist to a sync-specific config file so it survives restarts
     _persist_sync_config(config)
 
-    # Start/stop watcher based on new config
-    watcher = sync.get("watcher")
-    if config.SYNC_MODE == "off" or not config.SYNC_WATCH_ENABLED:
-        if watcher and watcher.is_running:
-            watcher.stop()
-    else:
-        if watcher and not watcher.is_running:
-            watcher.start()
+    if data_dir_changed:
+        from app.sync.app_state import rebuild_sync_subsystem
 
-    # Update git sync config
-    git_sync = sync.get("git_sync")
-    if git_sync:
-        git_sync.update_config(
-            remote_url=config.GIT_REMOTE_URL,
-            auth_token=config.GIT_AUTH_TOKEN if hasattr(config, 'GIT_AUTH_TOKEN') else "",
-        )
+        await rebuild_sync_subsystem(request.app, config)
+    else:
+        watcher = sync.get("watcher")
+        if config.SYNC_MODE == "off" or not config.SYNC_WATCH_ENABLED:
+            if watcher and watcher.is_running:
+                watcher.stop()
+        else:
+            if watcher and not watcher.is_running:
+                watcher.start()
+
+        git_sync = sync.get("git_sync")
+        if git_sync:
+            git_sync.update_config(
+                remote_url=config.GIT_REMOTE_URL,
+                auth_token=config.GIT_AUTH_TOKEN if hasattr(config, "GIT_AUTH_TOKEN") else "",
+            )
 
     return SyncConfig(
         mode=SyncMode(config.SYNC_MODE),
@@ -332,14 +351,25 @@ def _extract_original_stem(conflict_path: Path) -> str | None:
 
 
 def _persist_sync_config(config) -> None:
-    """Write sync-specific config to DATA_DIR/.sync-config.json."""
+    """Write sync-specific config to effective ``DATA_DIR/.sync-config.json`` and mirror to bootstrap dir if needed."""
     import json
-    config_path = Path(config.DATA_DIR) / ".sync-config.json"
+
+    from app.runtime_config import get_sync_config_bootstrap_dir
+
     data = {
+        "DATA_DIR": config.DATA_DIR,
         "SYNC_MODE": config.SYNC_MODE,
         "SYNC_WATCH_ENABLED": config.SYNC_WATCH_ENABLED,
         "GIT_REMOTE_URL": config.GIT_REMOTE_URL,
         "GIT_AUTH_TOKEN": config.GIT_AUTH_TOKEN,
         "GIT_SYNC_INTERVAL": config.GIT_SYNC_INTERVAL,
     }
-    config_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    text = json.dumps(data, indent=2)
+    eff = Path(config.DATA_DIR) / ".sync-config.json"
+    eff.parent.mkdir(parents=True, exist_ok=True)
+    eff.write_text(text, encoding="utf-8")
+    boot = get_sync_config_bootstrap_dir()
+    if boot and Path(boot).resolve() != Path(config.DATA_DIR).resolve():
+        bp = Path(boot) / ".sync-config.json"
+        bp.parent.mkdir(parents=True, exist_ok=True)
+        bp.write_text(text, encoding="utf-8")

@@ -78,6 +78,7 @@ export default function SettingsPage() {
   const [draftGitUrl, setDraftGitUrl] = useState('')
   const [draftGitToken, setDraftGitToken] = useState('')
   const [draftInterval, setDraftInterval] = useState(300)
+  const [draftDataDir, setDraftDataDir] = useState('')
   const [, setDraftInitialized] = useState(false)
 
   const refresh = useCallback(async () => {
@@ -98,6 +99,7 @@ export default function SettingsPage() {
           setDraftWatch(conf.watch_enabled)
           setDraftGitUrl(conf.git_remote_url ?? '')
           setDraftInterval(conf.git_sync_interval)
+          setDraftDataDir(conf.data_dir ?? '')
         }
         return true
       })
@@ -133,13 +135,15 @@ export default function SettingsPage() {
     try {
       const updated = await syncApi.updateConfig({
         mode: draftMode,
+        data_dir: draftDataDir.trim() || undefined,
         watch_enabled: draftWatch,
         git_remote_url: draftGitUrl || undefined,
         git_auth_token: draftGitToken || undefined,
         git_sync_interval: draftInterval,
       })
       setConfig(updated)
-      // Re-sync draft from server on next poll so it reflects saved state
+      setDraftDataDir(updated.data_dir ?? '')
+      // Re-sync other draft fields from server on next poll
       setDraftInitialized(false)
     } catch {
       // handle error
@@ -438,20 +442,28 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      {/* Data directory (read-only) */}
+      {/* Data directory — persisted with Save; used for folder sync and file-backed pages */}
       {config && (
         <div className="mt-4">
           <Label>Data Directory</Label>
-          <div
-            className="rounded-md px-3 py-2 text-xs font-mono"
+          <input
+            type="text"
+            value={draftDataDir}
+            onChange={(e) => { setDraftDataDir(e.target.value) }}
+            placeholder="Path to workspace data (pages, .leaf.db, sync config)"
+            className="w-full rounded-md px-3 py-2 text-xs font-mono outline-none"
             style={{
               background: 'var(--leaf-bg-elevated)',
-              color: 'var(--leaf-text-muted)',
+              color: 'var(--leaf-text-body)',
               border: '1px solid var(--leaf-border-soft)',
             }}
-          >
-            {config.data_dir}
-          </div>
+            spellCheck={false}
+            autoComplete="off"
+          />
+          <p className="mt-1 text-[11px] leading-relaxed" style={{ color: 'var(--leaf-text-muted)' }}>
+            Use an absolute path to a folder (for example a cloud-synced directory). Click Save to apply;
+            if you use the default SQLite database in that folder, it moves with this path.
+          </p>
         </div>
       )}
 

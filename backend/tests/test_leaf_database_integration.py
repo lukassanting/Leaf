@@ -1,11 +1,12 @@
 import asyncio
 from pathlib import Path
-from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
 
-from app.database.connectors.mysql import MySQLDatabaseConnector
+from app.config import ConfigSettings
+from app.database.connectors.mysql import MySQLDatabaseConnector, get_db_connector
+from app.runtime_config import set_app_settings
 from app.database.models.mysql_models import DatabaseRowModel, LeafModel
 from app.database.operations.database_operations import DatabaseOperations
 from app.database.operations.leaf_operations import LeafOperations
@@ -26,10 +27,12 @@ def operations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     db_path = data_dir / ".leaf.db"
     monkeypatch.setenv("DATA_DIR", str(data_dir))
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
+    get_db_connector.cache_clear()
     get_file_storage.cache_clear()
 
-    config = SimpleNamespace(DATA_DIR=str(data_dir), DATABASE_URL=f"sqlite:///{db_path.as_posix()}")
-    connector = MySQLDatabaseConnector(config)
+    cfg = ConfigSettings()
+    set_app_settings(cfg)
+    connector = MySQLDatabaseConnector(cfg)
 
     yield {
         "connector": connector,
@@ -39,6 +42,7 @@ def operations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     }
 
     connector.engine.dispose()
+    get_db_connector.cache_clear()
     get_file_storage.cache_clear()
 
 

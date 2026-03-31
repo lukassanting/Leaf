@@ -173,13 +173,6 @@ class FileToDbSyncer:
 
         connector = get_db_connector()
 
-        # Temporarily disable FK checks — the file data is internally
-        # consistent but the circular FK chain (leaves ↔ databases ↔
-        # database_rows) makes insertion-order impossible to guarantee.
-        with connector.get_db_session() as session:
-            session.execute(text("PRAGMA foreign_keys = OFF"))
-            session.commit()
-
         try:
             # Sync database meta.json files (needs leaves for parent_leaf_id FK)
             self._sync_database_metas()
@@ -201,6 +194,9 @@ class FileToDbSyncer:
                         database_id = parsed.get("database_id")
 
                     with connector.get_db_session() as session:
+                        # PRAGMA is connection-scoped — must be set per session.
+                        session.execute(text("PRAGMA foreign_keys = OFF"))
+
                         db_leaf = session.query(LeafModel).filter(
                             LeafModel.id == leaf_id
                         ).first()
@@ -238,12 +234,6 @@ class FileToDbSyncer:
                             stats["deleted"] += 1
                     if stats["deleted"]:
                         session.commit()
-        finally:
-            # Re-enable FK checks
-            with connector.get_db_session() as session:
-                session.execute(text("PRAGMA foreign_keys = ON"))
-                session.commit()
-
         logger.info(
             "Full sync complete: created=%d updated=%d skipped=%d deleted=%d errors=%d",
             stats["created"], stats["updated"], stats["skipped"],
@@ -266,6 +256,10 @@ class FileToDbSyncer:
                 db_id = meta.get("id", db_dir.name)
 
                 with connector.get_db_session() as session:
+                    # PRAGMA is connection-scoped — disable FK checks so
+                    # parent_leaf_id can reference a leaf not yet synced.
+                    session.execute(text("PRAGMA foreign_keys = OFF"))
+
                     db_model = session.query(DatabaseModel).filter(
                         DatabaseModel.id == db_id
                     ).first()
