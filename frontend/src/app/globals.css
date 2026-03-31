@@ -1,6 +1,18 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
+/* TipTap BubbleMenu: default Tippy uses dark #333 box + arrow — strip it for the selection bubble. */
+.tippy-box[data-theme~="leaf-selection-bubble"] {
+  background-color: transparent !important;
+  color: inherit;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none;
+}
+.tippy-box[data-theme~="leaf-selection-bubble"] .tippy-content {
+  padding: 0 !important;
+}
+
 /* ─── Design tokens ──────────────────────────────────────────────────────────
    See LEAF_DESIGN_GUIDE.md for the full token reference.
    Palette: emerald green (#10b981) + zinc grays.
@@ -1354,28 +1366,57 @@ html[data-leaf-design="campaign"] .leaf-math-render .katex {
   background: var(--color-primary-dk);
 }
 
-/* External hyperlinks (slash “Link to URL”, bubble menu, autolink) — must read as clickable */
+/* Inline links (TipTap `Link`) — green emphasis; external / new-tab + legacy `.leaf-external-link` show icon */
+.ProseMirror a.leaf-doc-link,
 .ProseMirror a.leaf-external-link {
-  color: var(--leaf-external-link);
+  color: var(--leaf-green);
+  font-weight: 600;
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
-  text-decoration-color: color-mix(in srgb, var(--leaf-external-link) 45%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--leaf-green) 50%, transparent);
   cursor: pointer;
-  transition: color 0.12s ease, text-decoration-color 0.12s ease;
+  transition: color 0.12s ease, text-decoration-color 0.12s ease, opacity 0.12s ease;
 }
+.ProseMirror a.leaf-doc-link:hover,
 .ProseMirror a.leaf-external-link:hover {
-  color: var(--leaf-external-link-hover);
-  text-decoration-color: color-mix(in srgb, var(--leaf-external-link-hover) 70%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--leaf-green) 75%, transparent);
+  opacity: 0.94;
 }
+.ProseMirror a.leaf-doc-link:active,
 .ProseMirror a.leaf-external-link:active {
-  color: var(--leaf-external-link-active);
-  text-decoration-color: var(--leaf-external-link-active);
+  opacity: 0.88;
 }
+.ProseMirror a.leaf-doc-link:focus-visible,
 .ProseMirror a.leaf-external-link:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--leaf-external-link) 40%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--leaf-green) 35%, transparent);
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+.ProseMirror a.leaf-doc-link--external::after,
+.ProseMirror a.leaf-external-link[target="_blank"]::after {
+  content: '';
+  display: inline-block;
+  width: 0.68em;
+  height: 0.68em;
+  margin-left: 0.18em;
+  margin-bottom: 0.06em;
+  vertical-align: middle;
+  background-color: currentColor;
+  opacity: 0.82;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 6.5V10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3.5'/%3E%3Cpath d='M6 1h5v5M10 2 5.5 6.5'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 6.5V10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3.5'/%3E%3Cpath d='M6 1h5v5M10 2 5.5 6.5'/%3E%3C/svg%3E");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.leaf-link-panel-row:hover {
+  background: var(--leaf-bg-hover);
 }
 
 /* ─── Block gutter ────────────────────────────────────────────────────

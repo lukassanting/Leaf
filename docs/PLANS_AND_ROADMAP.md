@@ -37,7 +37,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Schema-first `LeafDocument` content model with HTML migration support.
 - [x] Stable TipTap editor rebuild with `gapcursor`/`dropcursor` disabled.
 - [x] Slash commands and block insertion menu for headings, lists, todos, quotes, sub-pages, databases, column layouts, **markdown tables** (GFM pipe tables in Markdown mode; TipTap `Table` with resizable columns in rich mode), and **callouts** (classic colored panels + campaign-themed variants). Gutter **+** uses the same grouped list as `/` slash; menus flip upward near the bottom of the viewport.
-- [x] Text alignment (paragraph, heading, blockquote) and palette text colours (`TextAlign`, `TextStyle`, `Color`); selection bubble + slash **Style** group (no static toolbar).
+- [x] Text alignment (paragraph, heading, blockquote) and palette text colours (`TextAlign`, `TextStyle`, `Color`); selection bubble (alignment, colours, link panel with page search / web URL / bookmark card / remove link) + floating link panel on **Ctrl+K** when there is no text selection; inline links styled in prose (`.leaf-doc-link`); slash **Style** group (no static toolbar).
 - [x] Inline **story flag** atoms (variant + editable label; slash menu group **Flags**; distinct from page **tags** metadata) and **stat strip** block (2–6 kicker/value pairs; gutter grip menu: delete, colour, column count); presets in `lib/editorRichText.ts`.
 - [x] **Toggle cards**: eyebrow/title/subtitle are small TipTap fields with a **filtered slash menu** (text marks, alignment, colours, **Flags**); values persist as string/HTML node attrs. Collapsible body is normal editor content — **full** slash commands (headings, lists, embeds, flags, etc.) work inside the card body.
 - [x] Rich/Markdown mode switching plus Markdown import/export.
@@ -172,7 +172,7 @@ These rows are a **sequencing lens**, not a promise of order: later phases can s
 | 8.1 | Page templates with key-bindable shortcuts | Faster authoring; pairs with slash/gutter mental model |
 | 8.2 | User-defined design profiles: fonts, colours, styles (beyond classic / campaign presets) | README roadmap; depends on stable token surface in `globals.css` |
 | 8.3 | Icons and visual identity: better defaults, picker depth, consistency across shell + DB | Surface polish across dense UI |
-| 8.4 | Text highlighting / highlighter UX and selection bubble design pass | Selection bubble exists — elevate clarity, contrast, and discoverability |
+| 8.4 | Dedicated highlighter mark (background highlight) vs text colour | Selection bubble + link UX refreshed; optional separate highlight tool remains |
 
 ### Phase 9 — Productivity and lifestyle
 
@@ -309,4 +309,4 @@ That means platform growth should focus first on:
 
 ---
 
-*Last updated: 2026-03-30. §4 phase tables reorganized (7.x numeric order, new 4.4–11.x rows, README cross-link); §5 AI + native questions added.*
+*Last updated: 2026-03-31. Selection bubble link panel, floating link (Ctrl+K), link card edit dialog, prose link styling.*

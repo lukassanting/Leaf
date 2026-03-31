@@ -181,7 +181,10 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | `src/components/editor/slashMatchUtils.ts` | `computeSlashMatch`, `computeWikilinkMatch` for main editor and nested fields |
 | `src/components/editor/storyTagExtension.tsx` | `StoryTag` atom + React node view (story flags; slash labels are colour names from `STORY_TAG_PRESETS` in `editorRichText.ts`) |
 | `src/components/SlashCommands.tsx` | Slash command definitions; `SlashMenuPanel` + `SlashCommandList` (shared with block gutter **+** menu); `computeFixedMenuTopLeft` flips the panel upward in the lower viewport third |
-| `src/components/editor/EditorSelectionBubble.tsx` | Selection bubble: alignment, clear colour, swatches (TipTap `BubbleMenu`; no static toolbar) |
+| `src/components/editor/EditorSelectionBubble.tsx` | Selection bubble (TipTap `BubbleMenu`): alignment, clear colour, swatches, `EditorLinkPanel`; `EditorFloatingLinkPanel` for **Ctrl+K** when there is no qualifying text selection |
+| `src/components/editor/EditorLinkPanel.tsx` | Shared link UI: search / paste, web link, bookmark card, remove link, workspace pages (`rankWikilinkItems`) |
+| `src/components/editor/LinkCardView.tsx` | TipTap `linkCard` node view: bookmark layout (copy + image column); edit via `LinkCardEditDialog` |
+| `src/components/editor/LinkCardEditDialog.tsx` | Modal form for bookmark URL, title, description, image (slash **Bookmark card** + in-card edit) |
 | `src/lib/editorRichText.ts` | Story-flag variants/presets (slash: “Flag · …”), text-colour swatches, slash action helpers |
 | `src/components/StatusBar.tsx` | Footer: save state, word count, mode label, sync status + click-to-sync |
 | `src/components/TopStrip.tsx` | Top bar, breadcrumbs, Settings (⋯) menu with appearance / design theme |

@@ -40,7 +40,7 @@ make frontend           # Terminal 2 — frontend on :3000
 ## Features
 
 - **Pages & tree:** Nested hierarchy, sidebar with search, drag-and-drop reorder, inline rename/delete, child-page creation.
-- **Editor:** TipTap rich text. Slash `/` and gutter `+` menu for blocks (no top toolbar). Selection bubble for text colour and alignment. Callouts, stat strips, story flags, toggle cards, column layouts (2–5), page/database embeds, Markdown tables (GFM), optional Markdown source mode, import/export.
+- **Editor:** TipTap rich text. Slash `/` and gutter `+` menu for blocks (no top toolbar). Selection bubble for alignment, text colour, clear colour, and link panel (search pages, web link, bookmark card, remove link). **Ctrl+K** / **⌘K** opens the link panel when there is no text selection. Callouts, stat strips, story flags, toggle cards, column layouts (2–5), page/database embeds, Markdown tables (GFM), optional Markdown source mode, import/export.
 - **Autosave:** Debounced PATCH (~800 ms idle); Ctrl+S / Cmd+S to save immediately.
 - **Databases:** Collections where each row is a real page. Views: Table, Board, Gallery, List. Schema columns (text, number, date, tags, select). Resizable column headers. Standalone and inline (embedded) modes.
 - **Trash:** Deleted pages and databases kept for 7 days (configurable via `TRASH_RETENTION_DAYS`), then permanently purged. Restore from **Settings → Trash**.

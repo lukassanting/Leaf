@@ -71,7 +71,8 @@ import TableRow from '@tiptap/extension-table-row'
 import { LeafTableView } from '@/components/editor/LeafTableView'
 import { leavesApi, type Database, type LeafTreeItem, type LeafDocument } from '@/lib/api'
 import { DatabaseIcon, LeafIcon } from '@/components/Icons'
-import { EditorSelectionBubble } from './EditorSelectionBubble'
+import { EditorSelectionBubble, EditorFloatingLinkPanel } from './EditorSelectionBubble'
+import { LinkCardEditDialog } from '@/components/editor/LinkCardEditDialog'
 import { ImageInsertDialog } from '@/components/editor/ImageInsertDialog'
 import { leafCodeLowlight } from '@/components/editor/codeLowlight'
 import { LeafImage, LinkCard } from '@/components/editor/editorBlocks'
@@ -93,7 +94,12 @@ import {
   SlashMenuPanel,
 } from '@/components/SlashCommands'
 import { StoryTag } from '@/components/editor/storyTagExtension'
-import { computeSlashMatch, computeWikilinkMatch, type EditorSlashMatch } from '@/components/editor/slashMatchUtils'
+import {
+  computeSlashMatch,
+  computeWikilinkMatch,
+  rankWikilinkItems,
+  type EditorSlashMatch,
+} from '@/components/editor/slashMatchUtils'
 
 import { Callout, CALLOUT_VARIANTS, CALLOUT_VARIANT_META, type CalloutVariant } from '@/components/editor/calloutExtension'
 
@@ -170,8 +176,24 @@ function selectionBubbleShouldShow({
   if (selection instanceof NodeSelection) return false
   const isEmptyTextBlock = !doc.textBetween(from, to).length && isTextSelection(selection)
   const isChildOfMenu = element.contains(document.activeElement)
-  const hasEditorFocus = view.hasFocus() || isChildOfMenu
+  const focusInSelectionBubble =
+    typeof document !== 'undefined' &&
+    document.activeElement instanceof HTMLElement &&
+    document.activeElement.closest('.leaf-selection-bubble-shell') !== null
+  const hasEditorFocus = view.hasFocus() || isChildOfMenu || focusInSelectionBubble
   if (!hasEditorFocus || empty || isEmptyTextBlock) return false
+  if (editor.isActive('code') || editor.isActive('codeBlock')) return false
+  return true
+}
+
+/** Non-DOM check for Mod-k: focus search in bubble vs open floating panel. */
+function editorQualifiesForSelectionBubble(editor: import('@tiptap/core').Editor): boolean {
+  if (!editor.isEditable) return false
+  const { doc, selection } = editor.state
+  if (selection instanceof NodeSelection) return false
+  const { from, to, empty } = selection
+  const isEmptyTextBlock = !doc.textBetween(from, to).length && isTextSelection(selection)
+  if (empty || isEmptyTextBlock) return false
   if (editor.isActive('code') || editor.isActive('codeBlock')) return false
   return true
 }
@@ -472,31 +494,6 @@ function createTempId() {
   return `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-
-function rankWikilinkItems(items: LeafTreeItem[], query: string): LeafTreeItem[] {
-  const normalizedQuery = query.trim().toLowerCase()
-  if (!normalizedQuery) {
-    return items
-      .slice()
-      .sort((a, b) => a.title.localeCompare(b.title))
-      .slice(0, 12)
-  }
-
-  return items
-    .map((item) => {
-      const title = item.title.toLowerCase()
-      const path = item.path.toLowerCase()
-      const exact = title === normalizedQuery || path === normalizedQuery
-      const starts = title.startsWith(normalizedQuery) || path.startsWith(normalizedQuery)
-      const includes = title.includes(normalizedQuery) || path.includes(normalizedQuery)
-      const score = exact ? 0 : starts ? 1 : includes ? 2 : 3
-      return { item, score }
-    })
-    .filter((entry) => entry.score < 3)
-    .sort((a, b) => a.score - b.score || a.item.title.localeCompare(b.item.title))
-    .map((entry) => entry.item)
-    .slice(0, 12)
-}
 
 function EmbeddedPageCard({
   node,
@@ -1519,179 +1516,6 @@ type LinkPopoverState = {
   rect: SlashMenuState['rect']
 }
 
-function LinkPopover({
-  state,
-  editor,
-  leaves,
-  onClose,
-  onBookmark,
-}: {
-  state: LinkPopoverState
-  editor: NonNullable<ReturnType<typeof useEditor>>
-  leaves: LeafTreeItem[]
-  onClose: () => void
-  onBookmark: (url: string) => void
-}) {
-  const [query, setQuery] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    // Small delay so the BubbleMenu doesn't steal focus back
-    const t = setTimeout(() => inputRef.current?.focus(), 50)
-    return () => clearTimeout(t)
-  }, [])
-
-  const filteredPages = rankWikilinkItems(leaves, query).slice(0, 6)
-
-  const applyWebLink = (url: string) => {
-    const u = url.trim()
-    if (!u) return
-    const href = u.startsWith('http://') || u.startsWith('https://') || u.startsWith('/') ? u : `https://${u}`
-    editor.chain().focus().extendMarkRange('link').setLink({ href }).run()
-    onClose()
-  }
-
-  const applyPageLink = (item: LeafTreeItem) => {
-    editor.chain().focus().extendMarkRange('link').setLink({ href: `/editor/${item.id}` }).run()
-    onClose()
-  }
-
-  const { rect } = state
-  const spaceBelow = window.innerHeight - rect.bottom
-  const top = spaceBelow < 320 ? rect.top - 8 - Math.min(320, window.innerHeight * 0.4) : rect.bottom + 8
-  const left = Math.min(rect.left, window.innerWidth - 320)
-
-  return (
-    <div
-      className="fixed z-[9999] overflow-hidden rounded-xl border"
-      style={{
-        top,
-        left,
-        width: 308,
-        background: 'var(--leaf-bg-elevated)',
-        borderColor: 'var(--leaf-border-strong)',
-        boxShadow: '0 12px 32px color-mix(in srgb, var(--foreground) 14%, transparent)',
-      }}
-      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation() }}
-    >
-      {/* Search / paste input */}
-      <div className="px-3 py-2.5">
-        <input
-          ref={inputRef}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search pages or paste link..."
-          className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--leaf-text-muted)]"
-          style={{ color: 'var(--leaf-text-title)' }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') { e.preventDefault(); onClose() }
-            if (e.key === 'Enter') { e.preventDefault(); if (query.trim()) applyWebLink(query) }
-          }}
-        />
-      </div>
-
-      <div className="border-t" style={{ borderColor: 'var(--leaf-border-soft)' }} />
-
-      {/* Link Options section */}
-      <div className="px-3 pt-2.5 pb-1">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.09em]" style={{ color: 'var(--leaf-text-muted)' }}>
-          Link Options
-        </span>
-      </div>
-
-      {/* Link to Web Page */}
-      <button
-        type="button"
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100"
-        style={{ background: 'transparent' }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--leaf-bg-hover)' }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-        onMouseDown={(e) => {
-          e.preventDefault()
-          applyWebLink(query || 'https://')
-        }}
-      >
-        <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: 'var(--leaf-bg-tag)', color: 'var(--leaf-text-muted)' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6.5 9.5a3.536 3.536 0 0 0 5 0l2-2a3.536 3.536 0 0 0-5-5l-1 1" />
-            <path d="M9.5 6.5a3.536 3.536 0 0 0-5 0l-2 2a3.536 3.536 0 0 0 5 5l1-1" />
-          </svg>
-        </span>
-        <span className="flex-1 text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>Link to Web Page</span>
-        <span className="text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>Cmd K</span>
-      </button>
-
-      {/* Create Bookmark */}
-      <button
-        type="button"
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100"
-        style={{ background: 'transparent' }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--leaf-bg-hover)' }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-        onMouseDown={(e) => {
-          e.preventDefault()
-          onClose()
-          onBookmark(query.trim())
-        }}
-      >
-        <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: 'var(--leaf-bg-tag)', color: 'var(--leaf-text-muted)' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 2.5A1.5 1.5 0 0 1 4.5 1h7A1.5 1.5 0 0 1 13 2.5v12l-5-3-5 3z" />
-          </svg>
-        </span>
-        <span className="flex-1 text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>Create Bookmark</span>
-        <span className="text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>Card</span>
-      </button>
-
-      {/* Pages in Workspace */}
-      {filteredPages.length > 0 && (
-        <>
-          <div className="mx-0 mt-1 border-t" style={{ borderColor: 'var(--leaf-border-soft)' }} />
-          <div className="px-3 pt-2.5 pb-1">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.09em]" style={{ color: 'var(--leaf-text-muted)' }}>
-              Pages in Workspace
-            </span>
-          </div>
-          {filteredPages.map((item) => {
-            const isDb = item.kind === 'database'
-            return (
-              <button
-                key={item.id}
-                type="button"
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100"
-                style={{ background: 'transparent' }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--leaf-bg-hover)' }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  applyPageLink(item)
-                }}
-              >
-                <span
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded"
-                  style={{ background: 'var(--leaf-bg-tag)', color: 'var(--leaf-green)' }}
-                >
-                  {isDb ? <DatabaseIcon size={11} /> : <LeafIcon size={12} />}
-                </span>
-                <span className="truncate text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>
-                  {item.title || 'Untitled'}
-                </span>
-              </button>
-            )
-          })}
-          <div className="pb-1" />
-        </>
-      )}
-    </div>
-  )
-}
-
 export default function LeafEditor({
   content,
   leafId,
@@ -1711,6 +1535,10 @@ export default function LeafEditor({
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null)
   const [wikilinkMenu, setWikilinkMenu] = useState<WikilinkMenuState | null>(null)
   const [linkPopover, setLinkPopover] = useState<LinkPopoverState | null>(null)
+  const [linkCardSlashOpen, setLinkCardSlashOpen] = useState(false)
+  const linkCardSlashPosRef = useRef<number | null>(null)
+  const [linkableLeavesEpoch, bumpLinkableLeaves] = useState(0)
+  const selectionLinkInputRef = useRef<HTMLInputElement | null>(null)
   const openLinkPopoverRef = useRef<() => void>(() => {})
   const [columnDropZone, setColumnDropZone] = useState<{ top: number; left: number; width: number; height: number; side: 'left' | 'right' } | null>(null)
   const columnDropRef = useRef<{ targetNodePos: number; targetNodeEnd: number; side: 'left' | 'right' } | null>(null)
@@ -1832,15 +1660,25 @@ export default function LeafEditor({
           },
         }
       },
+      renderHTML({ HTMLAttributes }) {
+        const href = String(HTMLAttributes.href ?? '')
+        const external = /^https?:\/\//i.test(href) || /^mailto:/i.test(href) || /^tel:/i.test(href)
+        const attrs: Record<string, string | undefined> = { ...HTMLAttributes }
+        if (external) {
+          attrs.target = '_blank'
+          attrs.rel = 'noopener noreferrer'
+        } else {
+          delete attrs.target
+          delete attrs.rel
+        }
+        const cls = external ? 'leaf-doc-link leaf-doc-link--external' : 'leaf-doc-link leaf-doc-link--internal'
+        return ['a', mergeAttributes(this.options.HTMLAttributes, attrs, { class: cls }), 0]
+      },
     }).configure({
       openOnClick: true,
       autolink: true,
       linkOnPaste: true,
-      HTMLAttributes: {
-        class: 'leaf-external-link',
-        rel: 'noopener noreferrer',
-        target: '_blank',
-      },
+      HTMLAttributes: {},
     }),
     LeafImage,
     LinkCard,
@@ -2204,6 +2042,17 @@ export default function LeafEditor({
     onUpdate: handleEditorUpdate,
   }, [extensions, editorProps, handleEditorUpdate])
 
+  const insertLinkBookmarkAtSelection = useCallback((bookmarkUrl: string) => {
+    if (!editor) return
+    const insertPos = editor.state.selection.from
+    const cardUrl = bookmarkUrl || 'https://'
+    const cardTitle = cardUrl
+    editor.chain().focus().setTextSelection(insertPos).insertContent([
+      { type: 'linkCard', attrs: { url: cardUrl, title: cardTitle, description: '', image: '' } },
+      { type: 'paragraph' },
+    ]).run()
+  }, [editor])
+
   useEffect(() => {
     if (!editor) return
     const handler = (event: Event) => {
@@ -2257,10 +2106,12 @@ export default function LeafEditor({
         order: 0,
       }))
       linkableLeavesRef.current = [...pages, ...dbItems]
+      bumpLinkableLeaves((n) => n + 1)
       if (editor) updateWikilinkMenu(editor)
     }).catch(() => {
       if (cancelled) return
       linkableLeavesRef.current = []
+      bumpLinkableLeaves((n) => n + 1)
     })
 
     return () => {
@@ -2410,6 +2261,7 @@ export default function LeafEditor({
         tags: leaf.tags || [],
         order: 0,
       }]
+      bumpLinkableLeaves((n) => n + 1)
       window.dispatchEvent(new CustomEvent('leaf-tree-changed'))
     } catch {
       // silently fail — the user can retry
@@ -2528,23 +2380,8 @@ export default function LeafEditor({
       }
       case 'link_card': {
         if (typeof window === 'undefined') return
-        const cardUrl = window.prompt('URL', 'https://')
-        if (!cardUrl?.trim()) return
-        const cardTitle = window.prompt('Title', cardUrl.trim()) || cardUrl.trim()
-        const cardDesc = window.prompt('Description (optional)', '') ?? ''
-        const cardImg = window.prompt('Image URL (optional)', '') ?? ''
-        editor.chain().focus().setTextSelection(selectionPos).insertContent([
-          {
-            type: 'linkCard',
-            attrs: {
-              url: cardUrl.trim(),
-              title: cardTitle.trim(),
-              description: cardDesc.trim(),
-              image: cardImg.trim(),
-            },
-          },
-          { type: 'paragraph' },
-        ]).run()
+        linkCardSlashPosRef.current = selectionPos
+        setLinkCardSlashOpen(true)
         return
       }
       case 'subpage':
@@ -2689,6 +2526,10 @@ export default function LeafEditor({
       void createAndInsertWikilink(title)
     }
     openLinkPopoverRef.current = () => {
+      if (editorQualifiesForSelectionBubble(editor)) {
+        window.setTimeout(() => selectionLinkInputRef.current?.focus(), 60)
+        return
+      }
       const { from } = editor.state.selection
       const coords = editor.view.coordsAtPos(from)
       const rect = { top: coords.top, bottom: coords.bottom, left: coords.left, right: coords.right }
@@ -2738,6 +2579,8 @@ export default function LeafEditor({
       setSlashMenu(null)
       setWikilinkMenu(null)
       setLinkPopover(null)
+      setLinkCardSlashOpen(false)
+      linkCardSlashPosRef.current = null
     }
   }, [mode])
 
@@ -3094,13 +2937,37 @@ export default function LeafEditor({
                   placement: 'top',
                   zIndex: 10050,
                   appendTo: () => document.body,
-                  popperOptions: { strategy: 'fixed' },
+                  theme: 'leaf-selection-bubble',
+                  arrow: false,
+                  moveTransition: 'transform 0.15s ease-out',
+                  popperOptions: {
+                    strategy: 'fixed',
+                    modifiers: [
+                      {
+                        name: 'flip',
+                        options: {
+                          fallbackPlacements: ['bottom', 'top', 'bottom-start', 'top-start', 'bottom-end', 'top-end'],
+                        },
+                      },
+                      {
+                        name: 'preventOverflow',
+                        options: {
+                          rootBoundary: 'viewport',
+                          altBoundary: true,
+                          padding: 12,
+                        },
+                      },
+                    ],
+                  },
                 }}
                 shouldShow={selectionBubbleShouldShow}
               >
                 <EditorSelectionBubble
+                  key={linkableLeavesEpoch}
                   editor={editor}
-                  onLinkClick={() => openLinkPopoverRef.current()}
+                  leaves={linkableLeavesRef.current}
+                  onBookmark={insertLinkBookmarkAtSelection}
+                  linkSearchInputRef={selectionLinkInputRef}
                 />
               </BubbleMenu>
             ) : null}
@@ -3309,25 +3176,43 @@ export default function LeafEditor({
       )}
 
       {linkPopover && editor && (
-        <LinkPopover
-          state={linkPopover}
+        <EditorFloatingLinkPanel
+          rect={linkPopover.rect}
           editor={editor}
           leaves={linkableLeavesRef.current}
           onClose={() => setLinkPopover(null)}
-          onBookmark={(url) => {
-            const insertPos = editor.state.selection.from
-            const cardUrl = url || 'https://'
-            const cardTitle = cardUrl
-            editor.chain().focus().setTextSelection(insertPos).insertContent([
-              {
-                type: 'linkCard',
-                attrs: { url: cardUrl, title: cardTitle, description: '', image: '' },
-              },
-              { type: 'paragraph' },
-            ]).run()
-          }}
+          onBookmark={insertLinkBookmarkAtSelection}
         />
       )}
+
+      <LinkCardEditDialog
+        open={linkCardSlashOpen}
+        heading="New bookmark"
+        initial={{ url: 'https://', title: '', description: '', image: '' }}
+        onClose={() => {
+          setLinkCardSlashOpen(false)
+          linkCardSlashPosRef.current = null
+        }}
+        onSave={(v) => {
+          if (!editor) return
+          const pos = linkCardSlashPosRef.current
+          linkCardSlashPosRef.current = null
+          setLinkCardSlashOpen(false)
+          if (pos === null) return
+          editor.chain().focus().setTextSelection(pos).insertContent([
+            {
+              type: 'linkCard',
+              attrs: {
+                url: v.url,
+                title: v.title,
+                description: v.description,
+                image: v.image,
+              },
+            },
+            { type: 'paragraph' },
+          ]).run()
+        }}
+      />
     </div>
   )
 }
