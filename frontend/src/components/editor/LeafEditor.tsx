@@ -1785,7 +1785,7 @@ export default function LeafEditor({
     handleDOMEvents: {
       // PM clears `view.dragging` before `handleDrop`; `handleDrop` needs `dragSourceRef` for column + reorder logic.
       // Gutter drags set the ref on the grip button; native block drags (embeds, etc.) only set NodeSelection — sync here.
-      dragstart: (view, event) => {
+      dragstart: (view: EditorView, event: Event) => {
         if (!(event instanceof DragEvent)) return false
         const sel = view.state.selection
         if (sel instanceof NodeSelection && sel.node.isBlock) {

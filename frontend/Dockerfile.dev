@@ -1,4 +1,6 @@
-# Dev image: install deps and run next dev (with turbopack)
+# Dev image: build once, then serve with `next start`.
+# Hot reload is not available in Docker on Windows (9P bind mount ENOMEM).
+# For hot reload, run `make frontend` locally instead.
 FROM node:20-alpine
 
 WORKDIR /app
@@ -8,6 +10,12 @@ RUN npm install
 
 COPY . .
 
-# Next.js dev server (port 3000)
+# NEXT_PUBLIC_* must be set at build time — Next.js inlines them into the JS bundle.
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN npm run build
+
 EXPOSE 3000
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "start"]

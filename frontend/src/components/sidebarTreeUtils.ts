@@ -89,7 +89,7 @@ export function sidebarPagePathLabel(nodeId: string, nodes: SidebarNode[]): stri
   while (cur && !seen.has(cur.id)) {
     seen.add(cur.id)
     parts.unshift(cur.title)
-    cur = cur.parent_id ? nodes.find((n) => n.id === cur.parent_id) : undefined
+    cur = cur.parent_id ? nodes.find((n) => n.id === cur!.parent_id) : undefined
   }
   return parts.join(' / ')
 }

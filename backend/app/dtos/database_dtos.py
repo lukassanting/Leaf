@@ -22,10 +22,18 @@ Debug:
 """
 
 import json
+import warnings
 from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
+
+# "schema" is an intentional field name for database column definitions.
+# Pydantic warns because BaseModel has a deprecated .schema() classmethod — safe to ignore.
+warnings.filterwarnings(
+    "ignore",
+    message='Field name "schema" in .* shadows an attribute in parent "BaseModel"',
+)
 
 
 # ─── Schema (column definitions) ─────────────────────────────────────────────

@@ -15,6 +15,8 @@ make docker     # build + start API (:8000) and frontend (:3000)
 make down       # stop containers
 ```
 
+Compose publishes **127.0.0.1:8000** and **127.0.0.1:3000** (not all interfaces). That avoids Windows + Docker Desktop cases where `http://localhost:3000` hits a broken IPv6 path and the browser shows **ERR_CONNECTION_RESET** or a long timeout; open **http://127.0.0.1:3000** if you still see issues.
+
 ### Local (two terminals)
 
 ```bash

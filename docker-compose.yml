@@ -1,8 +1,9 @@
 # Leaf: backend (SQLite + file storage) + frontend.
 # From repo root: docker compose up --build
 #
-# API runs without --reload by default: uvicorn StatReload + Next dev both hammer the bind mount and can hit
-# ENOMEM on small Docker Desktop memory budgets (common on Windows). Use `make api` / `make frontend` locally for hot reload.
+# No bind mounts — Docker Desktop on Windows uses 9P for bind mounts, which hits
+# ENOMEM on scandir. Code changes require `make up` to rebuild.
+# For hot reload during development, run `make api` + `make frontend` locally instead.
 
 services:
   api:
@@ -11,54 +12,39 @@ services:
       context: ./backend
       dockerfile: Dockerfile.dev
     volumes:
-      - ./backend/app:/app/app
       - leaf_data:/data          # SQLite index + .md files live here
     environment:
       ENVIRONMENT: development
       DATA_DIR: /data
       ALLOWED_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
+    # Bind to IPv4 loopback only — on Windows, `localhost` → ::1 often hits a broken
+    # Docker IPv6 publish; 127.0.0.1 works. Narrow bind is fine for local dev.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 15s
-    # Uses image CMD (no --reload). Optional hot reload (needs more RAM + reliable watchfiles in image):
-    # command: ["/app/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/app"]
 
   frontend:
     container_name: leaf-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
-      # Softer watching on Docker Desktop / Windows bind mounts (reduces native scandir pressure vs default watchers).
-      WATCHPACK_POLLING: "true"
-      CHOKIDAR_USEPOLLING: "true"
       NEXT_TELEMETRY_DISABLED: "1"
-      # Poll every 1 s instead of 300 ms — cuts concurrent scandir calls by ~3×.
-      WATCHPACK_POLLING_INTERVAL: "1000"
-      CHOKIDAR_INTERVAL: "1000"
-      # Cap Node.js heap so it OOMs gracefully instead of killing the container.
-      # Raise to 3072 if you give Docker Desktop ≥ 6 GB RAM.
-      NODE_OPTIONS: "--max-old-space-size=2048"
     ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
+      - "127.0.0.1:3000:3000"
     depends_on:
       api:
         condition: service_healthy
-    command: ["npm", "run", "dev"]
-    # inotify limits can't be set per-container (not a namespaced sysctl).
-    # If you turn off polling and hit ENOMEM, raise them on the host once:
-    #   WSL2:  echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
-    #   Linux: same command, no WSL prefix needed.
+    # Pre-built image — no bind mount, no file watcher, no ENOMEM.
+    # For hot reload during development, run `make frontend` locally instead.
 
 volumes:
   leaf_data:          # persistent SQLite + Markdown files
