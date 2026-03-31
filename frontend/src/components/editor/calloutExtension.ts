@@ -26,8 +26,8 @@ export const Callout = Node.create({
   addAttributes() {
     return {
       variant: {
-        default: 'gray',
-        parseHTML: (el) => (el as HTMLElement).getAttribute('data-variant') || 'gray',
+        default: 'green',
+        parseHTML: (el) => (el as HTMLElement).getAttribute('data-variant') || 'green',
       },
     }
   },
@@ -35,7 +35,7 @@ export const Callout = Node.create({
     return [{ tag: 'div[data-type="callout"]' }]
   },
   renderHTML({ node, HTMLAttributes }) {
-    const v = (node.attrs.variant as string) || 'gray'
+    const v = (node.attrs.variant as string) || 'green'
     return [
       'div',
       mergeAttributes(HTMLAttributes, {
