@@ -101,10 +101,13 @@ class FileToDbSyncer:
                 return True
             else:
                 # Create new leaf from file
+                if database_id:
+                    self._ensure_database_model(session, database_id)
                 new_leaf = self._create_leaf_from_parsed(parsed, database_id)
                 session.add(new_leaf)
+                session.flush()
 
-                # If it's a database row, ensure a DatabaseRowModel exists
+                # Row FK requires the leaf row to exist; DB row must exist (see _ensure_database_model).
                 if database_id:
                     self._ensure_database_row(session, database_id, leaf_id)
 
@@ -211,8 +214,11 @@ class FileToDbSyncer:
                             session.commit()
                             stats["updated"] += 1
                         else:
+                            if database_id:
+                                self._ensure_database_model(session, database_id)
                             new_leaf = self._create_leaf_from_parsed(parsed, database_id)
                             session.add(new_leaf)
+                            session.flush()
                             if database_id:
                                 self._ensure_database_row(session, database_id, leaf_id)
                             session.commit()
@@ -352,10 +358,61 @@ class FileToDbSyncer:
 
         return leaf
 
+    def _ensure_database_model(self, session, database_id: str) -> None:
+        """
+        Ensure ``databases`` has a row for this id so leaf / database_rows FKs succeed.
+
+        ``_sync_database_metas`` skips folders without ``meta.json``; row ``.md`` files can
+        still exist under ``databases/<id>/rows/``, so we create a minimal DB record here.
+        """
+        if session.get(DatabaseModel, database_id):
+            return
+
+        session.execute(text("PRAGMA foreign_keys = OFF"))
+
+        db_dir = self.databases_dir / database_id
+        meta_file = db_dir / "meta.json"
+        title = "Untitled database"
+        schema = None
+        view_type = "table"
+        parent_leaf_id = None
+        created_at = None
+        if meta_file.exists():
+            try:
+                meta = json.loads(meta_file.read_text(encoding="utf-8"))
+                title = meta.get("title", title)
+                schema = meta.get("schema")
+                view_type = meta.get("view_type", view_type)
+                parent_leaf_id = meta.get("parent_leaf_id")
+                created_at = _parse_datetime(meta.get("created_at"))
+            except Exception:
+                logger.exception("Invalid meta.json for database %s", database_id)
+
+        db_model = DatabaseModel(
+            id=database_id,
+            title=title,
+            schema=schema,
+            view_type=view_type,
+            parent_leaf_id=parent_leaf_id,
+        )
+        if created_at:
+            db_model.created_at = created_at
+        session.add(db_model)
+        session.flush()
+
     def _ensure_database_row(
         self, session, database_id: str, leaf_id: str
     ) -> None:
         """Ensure a DatabaseRowModel exists linking this leaf to its database."""
+        self._ensure_database_model(session, database_id)
+
+        if not session.get(LeafModel, leaf_id):
+            logger.warning(
+                "Skipping database_rows link: leaf %s not persisted before row link",
+                leaf_id,
+            )
+            return
+
         existing = session.query(DatabaseRowModel).filter(
             DatabaseRowModel.leaf_id == leaf_id
         ).first()
