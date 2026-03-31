@@ -1277,7 +1277,7 @@ function BlockDropdown({
           width: SLASH_MENU_PANEL_WIDTH,
           maxHeight: 'min(52vh, 420px)',
           background: 'var(--leaf-bg-elevated)',
-          border: '1px solid var(--color-border)',
+          border: '1px solid color-mix(in srgb, var(--foreground) 8%, transparent)',
           boxShadow: '0 4px 20px color-mix(in srgb, var(--foreground) 12%, transparent)',
           overflow: 'hidden',
         }}
@@ -1306,8 +1306,9 @@ function BlockDropdown({
                     border: 'none',
                     cursor: 'pointer',
                     padding: 0,
-                    outline: v === currentVariant ? '2px solid var(--leaf-green)' : 'none',
-                    outlineOffset: 1,
+                    boxShadow: v === currentVariant
+                      ? '0 0 0 2px var(--leaf-bg-elevated), 0 0 0 4px color-mix(in srgb, var(--leaf-green) 75%, transparent)'
+                      : 'none',
                   }}
                   onMouseDown={(e) => {
                     e.preventDefault()
@@ -2954,7 +2955,7 @@ export default function LeafEditor({
                         options: {
                           rootBoundary: 'viewport',
                           altBoundary: true,
-                          padding: 12,
+                          padding: { top: 40, bottom: 16, left: 14, right: 14 },
                         },
                       },
                     ],

@@ -3,19 +3,20 @@
  * Uses a React node view so a colour picker appears when the callout is selected.
  */
 import { Node, mergeAttributes } from '@tiptap/core'
+import { LEAF_CALLOUT_VARIANT_COLORS } from '@/lib/editorRichText'
 
 export const CALLOUT_VARIANTS = ['gray', 'blue', 'purple', 'yellow', 'green', 'red', 'flavor'] as const
 export type CalloutVariant = (typeof CALLOUT_VARIANTS)[number]
 
-/** Visible labels + border colors used in the inline picker. */
+/** Visible labels + picker dots — hexes match `LEAF_CALLOUT_VARIANT_COLORS` / text swatches. */
 export const CALLOUT_VARIANT_META: Record<CalloutVariant, { label: string; dot: string }> = {
-  gray:   { label: 'Neutral',   dot: '#a1a1aa' },
-  blue:   { label: 'Info',      dot: '#3b82f6' },
-  purple: { label: 'Arcane',    dot: '#a855f7' },
-  yellow: { label: 'Caution',   dot: '#eab308' },
-  green:  { label: 'Success',   dot: '#22c55e' },
-  red:    { label: 'Danger',    dot: '#ef4444' },
-  flavor: { label: 'Flavor',    dot: '#c9a84c' },
+  gray:   { label: 'Neutral',   dot: LEAF_CALLOUT_VARIANT_COLORS.gray },
+  blue:   { label: 'Info',      dot: LEAF_CALLOUT_VARIANT_COLORS.blue },
+  purple: { label: 'Arcane',    dot: LEAF_CALLOUT_VARIANT_COLORS.purple },
+  yellow: { label: 'Caution',   dot: LEAF_CALLOUT_VARIANT_COLORS.yellow },
+  green:  { label: 'Success',   dot: LEAF_CALLOUT_VARIANT_COLORS.green },
+  red:    { label: 'Danger',    dot: LEAF_CALLOUT_VARIANT_COLORS.red },
+  flavor: { label: 'Flavor',    dot: LEAF_CALLOUT_VARIANT_COLORS.flavor },
 }
 
 export const Callout = Node.create({

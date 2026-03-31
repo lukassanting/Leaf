@@ -11,6 +11,11 @@ import type { LeafTreeItem } from '@/lib/api/types'
 import { DatabaseIcon, LeafIcon } from '@/components/Icons'
 import { rankWikilinkItems } from '@/components/editor/slashMatchUtils'
 
+function isFormFieldTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false
+  return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'))
+}
+
 type Props = {
   editor: Editor
   leaves: LeafTreeItem[]
@@ -39,8 +44,8 @@ export function EditorLinkPanel({
     return () => clearTimeout(t)
   }, [autoFocus, inputRef])
 
-  const pageLimit = query.trim().length > 0 ? 8 : 5
-  const filteredPages = rankWikilinkItems(leaves, query).slice(0, pageLimit)
+  const q = query.trim()
+  const filteredPages = q.length > 0 ? rankWikilinkItems(leaves, query).slice(0, 8) : []
 
   const applyWebLink = (url: string) => {
     const u = url.trim()
@@ -58,7 +63,13 @@ export function EditorLinkPanel({
   const linkActive = editor.isActive('link')
 
   return (
-    <div onMouseDown={(e) => { e.preventDefault(); e.stopPropagation() }}>
+    <div
+      onMouseDown={(e) => {
+        if (isFormFieldTarget(e.target)) return
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+    >
       <div className="px-3 pt-2 pb-2">
         <input
           ref={inputRef}
@@ -71,6 +82,8 @@ export function EditorLinkPanel({
             borderColor: 'var(--leaf-border-soft)',
             color: 'var(--leaf-text-title)',
           }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
               e.preventDefault()

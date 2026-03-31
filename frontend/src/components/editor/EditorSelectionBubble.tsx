@@ -18,8 +18,10 @@ type Props = {
   linkSearchInputRef?: RefObject<HTMLInputElement | null>
 }
 
-/** Six swatches aligned with the design (accent → muted, omit duplicate forest). */
-const BUBBLE_TEXT_SWATCHES = LEAF_TEXT_COLOR_SWATCHES.filter((_, i) => i !== 5)
+function isFormFieldTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false
+  return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'))
+}
 
 function AlignLeftIcon() {
   return (
@@ -70,7 +72,7 @@ export function EditorSelectionBubble({ editor, leaves, onBookmark, linkSearchIn
     }),
   })
 
-  const colorSwatches = BUBBLE_TEXT_SWATCHES.map((sw) => ({
+  const colorSwatches = LEAF_TEXT_COLOR_SWATCHES.map((sw) => ({
     id: sw.id,
     title: sw.title,
     value: sw.value,
@@ -90,7 +92,11 @@ export function EditorSelectionBubble({ editor, leaves, onBookmark, linkSearchIn
 
   return (
     <div
-      className="leaf-selection-bubble-shell w-[min(100vw-24px,320px)] overflow-hidden rounded-xl"
+      className="leaf-selection-bubble-shell w-[min(100vw-24px,368px)] overflow-hidden rounded-xl"
+      onMouseDown={(e) => {
+        if (isFormFieldTarget(e.target)) return
+        e.preventDefault()
+      }}
       style={{
         background: 'var(--leaf-bg-elevated)',
         border: '1px solid color-mix(in srgb, var(--foreground) 7%, transparent)',
@@ -136,7 +142,7 @@ export function EditorSelectionBubble({ editor, leaves, onBookmark, linkSearchIn
 
           <div className="mx-0.5 h-5 w-px shrink-0 self-center" style={{ background: 'var(--leaf-border-soft)' }} />
 
-          <div className="flex flex-1 flex-wrap items-center justify-end gap-1 pl-0.5">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1 pl-0.5">
             {colorSwatches.map((sw) => {
               const on = sw.active()
               return (
@@ -146,7 +152,7 @@ export function EditorSelectionBubble({ editor, leaves, onBookmark, linkSearchIn
                   title={sw.title}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={sw.action}
-                  className="h-[22px] w-[22px] shrink-0 rounded-full border-2 transition-transform hover:scale-105"
+                  className="h-[20px] w-[20px] shrink-0 rounded-full border-2 transition-transform hover:scale-105"
                   style={{
                     background: sw.value,
                     borderColor: on ? 'var(--leaf-green)' : 'transparent',
@@ -192,12 +198,13 @@ export function EditorFloatingLinkPanel({
     spaceBelow < 340 && typeof window !== 'undefined'
       ? rect.top - 8 - Math.min(340, window.innerHeight * 0.45)
       : rect.bottom + 8
+  const panelW = 368
   const vw = typeof window !== 'undefined' ? window.innerWidth : 800
-  const left = Math.max(12, Math.min(rect.left, vw - 320 - 12))
+  const left = Math.max(12, Math.min(rect.left, vw - panelW - 12))
 
   return (
     <div
-      className="leaf-selection-bubble-shell fixed z-[9999] w-[min(100vw-24px,320px)] overflow-hidden rounded-xl"
+      className="leaf-selection-bubble-shell fixed z-[9999] w-[min(100vw-24px,368px)] overflow-hidden rounded-xl"
       style={{
         top: Math.max(12, top),
         left,

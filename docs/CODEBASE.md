@@ -185,7 +185,7 @@ For day-to-day debugging steps, see [DEBUGGING_PLAYBOOK.md](DEBUGGING_PLAYBOOK.m
 | `src/components/editor/EditorLinkPanel.tsx` | Shared link UI: search / paste, web link, bookmark card, remove link, workspace pages (`rankWikilinkItems`) |
 | `src/components/editor/LinkCardView.tsx` | TipTap `linkCard` node view: bookmark layout (copy + image column); edit via `LinkCardEditDialog` |
 | `src/components/editor/LinkCardEditDialog.tsx` | Modal form for bookmark URL, title, description, image (slash **Bookmark card** + in-card edit) |
-| `src/lib/editorRichText.ts` | Story-flag variants/presets (slash: “Flag · …”), text-colour swatches, slash action helpers |
+| `src/lib/editorRichText.ts` | Story-flag variants/presets (slash: “Flag · …”); `LEAF_CALLOUT_VARIANT_COLORS` + `LEAF_TEXT_COLOR_SWATCHES` (inline text colours aligned with callout/stat-strip variant dots); slash action helpers |
 | `src/components/StatusBar.tsx` | Footer: save state, word count, mode label, sync status + click-to-sync |
 | `src/components/TopStrip.tsx` | Top bar, breadcrumbs, Settings (⋯) menu with appearance / design theme |
 | `src/components/DesignThemeProvider.tsx` | Client context: reads/writes `leaf-design` in `localStorage`, sets `data-leaf-design` on `<html>` |
