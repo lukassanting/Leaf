@@ -6,7 +6,7 @@
  *   - “quick access” buttons (Graph view, Journal DB, Notes Dump, etc.)
  *   - pinned items (persisted in localStorage)
  *   - “new page” action
- *   - workspace navigation actions (search/settings placeholders)
+ *   - workspace navigation (e.g. Settings; page search lives in SidebarTree)
  *
  * How to read:
  * - On mount, it calls `ensureWorkspaceDefaults()` to create/bootstrap defaults
@@ -153,13 +153,7 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
     }
   }
 
-  const navItems: { label: string; icon: React.ReactNode; href?: string }[] = [
-    { label: 'Search', icon: (
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-        <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.2" />
-        <path d="M10.5 10.5L13 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
-    ) },
+  const navItems: { label: string; icon: React.ReactNode; href: string }[] = [
     { label: 'Settings', href: '/settings', icon: (
       <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
         <path d="M8 2.5V4M8 12V13.5M3.8 5.1L5 5.8M11 10.2L12.2 10.9M3.8 10.9L5 10.2M11 5.8L12.2 5.1" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
@@ -193,38 +187,20 @@ export function SidebarLeft({ activeId }: { activeId?: string }) {
 
       {/* Nav buttons */}
       <div className="px-3 pb-2">
-        {navItems.map((item) => {
-          if (item.href) {
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors duration-150 no-underline"
-                style={{
-                  color: pathname === item.href ? 'var(--leaf-green)' : 'var(--leaf-text-body)',
-                  background: pathname === item.href ? 'var(--color-active)' : 'transparent',
-                }}
-              >
-                <NavIcon active={pathname === item.href}>{item.icon}</NavIcon>
-                <span style={{ fontSize: 13, fontWeight: 400 }}>{item.label}</span>
-              </Link>
-            )
-          }
-          return (
-            <button
-              key={item.label}
-              type="button"
-              className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors duration-150"
-              style={{ color: 'var(--leaf-text-body)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-hover)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
-              title={`${item.label} placeholder`}
-            >
-              <NavIcon>{item.icon}</NavIcon>
-              <span style={{ fontSize: 13, fontWeight: 400 }}>{item.label}</span>
-            </button>
-          )
-        })}
+        {navItems.map((item) => (
+          <Link
+            key={item.label}
+            href={item.href}
+            className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors duration-150 no-underline"
+            style={{
+              color: pathname === item.href ? 'var(--leaf-green)' : 'var(--leaf-text-body)',
+              background: pathname === item.href ? 'var(--color-active)' : 'transparent',
+            }}
+          >
+            <NavIcon active={pathname === item.href}>{item.icon}</NavIcon>
+            <span style={{ fontSize: 13, fontWeight: 400 }}>{item.label}</span>
+          </Link>
+        ))}
       </div>
 
       {/* KNOWLEDGE BASE section */}
