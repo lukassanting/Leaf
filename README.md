@@ -102,9 +102,9 @@ Further reading: **`docs/CODEBASE.md`** (file-by-file map), **`docs/DEBUGGING_PL
 ## Roadmap
 
 - **Fixes:** gutter positioning, initial render speed, page outline accuracy
-- **Editor:** coloured text highlighting, page templates, better icons, styled link cards & link elements
+- **Editor:** coloured text highlighting, page templates, better icons, styled link cards & link elements, image banners
 - **Databases:** filtering, search, row templates
-- **Apps:** Windows desktop, Android
+- **Apps:** Windows desktop, Android, macOS, iOS, Linux
 - **AI:** semantic search, AI generation, auto-tagging
 - **Infra:** command palette (`Ctrl+K`, `⌘+K` on macOS), CI + production deployment
 

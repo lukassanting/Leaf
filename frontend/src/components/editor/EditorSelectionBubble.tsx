@@ -9,9 +9,9 @@ import type { Editor } from '@tiptap/react'
 import { useEditorState } from '@tiptap/react'
 import { LEAF_TEXT_COLOR_SWATCHES } from '@/lib/editorRichText'
 
-type Props = { editor: Editor }
+type Props = { editor: Editor; onLinkClick?: () => void }
 
-export function EditorSelectionBubble({ editor }: Props) {
+export function EditorSelectionBubble({ editor, onLinkClick }: Props) {
   useEditorState({
     editor,
     selector: ({ editor: ed }) => ({
@@ -82,12 +82,8 @@ export function EditorSelectionBubble({ editor }: Props) {
       <div className="mx-0.5 h-4 w-px shrink-0" style={{ background: 'var(--leaf-border-strong)' }} />
       <button
         type="button"
-        title="Add web link"
-        onClick={() => {
-          const href = typeof window !== 'undefined' ? window.prompt('URL', 'https://') : null
-          if (!href?.trim()) return
-          editor.chain().focus().extendMarkRange('link').setLink({ href: href.trim() }).run()
-        }}
+        title="Add web link (Cmd K)"
+        onClick={() => onLinkClick?.()}
         className="px-1.5 py-0.5 rounded text-xs transition"
         style={{
           color: editor.isActive('link') ? 'var(--leaf-green)' : 'var(--leaf-text-muted)',
