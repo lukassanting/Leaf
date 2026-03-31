@@ -51,6 +51,8 @@ import type { ResolvedPos } from '@tiptap/pm/model'
 import type { EditorView } from '@tiptap/pm/view'
 import StarterKit from '@tiptap/starter-kit'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import { CodeBlockView } from '@/components/editor/CodeBlockView'
+import { MathBlock } from '@/components/editor/mathBlockExtension'
 import Link from '@tiptap/extension-link'
 import TaskItem from '@tiptap/extension-task-item'
 import TaskList from '@tiptap/extension-task-list'
@@ -70,7 +72,6 @@ import { LeafTableView } from '@/components/editor/LeafTableView'
 import { leavesApi, type Database, type LeafTreeItem, type LeafDocument } from '@/lib/api'
 import { DatabaseIcon, LeafIcon } from '@/components/Icons'
 import { EditorSelectionBubble } from './EditorSelectionBubble'
-import { CodeBlockLangBubble } from '@/components/editor/CodeBlockLangBubble'
 import { ImageInsertDialog } from '@/components/editor/ImageInsertDialog'
 import { leafCodeLowlight } from '@/components/editor/codeLowlight'
 import { LeafImage, LinkCard } from '@/components/editor/editorBlocks'
@@ -435,6 +436,14 @@ function shouldStickBlockMenu(
   const left = cr.left + bm.gutterLeft - GUTTER_STICK_EXTRA_LEFT_PX
   const right = cr.right + 24
   return clientX >= left && clientX <= right
+}
+
+/** True when the gutter target `inner` sits strictly inside `outer` (e.g. callout within toggleCard). */
+function gutterTargetStrictlyInside(
+  inner: Pick<NonNullable<BlockMenuState>, 'nodeStart' | 'endPos'>,
+  outer: Pick<NonNullable<BlockMenuState>, 'nodeStart' | 'endPos'>,
+): boolean {
+  return outer.nodeStart < inner.nodeStart && inner.endPos < outer.endPos
 }
 
 type EmbedNodeAttrs = {
@@ -1624,11 +1633,15 @@ export default function LeafEditor({
         width: 2,
       },
     }),
-    CodeBlockLowlight.configure({
+    CodeBlockLowlight.extend({
+      addNodeView() {
+        return ReactNodeViewRenderer(CodeBlockView as never)
+      },
+    }).configure({
       lowlight: leafCodeLowlight,
       defaultLanguage: 'plaintext',
-      HTMLAttributes: { class: 'leaf-code-block hljs' },
     }),
+    MathBlock,
     Link.configure({
       openOnClick: true,
       autolink: true,
@@ -2328,6 +2341,9 @@ export default function LeafEditor({
       case 'code_block':
         editor.chain().focus().setTextSelection(selectionPos).toggleCodeBlock({ language: 'plaintext' }).run()
         return
+      case 'math_block':
+        editor.chain().focus().setTextSelection(selectionPos).insertContent({ type: 'mathBlock', attrs: { latex: '' } }).run()
+        return
       case 'image': {
         if (typeof window === 'undefined') return
         imageInsertPosRef.current = selectionPos
@@ -2603,7 +2619,11 @@ export default function LeafEditor({
       }
 
       if (stickBm && shouldStickBlockMenu(x, y, container, stickBm)) {
-        if (next.nodeStart === stickBm.nodeStart && next.endPos === stickBm.endPos) {
+        const sameBlock =
+          next.nodeStart === stickBm.nodeStart && next.endPos === stickBm.endPos
+        // Keep the sticky band for horizontal moves, but follow the cursor into nested gutter
+        // blocks (callout / statStrip inside toggleCard, etc.).
+        if (sameBlock || gutterTargetStrictlyInside(next, stickBm)) {
           setBlockMenu(next)
         }
         return
@@ -2890,7 +2910,6 @@ export default function LeafEditor({
                 <EditorSelectionBubble editor={editor} />
               </BubbleMenu>
             ) : null}
-            {editor ? <CodeBlockLangBubble editor={editor} /> : null}
             {columnDropZone && (
               <div
                 className="column-drop-indicator"

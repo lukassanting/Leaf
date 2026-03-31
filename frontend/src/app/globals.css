@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "katex/dist/katex.min.css";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────
    See LEAF_DESIGN_GUIDE.md for the full token reference.
@@ -1042,33 +1043,100 @@ html[data-leaf-design="campaign"] .ProseMirror div[data-type="callout"].leaf-cal
   top: 1rem;
 }
 
-/* Code */
-.ProseMirror pre {
-  background: #fafafa;
+/* ─── Code blocks ────────────────────────────────────────────────────────── */
+
+/* Wrapper NodeView container */
+.leaf-code-block-wrapper {
+  margin: 0.75em 0;
+  border-radius: 10px;
   border: 1px solid #e4e4e7;
-  border-radius: 8px;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+html[data-leaf-design="campaign"] .leaf-code-block-wrapper {
+  background: var(--leaf-bg-elevated);
+  border-color: var(--leaf-border-strong);
+}
+
+/* Header bar with language selector */
+.leaf-code-block-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 10px;
+  background: #f0f0f1;
+  border-bottom: 1px solid #e4e4e7;
+  user-select: none;
+}
+
+html[data-leaf-design="campaign"] .leaf-code-block-header {
+  background: rgba(255,255,255,0.05);
+  border-bottom-color: var(--leaf-border-strong);
+}
+
+.leaf-code-lang-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #a1a1aa;
+  flex-shrink: 0;
+}
+
+html[data-leaf-design="campaign"] .leaf-code-lang-dot {
+  background: var(--leaf-text-muted);
+}
+
+.leaf-code-lang-select {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #52525b;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  line-height: 1;
+}
+
+html[data-leaf-design="campaign"] .leaf-code-lang-select {
+  color: var(--leaf-text-muted);
+}
+
+.leaf-code-lang-select:hover {
+  color: #18181b;
+}
+
+html[data-leaf-design="campaign"] .leaf-code-lang-select:hover {
+  color: var(--leaf-text-body);
+}
+
+/* Code content area */
+.leaf-code-block-wrapper pre {
+  margin: 0;
   padding: 0.875em 1em;
   overflow-x: auto;
-  margin: 0.75em 0;
-  position: relative;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
-html[data-leaf-design="campaign"] .ProseMirror pre {
-  background: var(--leaf-bg-elevated);
-  border: 1px solid var(--leaf-border-strong);
+.leaf-code-block-wrapper pre code {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  background: none;
+  padding: 0;
+  color: #3f3f46;
 }
 
-.ProseMirror pre::before {
-  content: attr(data-language);
-  position: absolute;
-  top: 6px;
-  right: 10px;
-  font-size: 10px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: var(--color-text-muted);
-  text-transform: lowercase;
-  letter-spacing: 0.02em;
+html[data-leaf-design="campaign"] .leaf-code-block-wrapper pre code {
+  color: var(--leaf-text-body);
 }
+
+/* Inline code */
 .ProseMirror code {
   font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
@@ -1083,14 +1151,147 @@ html[data-leaf-design="campaign"] .ProseMirror code {
   color: var(--leaf-text-body);
 }
 
-html[data-leaf-design="campaign"] .ProseMirror pre code {
+/* hljs syntax colours (light) */
+.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-name, .hljs-tag { color: #7c3aed; }
+.hljs-string, .hljs-title, .hljs-section, .hljs-attribute, .hljs-literal, .hljs-template-tag,
+.hljs-template-variable, .hljs-type, .hljs-addition { color: #059669; }
+.hljs-comment, .hljs-quote, .hljs-deletion, .hljs-meta { color: #9ca3af; font-style: italic; }
+.hljs-number, .hljs-symbol, .hljs-bullet, .hljs-link { color: #d97706; }
+.hljs-title.function_, .hljs-attr { color: #2563eb; }
+.hljs-variable, .hljs-params { color: #db2777; }
+
+/* hljs syntax colours (campaign/dark) */
+html[data-leaf-design="campaign"] .hljs-keyword,
+html[data-leaf-design="campaign"] .hljs-selector-tag,
+html[data-leaf-design="campaign"] .hljs-built_in { color: #c084fc; }
+html[data-leaf-design="campaign"] .hljs-string,
+html[data-leaf-design="campaign"] .hljs-title,
+html[data-leaf-design="campaign"] .hljs-addition { color: #34d399; }
+html[data-leaf-design="campaign"] .hljs-comment,
+html[data-leaf-design="campaign"] .hljs-meta { color: #6b7280; font-style: italic; }
+html[data-leaf-design="campaign"] .hljs-number,
+html[data-leaf-design="campaign"] .hljs-bullet { color: #fbbf24; }
+html[data-leaf-design="campaign"] .hljs-title.function_,
+html[data-leaf-design="campaign"] .hljs-attr { color: #60a5fa; }
+html[data-leaf-design="campaign"] .hljs-variable,
+html[data-leaf-design="campaign"] .hljs-params { color: #f472b6; }
+
+/* ─── Math / equation blocks ─────────────────────────────────────────────── */
+
+.leaf-math-block {
+  margin: 0.75em 0;
+  border-radius: 10px;
+  border: 1px solid #e4e4e7;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+html[data-leaf-design="campaign"] .leaf-math-block {
+  background: var(--leaf-bg-elevated);
+  border-color: var(--leaf-border-strong);
+}
+
+.leaf-math-block--selected {
+  border-color: var(--color-primary, #16a34a);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #16a34a) 20%, transparent);
+}
+
+/* Edit mode */
+.leaf-math-edit {
+  display: flex;
+  flex-direction: column;
+}
+
+.leaf-math-edit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  background: #f0f0f1;
+  border-bottom: 1px solid #e4e4e7;
+  user-select: none;
+}
+
+html[data-leaf-design="campaign"] .leaf-math-edit-header {
+  background: rgba(255,255,255,0.05);
+  border-bottom-color: var(--leaf-border-strong);
+}
+
+.leaf-math-label {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #52525b;
+}
+
+html[data-leaf-design="campaign"] .leaf-math-label {
+  color: var(--leaf-text-muted);
+}
+
+.leaf-math-hint {
+  font-size: 10px;
+  color: #a1a1aa;
+}
+
+.leaf-math-textarea {
+  width: 100%;
+  padding: 0.875em 1em;
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  color: #3f3f46;
+  min-height: 3em;
+  box-sizing: border-box;
+}
+
+html[data-leaf-design="campaign"] .leaf-math-textarea {
   color: var(--leaf-text-body);
 }
-.ProseMirror pre code {
-  background: none;
-  padding: 0;
-  color: var(--color-text-body);
+
+.leaf-math-textarea::placeholder {
+  color: #a1a1aa;
+  font-style: italic;
+}
+
+/* Render mode */
+.leaf-math-render {
+  padding: 1em 1.5em;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 3em;
+}
+
+.leaf-math-render:hover {
+  background: rgba(0,0,0,0.02);
+}
+
+html[data-leaf-design="campaign"] .leaf-math-render:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.leaf-math-render--empty {
+  min-height: 3em;
+}
+
+.leaf-math-empty {
   font-size: 13px;
+  color: #a1a1aa;
+  font-style: italic;
+}
+
+/* KaTeX overrides for theme fit */
+.leaf-math-render .katex {
+  font-size: 1.15em;
+  color: #18181b;
+}
+
+html[data-leaf-design="campaign"] .leaf-math-render .katex {
+  color: var(--leaf-text-body);
 }
 
 /* Task list */

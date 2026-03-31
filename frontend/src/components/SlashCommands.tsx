@@ -83,6 +83,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   { label: 'Link to page',  description: 'Wiki-style link to a page or database ([[…]])', action: 'wikilink', group: 'Insert', keywords: ['link', 'page', 'wikilink', 'mention', 'internal'] },
   { label: 'Web link', description: 'External URL on selected text or at cursor', action: 'weblink', group: 'Insert', keywords: ['url', 'http', 'https', 'external', 'web'] },
   { label: 'Code block', description: 'Syntax-highlighted fenced block', action: 'code_block', group: 'Insert', keywords: ['code', 'snippet', 'pre', 'fence'] },
+  { label: 'Equation', description: 'LaTeX math block rendered via KaTeX', action: 'math_block', group: 'Insert', keywords: ['math', 'equation', 'latex', 'formula', 'katex', 'maths'] },
   { label: 'Image', description: 'URL or upload from device (resize when selected)', action: 'image', group: 'Insert', keywords: ['img', 'picture', 'photo', 'upload'] },
   { label: 'Link card', description: 'Preview card with URL, title, text, optional image', action: 'link_card', group: 'Insert', keywords: ['bookmark', 'preview', 'card', 'embed'] },
   { label: 'Sub-page',      description: 'New child page',          action: 'subpage', group: 'Insert',    keywords: ['page', 'subpage'] },

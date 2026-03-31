@@ -240,11 +240,12 @@ class FileToDbSyncer:
                             stats["deleted"] += 1
                     if stats["deleted"]:
                         session.commit()
-        logger.info(
-            "Full sync complete: created=%d updated=%d skipped=%d deleted=%d errors=%d",
-            stats["created"], stats["updated"], stats["skipped"],
-            stats["deleted"], stats["errors"],
-        )
+        finally:
+            logger.info(
+                "Full sync complete: created=%d updated=%d skipped=%d deleted=%d errors=%d",
+                stats["created"], stats["updated"], stats["skipped"],
+                stats["deleted"], stats["errors"],
+            )
         return stats
 
     def _sync_database_metas(self) -> None:
