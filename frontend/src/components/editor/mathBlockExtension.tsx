@@ -35,13 +35,16 @@ function MathBlockView({ node, updateAttributes, selected }: NodeViewProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const renderRef = useRef<HTMLDivElement>(null)
 
-  // Focus textarea when entering edit mode
+  // Focus textarea when entering edit mode — do not depend on draft length or every
+  // keystroke will reset the caret to the end.
   useEffect(() => {
-    if (editing && textareaRef.current) {
-      textareaRef.current.focus()
-      textareaRef.current.setSelectionRange(draft.length, draft.length)
-    }
-  }, [editing, draft.length])
+    if (!editing) return
+    const ta = textareaRef.current
+    if (!ta) return
+    ta.focus()
+    const end = ta.value.length
+    ta.setSelectionRange(end, end)
+  }, [editing])
 
   // Render KaTeX whenever latex source or edit mode changes
   useEffect(() => {
