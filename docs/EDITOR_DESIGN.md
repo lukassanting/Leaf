@@ -157,7 +157,7 @@ Already implemented:
 
 Planned next:
 
-- quick switcher (`Cmd+K`)
+- quick switcher (`Ctrl+K`, ⌘+K on macOS)
 - full-text search over structured content
 - stronger wikilink/backlink workflows
 

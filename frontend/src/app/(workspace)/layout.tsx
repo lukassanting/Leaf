@@ -8,7 +8,7 @@
  * How to read:
  * - Start from the exported hooks (they are simple context wrappers).
  * - Then read `WorkspaceLayout` return tree: the providers wrap `children` plus the left/right sidebar and overlay buttons.
- * - Keybindings are handled in the `useEffect` block (Cmd/Ctrl+K toggles AI, Cmd/Ctrl+. toggles focus mode, `Escape` closes AI).
+ * - Keybindings are handled in the `useEffect` block (Ctrl/Cmd+K toggles AI, Ctrl/Cmd+. toggles focus mode, `Escape` closes AI).
  *
  * Update:
  * - To add a new global workspace toggle, add a new context + hook, then wire it in the return JSX.

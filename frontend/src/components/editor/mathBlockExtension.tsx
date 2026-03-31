@@ -28,7 +28,7 @@ async function getKatex(): Promise<typeof KaTeX> {
 
 // ─── React view ───────────────────────────────────────────────────────────────
 
-function MathBlockView({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) {
+function MathBlockView({ node, updateAttributes, selected }: NodeViewProps) {
   const latex: string = (node.attrs.latex as string) || ''
   const [editing, setEditing] = useState(latex === '')
   const [draft, setDraft] = useState(latex)
@@ -100,7 +100,9 @@ function MathBlockView({ node, updateAttributes, selected, editor, getPos }: Nod
         <div className="leaf-math-edit">
           <div className="leaf-math-edit-header" contentEditable={false}>
             <span className="leaf-math-label">LaTeX</span>
-            <span className="leaf-math-hint">Esc or ⌘↵ to render</span>
+            <span className="leaf-math-hint" title="macOS: ⌘+Enter">
+              Esc or Ctrl+Enter to render
+            </span>
           </div>
           <textarea
             ref={textareaRef}

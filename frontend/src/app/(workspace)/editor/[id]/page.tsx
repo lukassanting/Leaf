@@ -17,7 +17,7 @@
  *   - update it locally
  *   - persist via the appropriate `leafMutations` helper and `setUpdatedAt`.
  * - If autosave behavior changes, update `useLeafAutosave` (not this page) first.
- * - To change keyboard shortcuts, edit `handleKeyDown` (Cmd/Ctrl+S triggers `saveNow()`).
+ * - To change keyboard shortcuts, edit `handleKeyDown` (Ctrl/Cmd+S triggers `saveNow()`).
  *
  * Debug:
  * - When saves don’t persist, check:

@@ -52,7 +52,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Icon picker with SVG shapes, uploaded images, and emoji as user-selected content.
 - [x] Width modes (`normal`, `wide`, `full`) and focus mode.
 - [x] Bottom status bar with sync state and mode label.
-- [x] `Ask AI ⌘K` button in top navigation.
+- [x] `Ask AI` + Ctrl+K (⌘+K on macOS) in top navigation / AI panel.
 - [x] Optional **Campaign** visual theme (D&D-inspired dark UI, gold accent, Cinzel / Crimson Pro, starfield background): top-strip toggle, `localStorage` key `leaf-design`, `html[data-leaf-design="campaign"]` token remap in `globals.css` (includes database table/board/gallery chrome via `--leaf-db-*` tokens).
 - [x] Workspace **Home** uses the same **TopStrip** (settings, width, sidebars) as editor/database routes.
 
@@ -139,7 +139,7 @@ These rows are a **sequencing lens**, not a promise of order: later phases can s
 
 | # | Item | Why next |
 |---|------|----------|
-| 5.1 | Quick switcher (`Cmd+K`) over cached tree + API search | Fast navigation payoff |
+| 5.1 | Quick switcher (`Ctrl+K`, ⌘+K on macOS) over cached tree + API search | Fast navigation payoff |
 | 5.2 | Full-text search endpoint over structured page content | Unlocks real workspace retrieval |
 | 5.3 | `[[wikilinks]]` insertion and stronger backlinks UX | Natural fit with the new structured model |
 | 5.4 | Graph view: layout, readability, and node positioning | Current graph is useful but cramped; needs pass before interaction depth |

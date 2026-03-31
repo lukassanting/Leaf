@@ -106,7 +106,7 @@ Further reading: **`docs/CODEBASE.md`** (file-by-file map), **`docs/DEBUGGING_PL
 - **Databases:** filtering, search, row templates
 - **Apps:** Windows desktop, Android
 - **AI:** semantic search, AI generation, auto-tagging
-- **Infra:** command palette (`Cmd+K`), CI + production deployment
+- **Infra:** command palette (`Ctrl+K`, `⌘+K` on macOS), CI + production deployment
 
 ## Known issues
 

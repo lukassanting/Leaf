@@ -81,7 +81,7 @@ Small block-type icons (for slash menu tiles) are also in `Icons.tsx`.
 │ #f4f4f5               │  #ffffff                      │ (280px)      │
 │                       │                               │ #f4f4f5      │
 │  Leaf                 │ Breadcrumbs / Leaf Project     │              │
-│  ──────────────       │  [Ask AI ⌘K]  [...] [toggles] │ Page Info    │
+│  ──────────────       │  [Ask AI Ctrl+K]  [...] [toggles] │ Page Info    │
 │  🔍 Search            │  ─────────────────────────     │ ──────────── │
 │  🕐 Recent            │                               │ METADATA     │
 │  ⚙ Settings           │  🌿  Architecture Docs         │  Created     │
@@ -106,7 +106,7 @@ Small block-type icons (for slash menu tiles) are also in `Icons.tsx`.
 
 ### Editor page structure (top to bottom)
 
-1. Top bar: sidebar toggle (left) + breadcrumbs (center) + `Ask AI ⌘K` button + width controls + focus toggle + sidebar toggle (right) — 48px
+1. Top bar: sidebar toggle (left) + breadcrumbs (center) + `Ask AI Ctrl+K` button (⌘+K on macOS) + width controls + focus toggle + sidebar toggle (right) — 48px
 2. Title row: SVG icon + large editable title (left-aligned)
 3. Description row: editable description text
 4. Tags row: coloured pill chips with `+ Add…` affordance
@@ -229,7 +229,7 @@ Four view types are available via the view switcher toolbar:
 
 - Sticky bar with glass-like translucency (`background: rgba(255,255,255,0.88)`, `backdrop-filter: blur(18px)`)
 - Three sections: left (sidebar toggle), center (breadcrumbs + title), right (Ask AI + controls + sidebar toggle)
-- `Ask AI ⌘K` button: green background with white text, sparkle icon
+- `Ask AI Ctrl+K` button: green background with white text, sparkle icon (⌘+K on macOS)
 - Width mode switcher: segmented control with normal/wide/full options
 - Focus mode: fullscreen icon, hides both sidebars
 
@@ -300,7 +300,7 @@ The earlier "no emoji anywhere in the app" rule is superseded for the icon picke
 - AI remains a floating bottom-centered surface, not a permanent chat column
 - It should feel discoverable and premium, with subtle glow/accent treatment
 - Suggested actions appear before typing and collapse once input begins
-- Trigger: `Ask AI ⌘K` button in top nav or floating action button
+- Trigger: `Ask AI Ctrl+K` button in top nav or floating action button (⌘+K on macOS)
 
 ---
 
