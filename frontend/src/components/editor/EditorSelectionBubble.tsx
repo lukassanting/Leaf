@@ -152,7 +152,7 @@ export function EditorSelectionBubble({ editor, leaves, onBookmark, linkSearchIn
                   title={sw.title}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={sw.action}
-                  className="h-[20px] w-[20px] shrink-0 rounded-full border-2 transition-transform hover:scale-105"
+                  className="h-[16px] w-[16px] shrink-0 rounded-full border-[1.5px] transition-transform hover:scale-110"
                   style={{
                     background: sw.value,
                     borderColor: on ? 'var(--leaf-green)' : 'transparent',

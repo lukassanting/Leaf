@@ -49,13 +49,15 @@ export const LEAF_CALLOUT_VARIANT_COLORS = {
   yellow: '#eab308',
   green: '#22c55e',
   red: '#ef4444',
+  orange: '#f97316',
+  rose: '#f43f5e',
   flavor: '#c9a84c',
 } as const
 
-/** Extra text-only hues (story flags reference the same names). */
+/** Extra text-only hues (story flags reference the same names). Now also in callout variants. */
 export const LEAF_TEXT_EXTRA_SWATCH_COLORS = {
-  orange: '#f97316',
-  rose: '#f43f5e',
+  orange: LEAF_CALLOUT_VARIANT_COLORS.orange,
+  rose: LEAF_CALLOUT_VARIANT_COLORS.rose,
 } as const
 
 /** Swatch `value` is applied via TipTap Color (inline style). */

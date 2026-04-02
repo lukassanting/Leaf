@@ -5,7 +5,7 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { LEAF_CALLOUT_VARIANT_COLORS } from '@/lib/editorRichText'
 
-export const CALLOUT_VARIANTS = ['gray', 'blue', 'purple', 'yellow', 'green', 'red', 'flavor'] as const
+export const CALLOUT_VARIANTS = ['gray', 'blue', 'purple', 'yellow', 'green', 'red', 'orange', 'rose', 'flavor'] as const
 export type CalloutVariant = (typeof CALLOUT_VARIANTS)[number]
 
 /** Visible labels + picker dots — hexes match `LEAF_CALLOUT_VARIANT_COLORS` / text swatches. */
@@ -16,6 +16,8 @@ export const CALLOUT_VARIANT_META: Record<CalloutVariant, { label: string; dot: 
   yellow: { label: 'Caution',   dot: LEAF_CALLOUT_VARIANT_COLORS.yellow },
   green:  { label: 'Success',   dot: LEAF_CALLOUT_VARIANT_COLORS.green },
   red:    { label: 'Danger',    dot: LEAF_CALLOUT_VARIANT_COLORS.red },
+  orange: { label: 'Orange',    dot: LEAF_CALLOUT_VARIANT_COLORS.orange },
+  rose:   { label: 'Rose',      dot: LEAF_CALLOUT_VARIANT_COLORS.rose },
   flavor: { label: 'Flavor',    dot: LEAF_CALLOUT_VARIANT_COLORS.flavor },
 }
 
