@@ -8,7 +8,7 @@ Purpose:
   - database connection URL (`DATABASE_URL`)
 
 How to read:
-- `ConfigSettings.__init__` calls `load_dotenv()` then reads values from `starlette.config.Config`.
+- `ConfigSettings.__init__` calls `load_dotenv()`, then `starlette.config.Config` from `.env` if that file exists, else from the process environment only (e.g. Docker Compose).
 - `ALLOWED_ORIGINS` is parsed as JSON list of strings.
 
 Update:
@@ -18,7 +18,7 @@ Update:
   3) wiring it where needed (e.g. `backend/app/main.py`).
 
 Debug:
-- If CORS is wrong, check `ALLOWED_ORIGINS` parsing and confirm `.env` is present in the container/runtime.
+- If CORS is wrong, check `ALLOWED_ORIGINS` parsing and env vars (Compose / `.env` file).
 - If DB URL changes aren’t taking effect, verify `DATA_DIR` and the computed default sqlite path.
 """
 
@@ -45,7 +45,9 @@ class ConfigSettings():
 
     def __init__(self):
         load_dotenv()
-        self.config = Config(".env")
+        # Docker / CI often have no `.env` on disk; vars come from the process environment.
+        env_path = Path(".env")
+        self.config = Config(str(env_path)) if env_path.is_file() else Config()
 
         self.ENVIRONMENT = self.config("ENVIRONMENT", default="development")
         self.DEBUG = self.config("DEBUG", cast=bool, default=False)

@@ -25,6 +25,20 @@ make api                # Terminal 1 — backend on :8000
 make frontend           # Terminal 2 — frontend on :3000
 ```
 
+## Environment variables and .env files
+
+| How you run | Do you need a `.env` file? | What to know |
+|-------------|----------------------------|--------------|
+| **Docker** (`make docker` / `docker compose up`) | **No.** | The API and frontend get their settings from `docker-compose.yml` (e.g. `DATA_DIR=/data`, `ALLOWED_ORIGINS`, `NEXT_PUBLIC_API_URL`). There is no `backend/.env` inside the image, and none is required. Persistent data uses the `leaf_data` Docker volume. |
+| **Local backend** (`make api`, `make install`) | **Created for you if missing.** | `make api` depends on `make env`, which copies `backend/.env.example` → `backend/.env` when `.env` does not exist. Edit `backend/.env` to change storage (`DATA_DIR`), CORS (`ALLOWED_ORIGINS` as a JSON array string), `DATABASE_URL`, etc. The server loads that file from the **backend** working directory. |
+| **Local frontend** (`make frontend`) | **Optional.** | Defaults assume the API at `http://localhost:8000`. To point elsewhere, add `frontend/.env.local` with e.g. `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000` (Next.js reads `NEXT_PUBLIC_*` at dev/build time). |
+
+See **`backend/.env.example`** for backend variables and defaults. Do not commit **`backend/.env`** if it contains private overrides.
+
+**Compose-only:** Docker Compose may load a `.env` file beside `docker-compose.yml` for [variable substitution](https://docs.docker.com/compose/environment-variables/set-environment-variables/) in the YAML. The stock compose file does not depend on it.
+
+For a fuller map of backend settings, read `backend/app/config.py`.
+
 ## Makefile targets
 
 | Target | Description |
@@ -74,8 +88,8 @@ The **status bar** (bottom of every workspace page) shows sync state when enable
 
 ## Data storage
 
-- **Data directory:** `backend/data/` (set via `DATA_DIR` in `backend/.env`)
-- **Database:** `backend/data/.leaf.db` — auto-created on first start, rebuildable via **Settings → Rebuild Index**
+- **Data directory:** Local dev: usually `backend/data/` via `DATA_DIR` in `backend/.env` (see [above](#environment-variables-and-env-files)). Docker: `/data` on the `leaf_data` volume.
+- **Database:** `<data_dir>/.leaf.db` — auto-created on first start, rebuildable via **Settings → Rebuild Index**
 - **Reset:** delete `.leaf.db` and restart; your `.md` files are preserved
 
 ## Project layout
