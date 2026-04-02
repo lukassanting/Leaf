@@ -267,6 +267,14 @@ type WikilinkMenuState = {
   rect: SlashMenuState['rect']
 }
 
+type DatabaseEmbedPickMenuState = {
+  items: LeafTreeItem[]
+  selectedIndex: number
+  insertPos: number
+  filterQuery: string
+  rect: SlashMenuState['rect']
+}
+
 type BlockMenuState = {
   top: number
   height: number
@@ -1460,6 +1468,102 @@ function BlockDropdown({
   )
 }
 
+const DATABASE_EMBED_PANEL_W = 308
+
+function DatabaseEmbedPickPanel({
+  menu,
+  onSelect,
+}: {
+  menu: DatabaseEmbedPickMenuState
+  onSelect: (item: LeafTreeItem) => void
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const { top } = computeFixedMenuTopLeft({
+    top: menu.rect.top,
+    bottom: menu.rect.bottom,
+    left: menu.rect.left,
+  })
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1024
+  const left = Math.max(8, Math.min(menu.rect.left, vw - DATABASE_EMBED_PANEL_W - 8))
+  const maxH = typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.52, 420) : 420
+
+  useEffect(() => {
+    const root = scrollRef.current
+    if (!root || menu.items.length === 0) return
+    const el = root.querySelector(`[data-db-embed-idx="${menu.selectedIndex}"]`)
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [menu.selectedIndex, menu.items.length])
+
+  return (
+    <div
+      className="fixed z-[9999] flex flex-col overflow-hidden rounded-xl border"
+      style={{
+        top,
+        left,
+        width: DATABASE_EMBED_PANEL_W,
+        maxHeight: maxH,
+        background: 'var(--leaf-bg-elevated)',
+        borderColor: 'var(--leaf-border-strong)',
+        boxShadow: '0 12px 32px color-mix(in srgb, var(--foreground) 14%, transparent)',
+      }}
+      onMouseDown={(event) => event.preventDefault()}
+      role="listbox"
+      aria-label="Choose database to embed"
+    >
+      <div
+        className="shrink-0 border-b px-3 py-2 text-[10px] font-medium uppercase tracking-[0.09em]"
+        style={{ color: 'var(--leaf-text-muted)', borderColor: 'var(--leaf-border-soft)' }}
+      >
+        Embed existing database
+      </div>
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-0.5"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {menu.items.map((item, index) => {
+          const isSelected = index === menu.selectedIndex
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="option"
+              aria-selected={isSelected}
+              data-db-embed-idx={index}
+              className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors duration-100"
+              style={{ backgroundColor: isSelected ? 'var(--leaf-bg-hover)' : 'var(--leaf-bg-elevated)' }}
+              onMouseDown={(event) => {
+                event.preventDefault()
+                onSelect(item)
+              }}
+            >
+              <span
+                className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                style={{ background: 'var(--leaf-bg-tag)', color: 'var(--leaf-green)' }}
+              >
+                <DatabaseIcon size={13} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium" style={{ color: 'var(--leaf-text-title)' }}>
+                  {item.title || 'Untitled database'}
+                </span>
+                <span className="block truncate text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
+                  Inline · {item.view_type ?? 'table'} view
+                </span>
+              </span>
+            </button>
+          )
+        })}
+        {menu.items.length === 0 && (
+          <div className="px-3 py-3 text-sm" style={{ color: 'var(--leaf-text-muted)' }}>
+            No databases yet. Pick &ldquo;New database&rdquo; from slash to create one.
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function WikilinkPanel({
   menu,
   onSelect,
@@ -1591,6 +1695,7 @@ export default function LeafEditor({
   const [menuOpen, setMenuOpen] = useState(false)
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null)
   const [wikilinkMenu, setWikilinkMenu] = useState<WikilinkMenuState | null>(null)
+  const [databaseEmbedPickMenu, setDatabaseEmbedPickMenu] = useState<DatabaseEmbedPickMenuState | null>(null)
   const [linkPopover, setLinkPopover] = useState<LinkPopoverState | null>(null)
   const [linkCardSlashOpen, setLinkCardSlashOpen] = useState(false)
   const linkCardSlashPosRef = useRef<number | null>(null)
@@ -1625,6 +1730,8 @@ export default function LeafEditor({
   const slashSelectActionRef = useRef<(action: string) => void>(() => {})
   const wikilinkMatchRef = useRef<EditorSlashMatch | null>(null)
   const wikilinkMenuRef = useRef<WikilinkMenuState | null>(null)
+  const databaseEmbedPickMenuRef = useRef<DatabaseEmbedPickMenuState | null>(null)
+  const databaseEmbedConfirmRef = useRef<(item: LeafTreeItem) => void>(() => {})
   const wikilinkSelectRef = useRef<(item: LeafTreeItem) => void>(() => {})
   const wikilinkCreateRef = useRef<(title: string) => void>(() => {})
   const linkableLeavesRef = useRef<LeafTreeItem[]>([])
@@ -1639,6 +1746,7 @@ export default function LeafEditor({
   onTagAddRef.current = onTagAdd
   slashMenuRef.current = slashMenu
   wikilinkMenuRef.current = wikilinkMenu
+  databaseEmbedPickMenuRef.current = databaseEmbedPickMenu
 
   const updateSlashMenu = useCallback((instance: NonNullable<ReturnType<typeof useEditor>>) => {
     if (modeRef.current !== 'rich') {
@@ -1912,8 +2020,40 @@ export default function LeafEditor({
       return false
     },
     handleKeyDown: (_view: unknown, event: KeyboardEvent) => {
+      const activeDbEmbedMenu = databaseEmbedPickMenuRef.current
       const activeWikilinkMenu = wikilinkMenuRef.current
       const activeSlashMenu = slashMenuRef.current
+
+      if (activeDbEmbedMenu) {
+        const n = activeDbEmbedMenu.items.length
+        if (n > 0) {
+          if (event.key === 'ArrowUp') {
+            event.preventDefault()
+            setDatabaseEmbedPickMenu((current) =>
+              current ? { ...current, selectedIndex: (current.selectedIndex - 1 + n) % n } : current,
+            )
+            return true
+          }
+          if (event.key === 'ArrowDown') {
+            event.preventDefault()
+            setDatabaseEmbedPickMenu((current) =>
+              current ? { ...current, selectedIndex: (current.selectedIndex + 1) % n } : current,
+            )
+            return true
+          }
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            const item = activeDbEmbedMenu.items[activeDbEmbedMenu.selectedIndex]
+            if (item) databaseEmbedConfirmRef.current(item)
+            return true
+          }
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          setDatabaseEmbedPickMenu(null)
+          return true
+        }
+      }
 
       if (activeWikilinkMenu) {
         const hasCreate = activeWikilinkMenu.query.trim().length > 0
@@ -2152,6 +2292,7 @@ export default function LeafEditor({
         path: db.title || 'Untitled database',
         type: 'page' as const,
         kind: 'database' as const,
+        view_type: db.view_type,
         parent_id: null,
         children_ids: [],
         tags: [],
@@ -2335,7 +2476,7 @@ export default function LeafEditor({
 
   const applyAction = useCallback(async (
     action: string,
-    options: { selectionPos: number; deleteRange?: { from: number; to: number } },
+    options: { selectionPos: number; deleteRange?: { from: number; to: number }; slashQuery?: string },
   ) => {
     if (!editor) return
 
@@ -2442,6 +2583,29 @@ export default function LeafEditor({
       case 'database':
         await insertEmbedPlaceholder('database', selectionPos)
         return
+      case 'database_embed': {
+        const dbs = linkableLeavesRef.current.filter((i) => i.kind === 'database')
+        // Do not use `slashQuery` here: it is the text after `/` used to find the *command*
+        // (e.g. "database"), not a filter for which DB to embed — that would hide every
+        // database whose title does not contain that substring.
+        const items = rankWikilinkItems(dbs, '', 50)
+        let rect: SlashMenuState['rect'] = { top: 0, left: 0, bottom: 0 }
+        try {
+          const coords = editor.view.coordsAtPos(selectionPos)
+          rect = { top: coords.top, left: coords.left, bottom: coords.bottom }
+        } catch {
+          /* use fallback rect */
+        }
+        setDatabaseEmbedPickMenu({
+          items,
+          selectedIndex: 0,
+          insertPos: selectionPos,
+          filterQuery: '',
+          rect,
+        })
+        editor.chain().focus().setTextSelection(selectionPos).run()
+        return
+      }
       case 'statStrip': {
         const $posStrip = editor.state.doc.resolve(selectionPos)
         for (let d = $posStrip.depth; d > 0; d--) {
@@ -2569,7 +2733,31 @@ export default function LeafEditor({
       setSlashMenu(null)
       slashMatchRef.current = null
       if (!match) return
-      await applyAction(action, { selectionPos: match.range.from, deleteRange: match.range })
+      await applyAction(action, {
+        selectionPos: match.range.from,
+        deleteRange: match.range,
+        slashQuery: match.query,
+      })
+    }
+    databaseEmbedConfirmRef.current = (item: LeafTreeItem) => {
+      const menu = databaseEmbedPickMenuRef.current
+      if (!editor || !menu || item.kind !== 'database') return
+      const viewType = item.view_type ?? 'table'
+      editor.chain().focus().insertContentAt(menu.insertPos, [
+        {
+          type: 'databaseEmbed',
+          attrs: {
+            id: item.id,
+            title: item.title || 'Untitled database',
+            kind: 'database',
+            tempId: null,
+            status: 'ready',
+            view: viewType,
+          },
+        },
+        { type: 'paragraph' },
+      ]).run()
+      setDatabaseEmbedPickMenu(null)
     }
     wikilinkSelectRef.current = (item: LeafTreeItem) => {
       insertWikilink(item)
@@ -2630,11 +2818,25 @@ export default function LeafEditor({
     if (mode !== 'rich') {
       setSlashMenu(null)
       setWikilinkMenu(null)
+      setDatabaseEmbedPickMenu(null)
       setLinkPopover(null)
       setLinkCardSlashOpen(false)
       linkCardSlashPosRef.current = null
     }
   }, [mode])
+
+  useEffect(() => {
+    setDatabaseEmbedPickMenu((m) => {
+      if (!m) return m
+      const dbs = linkableLeavesRef.current.filter((i) => i.kind === 'database')
+      const items = rankWikilinkItems(dbs, m.filterQuery, 50)
+      return {
+        ...m,
+        items,
+        selectedIndex: Math.min(m.selectedIndex, Math.max(0, items.length - 1)),
+      }
+    })
+  }, [linkableLeavesEpoch])
 
   useEffect(() => {
     if (!linkPopover) return
@@ -3199,7 +3401,20 @@ export default function LeafEditor({
             setSlashMenu(null)
             slashMatchRef.current = null
             if (!match) return
-            void applyAction(item.action, { selectionPos: match.range.from, deleteRange: match.range })
+            void applyAction(item.action, {
+              selectionPos: match.range.from,
+              deleteRange: match.range,
+              slashQuery: match.query,
+            })
+          }}
+        />
+      )}
+
+      {databaseEmbedPickMenu && (
+        <DatabaseEmbedPickPanel
+          menu={databaseEmbedPickMenu}
+          onSelect={(item) => {
+            databaseEmbedConfirmRef.current(item)
           }}
         />
       )}

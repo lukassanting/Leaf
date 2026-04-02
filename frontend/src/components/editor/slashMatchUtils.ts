@@ -81,13 +81,13 @@ export function computeWikilinkMatch(editor: Editor): EditorSlashMatch | null {
 }
 
 /** Rank tree items for wikilink / link popover search (shared with editor link UI). */
-export function rankWikilinkItems(items: LeafTreeItem[], query: string): LeafTreeItem[] {
+export function rankWikilinkItems(items: LeafTreeItem[], query: string, maxResults = 12): LeafTreeItem[] {
   const normalizedQuery = query.trim().toLowerCase()
   if (!normalizedQuery) {
     return items
       .slice()
       .sort((a, b) => a.title.localeCompare(b.title))
-      .slice(0, 12)
+      .slice(0, maxResults)
   }
 
   return items
@@ -103,5 +103,5 @@ export function rankWikilinkItems(items: LeafTreeItem[], query: string): LeafTre
     .filter((entry) => entry.score < 3)
     .sort((a, b) => a.score - b.score || a.item.title.localeCompare(b.item.title))
     .map((entry) => entry.item)
-    .slice(0, 12)
+    .slice(0, maxResults)
 }

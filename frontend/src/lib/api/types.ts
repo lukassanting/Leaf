@@ -24,6 +24,9 @@
  */
 export type LeafType = 'page' | 'project'
 
+/** Default view for database surfaces (standalone + inline embed). */
+export type ViewType = 'table' | 'list' | 'gallery' | 'board'
+
 export type LeafMark =
   | { type: 'bold' }
   | { type: 'italic' }
@@ -176,6 +179,8 @@ export interface LeafTreeItem {
   path: string
   type: LeafType
   kind?: 'page' | 'database'
+  /** When `kind === 'database'`, used for inline embed default view. */
+  view_type?: ViewType
   parent_id?: string | null
   children_ids: string[]
   tags: string[]
@@ -263,8 +268,6 @@ export interface DatabaseSchema {
   /** Table view: width of the Name column in pixels. */
   name_column_width?: number
 }
-
-export type ViewType = 'table' | 'list' | 'gallery' | 'board'
 
 export type GallerySize = 'small' | 'medium' | 'large'
 
