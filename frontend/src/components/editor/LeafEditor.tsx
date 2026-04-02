@@ -314,6 +314,62 @@ function isColumnStructureType(name: string): boolean {
   return name === 'column' || name === 'columnList'
 }
 
+/** Toggle chrome slots — wrapping these in `columnList` would break `toggleCard` content spec. */
+const TOGGLE_HEADER_TYPES = new Set(['toggleCardEyebrow', 'toggleCardTitle', 'toggleCardSubtitle'])
+
+/**
+ * Deepest non-column block under `$pos` for drag column/reorder targets (no gutter chrome promotion).
+ * Mirrors `computeGutterMenuState` block discovery without `GUTTER_CONTAINER_TYPES` ascent.
+ */
+function resolveInnermostContentBlockRange($pos: ResolvedPos): { start: number; end: number; nodeType: string } | null {
+  let blockDepth = -1
+  for (let d = $pos.depth; d > 0; d--) {
+    const node = $pos.node(d)
+    if (node.isBlock && node.type.name !== 'doc' && !isColumnStructureType(node.type.name)) {
+      blockDepth = d
+      break
+    }
+  }
+  if (blockDepth < 0) {
+    const nb = $pos.nodeAfter
+    const na = $pos.nodeBefore
+    if (nb?.isBlock && !isColumnStructureType(nb.type.name)) {
+      const nodeStart = $pos.pos
+      return { start: nodeStart, end: nodeStart + nb.nodeSize, nodeType: nb.type.name }
+    }
+    if (na?.isBlock && !isColumnStructureType(na.type.name)) {
+      const endPos = $pos.pos
+      return { start: endPos - na.nodeSize, end: endPos, nodeType: na.type.name }
+    }
+    return null
+  }
+  const nodeStart = $pos.before(blockDepth)
+  const endPos = $pos.after(blockDepth)
+  return { start: nodeStart, end: endPos, nodeType: $pos.node(blockDepth).type.name }
+}
+
+/** Screen rect for a block node (node view wrapper or coords fallback). */
+function getBlockBoundingRect(view: EditorView, nodeStart: number, nodeEnd: number): DOMRect | null {
+  const dom = view.nodeDOM(nodeStart)
+  if (dom instanceof HTMLElement) {
+    return dom.getBoundingClientRect()
+  }
+  if (dom && dom.parentElement instanceof HTMLElement) {
+    return dom.parentElement.getBoundingClientRect()
+  }
+  try {
+    const c1 = view.coordsAtPos(nodeStart)
+    const c2 = view.coordsAtPos(Math.max(nodeStart, nodeEnd - 1))
+    const top = Math.min(c1.top, c2.top)
+    const bottom = Math.max(c1.bottom, c2.bottom)
+    const left = Math.min(c1.left, c2.left)
+    const right = Math.max(c1.right, c2.right)
+    return new DOMRect(left, top, right - left, bottom - top)
+  } catch {
+    return null
+  }
+}
+
 /** True when `nodeStart` belongs to a block inside a column — use inset gutter beside that block. */
 function blockIsInsideColumn(view: EditorView, nodeStart: number): boolean {
   try {
@@ -1983,15 +2039,10 @@ export default function LeafEditor({
 
       const doc = view.state.doc
       const $drop = doc.resolve(Math.min(coords.pos, doc.content.size))
-      const dropDepth = $drop.depth >= 1 ? 1 : 0
-      let targetBlockStart: number
-      let targetBlockEnd: number
-      try {
-        targetBlockStart = dropDepth >= 1 ? $drop.before(dropDepth) : 0
-        targetBlockEnd = dropDepth >= 1 ? $drop.after(dropDepth) : doc.content.size
-      } catch {
-        return true
-      }
+      const blockRange = resolveInnermostContentBlockRange($drop)
+      if (!blockRange) return true
+      const targetBlockStart = blockRange.start
+      const targetBlockEnd = blockRange.end
 
       // Don't drop on itself
       if (targetBlockStart === sourcePos) return true
@@ -2723,29 +2774,34 @@ export default function LeafEditor({
     if (!dragSourceRef.current && !editor.view.dragging) return
 
     const container = containerRef.current
-    const proseMirror = container.querySelector('.ProseMirror')
-    if (!proseMirror) return
-
-    const EDGE_ZONE = 60 // px from left/right edge of block to trigger column drop
-
-    // Find the top-level block element under the cursor
-    let targetEl: HTMLElement | null = null
-    for (const child of proseMirror.children) {
-      const rect = (child as HTMLElement).getBoundingClientRect()
-      if (event.clientY >= rect.top && event.clientY <= rect.bottom) {
-        targetEl = child as HTMLElement
-        break
-      }
-    }
-
-    if (!targetEl) {
+    const view = editor.view
+    const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
+    if (!coords) {
       setColumnDropZone(null)
       setBlockReorderZone(null)
       columnDropRef.current = null
       return
     }
 
-    const blockRect = targetEl.getBoundingClientRect()
+    const doc = view.state.doc
+    const $pos = doc.resolve(Math.min(Math.max(coords.pos, 0), doc.content.size))
+    const range = resolveInnermostContentBlockRange($pos)
+    if (!range) {
+      setColumnDropZone(null)
+      setBlockReorderZone(null)
+      columnDropRef.current = null
+      return
+    }
+
+    const blockRect = getBlockBoundingRect(view, range.start, range.end)
+    if (!blockRect) {
+      setColumnDropZone(null)
+      setBlockReorderZone(null)
+      columnDropRef.current = null
+      return
+    }
+
+    const EDGE_ZONE = 60 // px from left/right edge of block to trigger column drop
     const containerRect = container.getBoundingClientRect()
     const relX = event.clientX - blockRect.left
     const side: 'left' | 'right' | null =
@@ -2774,51 +2830,35 @@ export default function LeafEditor({
 
     setBlockReorderZone(null)
 
-    // Resolve the ProseMirror position of this target block
-    const pos = editor.view.posAtDOM(targetEl, 0)
-    try {
-      const $pos = editor.state.doc.resolve(pos)
-      const depth = $pos.depth > 0 ? 1 : 0
-      const nodeStart = $pos.before(depth)
-      const nodeEnd = $pos.after(depth)
+    const nodeStart = range.start
+    const nodeEnd = range.end
 
-      // Don't allow dropping onto itself
-      if (dragSourceRef.current && dragSourceRef.current.pos === nodeStart) {
-        setColumnDropZone(null)
-        setBlockReorderZone(null)
-        columnDropRef.current = null
-        return
-      }
-
-      // Don't allow dropping on columnList or heavy chrome blocks (embeds can pair into new columns like paragraphs).
-      const targetNode = editor.state.doc.nodeAt(nodeStart)
-      if (targetNode && (
-        targetNode.type.name === 'columnList' ||
-        targetNode.type.name === 'toggleCard' ||
-        targetNode.type.name === 'callout' ||
-        targetNode.type.name === 'statStrip'
-      )) {
-        setColumnDropZone(null)
-        setBlockReorderZone(null)
-        columnDropRef.current = null
-        return
-      }
-
-      columnDropRef.current = { targetNodePos: nodeStart, targetNodeEnd: nodeEnd, side }
-
-      // Show indicator
-      const indicatorWidth = 3
-      setColumnDropZone({
-        top: blockRect.top - containerRect.top,
-        left: side === 'left' ? blockRect.left - containerRect.left - 1 : blockRect.right - containerRect.left - 1,
-        width: indicatorWidth,
-        height: blockRect.height,
-        side,
-      })
-    } catch {
+    // Don't allow dropping onto itself
+    if (dragSourceRef.current && dragSourceRef.current.pos === nodeStart) {
       setColumnDropZone(null)
+      setBlockReorderZone(null)
       columnDropRef.current = null
+      return
     }
+
+    // columnList: ambiguous chrome; toggle header slots: invalid for columnList replacement
+    if (range.nodeType === 'columnList' || TOGGLE_HEADER_TYPES.has(range.nodeType)) {
+      setColumnDropZone(null)
+      setBlockReorderZone(null)
+      columnDropRef.current = null
+      return
+    }
+
+    columnDropRef.current = { targetNodePos: nodeStart, targetNodeEnd: nodeEnd, side }
+
+    const indicatorWidth = 3
+    setColumnDropZone({
+      top: blockRect.top - containerRect.top,
+      left: side === 'left' ? blockRect.left - containerRect.left - 1 : blockRect.right - containerRect.left - 1,
+      width: indicatorWidth,
+      height: blockRect.height,
+      side,
+    })
   }, [editor])
 
 

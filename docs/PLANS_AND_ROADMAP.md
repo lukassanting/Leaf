@@ -69,7 +69,8 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Persisted 2–5 column block types in the document schema (`columnList > column` nested architecture).
 - [x] Real nested content inside columns — cursor navigation, undo/redo, and text selection work natively across column boundaries.
 - [x] Resizable column widths via drag handles between columns.
-- [x] Drag-to-create columns: drag any block to the left or right edge of another to create side-by-side columns.
+- [x] Drag-to-create columns: drag any block to the left or right edge of another to create side-by-side columns (targets resolve to the **innermost** block under the pointer—works inside callouts, toggle bodies, and existing columns).
+- [x] Grip **reorder** drop target uses the same nested resolution (center drop no longer jumps to the top-level wrapper).
 - [x] "Remove columns" unwraps content back into the main document (no content is ever deleted).
 - [x] Minimal chrome for columns — no borders/dividers, just whitespace gaps.
 - [x] Responsive stacking on narrow screens (< 640px).
@@ -236,7 +237,7 @@ Questions still open for the next milestone:
 |------|---------|
 | `frontend/src/app/(workspace)/editor/[id]/page.tsx` | Page editor route and shell wiring |
 | `frontend/src/app/(workspace)/databases/[id]/page.tsx` | Standalone database page |
-| `frontend/src/components/editor/LeafEditor.tsx` | Main editor implementation, node views, toggle card wiring; block gutter uses `posAtCoords` for atom views (stat strip, embeds) |
+| `frontend/src/components/editor/LeafEditor.tsx` | Main editor implementation, node views, toggle card wiring; block gutter uses `posAtCoords` for atom views (stat strip, embeds); drag column zones + reorder use `resolveInnermostContentBlockRange` for nested targets |
 | `frontend/src/components/editor/ToggleCardHeaderField.tsx` | Toggle card header lines: mini TipTap + filtered slash (Style, Flags) |
 | `frontend/src/components/editor/toggleCardHeaderSlash.ts` | Slash actions and ranking for toggle header fields |
 | `frontend/src/lib/editorRichText.ts` | Story-tag presets and shared colour swatches |
