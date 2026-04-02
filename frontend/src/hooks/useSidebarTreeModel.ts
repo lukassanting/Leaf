@@ -174,7 +174,7 @@ export function useSidebarTreeModel(activeId?: string) {
       id: detail.id,
       title: detail.title || 'Untitled',
       kind: detail.kind,
-      parent_id: detail.parent_id,
+      parent_id: detail.parent_id ?? null,
       children_ids: [],
       order: 0,
       tags: [],

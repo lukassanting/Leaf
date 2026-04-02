@@ -14,7 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Root-only: avoid ignoring frontend/src/lib (Python template’s bare `lib/` matches any path segment named lib).
+/lib/
 lib64/
 parts/
 sdist/
@@ -184,15 +185,6 @@ docs/*
 !docs/PLANS_AND_ROADMAP.md
 !docs/DEBUGGING_PLAYBOOK.md
 !docs/CODEBASE.md
-
-# Keep selected frontend lib files versioned
-!frontend/src/lib/
-frontend/src/lib/*
-!frontend/src/lib/api/
-frontend/src/lib/api/*
-!frontend/src/lib/api/types.ts
-!frontend/src/lib/cacheMappers.ts
-!frontend/src/lib/leafCache.ts
 
 # AI
 .claude/
