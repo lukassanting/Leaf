@@ -85,6 +85,9 @@ class SyncConfig(BaseModel):
     watch_enabled: bool = True
     git_remote_url: Optional[str] = None
     git_sync_interval: int = 300  # seconds
+    git_auth_method: str = "pat"  # "pat" or "oauth"
+    github_username: Optional[str] = None
+    github_oauth_client_id: str = ""
 
 
 class SyncConfigUpdate(BaseModel):
@@ -94,3 +97,33 @@ class SyncConfigUpdate(BaseModel):
     git_remote_url: Optional[str] = None
     git_auth_token: Optional[str] = None
     git_sync_interval: Optional[int] = None
+    git_auth_method: Optional[Literal["pat", "oauth"]] = None
+
+
+# ─── GitHub OAuth Device Flow ──────────────────────────────────────────────
+
+
+class DeviceFlowStart(BaseModel):
+    """Returned to the frontend after initiating the device flow."""
+    user_code: str
+    verification_uri: str
+    expires_in: int
+    interval: int
+
+
+class DeviceFlowPollResult(BaseModel):
+    """Result of a single poll attempt."""
+    status: Literal["pending", "complete", "expired", "denied", "slow_down"]
+    github_username: Optional[str] = None
+    interval: Optional[int] = None  # updated interval on slow_down
+
+
+class GitHubUserInfo(BaseModel):
+    username: str
+    avatar_url: str
+
+
+class GitHubRepo(BaseModel):
+    full_name: str    # "user/repo"
+    clone_url: str    # "https://github.com/user/repo.git"
+    private: bool

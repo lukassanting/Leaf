@@ -103,6 +103,7 @@ User → Next.js workspace shell ⇄ IndexedDB/local cache
 - [x] Periodic git sync scheduler (configurable interval, asyncio background task, post-pull DB reconciliation).
 - [x] Git test connection endpoint and UI button.
 - [x] Git status panel in Settings: branch, remote, last commit, uncommitted changes, errors.
+- [x] GitHub OAuth Device Flow: "Connect to GitHub" button, device code entry, repo picker, PAT fallback. Protocol spec in `docs/PLAN_GITHUB_OAUTH.md` for cross-platform reuse (desktop, mobile).
 
 ### Verification completed
 
@@ -164,7 +165,7 @@ These rows are a **sequencing lens**, not a promise of order: later phases can s
 | ~~7.4~~ | ~~Git-based sync (auto-commit + push/pull to remote)~~ | ✅ Done — git init/commit/pull/push cycle, periodic scheduler, test connection, git status panel |
 | 7.2 | CI workflow for lint + backend tests + Playwright smoke suite | Keeps redesign stable |
 | 7.3 | Production deployment path and env hardening | Needed before wider usage |
-| 7.5 | GitHub Device Flow OAuth + auto-repo creation | One-click GitHub sync: user authorizes via device code flow, backend auto-creates a private repo and configures git sync — no manual PAT or repo setup. Best fit for self-hosted/local tools (no callback server needed). `client_id` configurable per deployment. |
+| ~~7.5~~ | ~~GitHub Device Flow OAuth + repo picker~~ | ✅ Done — OAuth Device Flow login, repo picker from user's GitHub repos, PAT fallback. Protocol spec in `docs/PLAN_GITHUB_OAUTH.md`. |
 
 ### Phase 8 — Customization and design system
 
@@ -274,6 +275,7 @@ Questions still open for the next milestone:
 | `backend/app/sync/conflict_store.py` | Persisted sync conflict tracking |
 | `backend/app/sync/cloud_detector.py` | Cloud service conflict copy detection |
 | `backend/app/sync/git_sync.py` | Git auto-commit/pull/push engine |
+| `backend/app/sync/github_oauth.py` | GitHub OAuth Device Flow client (platform-independent protocol) |
 | `backend/app/sync/scheduler.py` | Periodic background sync loop |
 | `backend/app/api/routes/sync/sync_controller.py` | Sync API endpoints (file + git) |
 | `frontend/src/app/(workspace)/settings/page.tsx` | Settings page with sync configuration UI |

@@ -44,6 +44,9 @@ export interface SyncConfig {
   watch_enabled: boolean
   git_remote_url?: string | null
   git_sync_interval: number
+  git_auth_method: 'pat' | 'oauth'
+  github_username?: string | null
+  github_oauth_client_id: string
 }
 
 export interface SyncConfigUpdate {
@@ -53,6 +56,7 @@ export interface SyncConfigUpdate {
   git_remote_url?: string | null
   git_auth_token?: string | null
   git_sync_interval?: number
+  git_auth_method?: 'pat' | 'oauth'
 }
 
 export interface SyncConflict {
@@ -70,4 +74,30 @@ export interface SyncConflict {
 
 export interface ConflictResolution {
   keep: 'local' | 'remote' | 'both'
+}
+
+// ─── GitHub OAuth Device Flow ────────────────────────────────────────────
+
+export interface DeviceFlowStart {
+  user_code: string
+  verification_uri: string
+  expires_in: number
+  interval: number
+}
+
+export interface DeviceFlowPollResult {
+  status: 'pending' | 'complete' | 'expired' | 'denied' | 'slow_down'
+  github_username?: string | null
+  interval?: number | null
+}
+
+export interface GitHubUserInfo {
+  username: string
+  avatar_url: string
+}
+
+export interface GitHubRepo {
+  full_name: string
+  clone_url: string
+  private: boolean
 }

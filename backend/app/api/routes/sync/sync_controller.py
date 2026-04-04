@@ -116,6 +116,9 @@ async def get_sync_config(request: Request):
         watch_enabled=config.SYNC_WATCH_ENABLED,
         git_remote_url=config.GIT_REMOTE_URL or None,
         git_sync_interval=config.GIT_SYNC_INTERVAL,
+        git_auth_method=getattr(config, "GIT_AUTH_METHOD", "pat"),
+        github_username=getattr(config, "GITHUB_USERNAME", "") or None,
+        github_oauth_client_id=getattr(config, "GITHUB_OAUTH_CLIENT_ID", ""),
     )
 
 
@@ -160,6 +163,8 @@ async def update_sync_config(body: SyncConfigUpdate, request: Request):
         config.GIT_AUTH_TOKEN = body.git_auth_token
     if body.git_sync_interval is not None:
         config.GIT_SYNC_INTERVAL = body.git_sync_interval
+    if body.git_auth_method is not None:
+        config.GIT_AUTH_METHOD = body.git_auth_method
 
     _persist_sync_config(config)
 
@@ -189,6 +194,9 @@ async def update_sync_config(body: SyncConfigUpdate, request: Request):
         watch_enabled=config.SYNC_WATCH_ENABLED,
         git_remote_url=config.GIT_REMOTE_URL or None,
         git_sync_interval=config.GIT_SYNC_INTERVAL,
+        git_auth_method=getattr(config, "GIT_AUTH_METHOD", "pat"),
+        github_username=getattr(config, "GITHUB_USERNAME", "") or None,
+        github_oauth_client_id=getattr(config, "GITHUB_OAUTH_CLIENT_ID", ""),
     )
 
 
@@ -283,6 +291,184 @@ async def get_git_status(request: Request):
     return git_sync.get_status()
 
 
+# ─── GitHub OAuth Device Flow ──────────────────────────────────────────────
+
+# In-memory store for pending device flow (one at a time per server instance)
+_pending_device_flow: dict = {}
+
+
+@router.post("/github/login")
+async def github_login(request: Request):
+    """Start GitHub OAuth Device Flow. Returns user_code + verification_uri."""
+    sync = _get_sync_state(request)
+    if sync is None:
+        raise HTTPException(status_code=503, detail="Sync service not initialized")
+
+    config = sync["config"]
+    client_id = getattr(config, "GITHUB_OAUTH_CLIENT_ID", "")
+    if not client_id:
+        raise HTTPException(
+            status_code=400,
+            detail="GITHUB_OAUTH_CLIENT_ID is not configured. Set it in environment or settings.",
+        )
+
+    from app.sync.github_oauth import start_device_flow
+
+    try:
+        result = await start_device_flow(client_id)
+    except Exception as exc:
+        logger.error("Failed to start GitHub device flow: %s", exc)
+        raise HTTPException(status_code=502, detail=f"GitHub API error: {exc}") from exc
+
+    _pending_device_flow["device_code"] = result["device_code"]
+    _pending_device_flow["client_id"] = client_id
+
+    from app.dtos.sync_dtos import DeviceFlowStart
+
+    return DeviceFlowStart(
+        user_code=result["user_code"],
+        verification_uri=result["verification_uri"],
+        expires_in=result["expires_in"],
+        interval=result["interval"],
+    )
+
+
+@router.post("/github/poll")
+async def github_poll(request: Request):
+    """Poll GitHub for device flow completion. Call every `interval` seconds."""
+    if "device_code" not in _pending_device_flow:
+        raise HTTPException(status_code=400, detail="No pending login flow. Call /sync/github/login first.")
+
+    from app.sync.github_oauth import poll_for_token, get_authenticated_user
+    from app.dtos.sync_dtos import DeviceFlowPollResult
+
+    device_code = _pending_device_flow["device_code"]
+    client_id = _pending_device_flow["client_id"]
+
+    try:
+        result = await poll_for_token(client_id, device_code)
+    except Exception as exc:
+        logger.error("GitHub poll error: %s", exc)
+        raise HTTPException(status_code=502, detail=f"GitHub API error: {exc}") from exc
+
+    status = result["status"]
+
+    if status == "complete":
+        token = result["access_token"]
+        # Fetch user info
+        try:
+            user_info = await get_authenticated_user(token)
+        except Exception:
+            user_info = {"username": "unknown", "avatar_url": ""}
+
+        # Store token + auth method in config
+        sync = _get_sync_state(request)
+        config = sync["config"]
+        config.GIT_AUTH_TOKEN = token
+        config.GIT_AUTH_METHOD = "oauth"
+        config.GITHUB_USERNAME = user_info["username"]
+        _persist_sync_config(config)
+
+        # Update git_sync service if it exists
+        git_sync = sync.get("git_sync")
+        if git_sync:
+            git_sync.update_config(
+                remote_url=config.GIT_REMOTE_URL,
+                auth_token=token,
+            )
+
+        # Clean up pending flow
+        _pending_device_flow.clear()
+
+        return DeviceFlowPollResult(
+            status="complete",
+            github_username=user_info["username"],
+        )
+
+    if status == "slow_down":
+        return DeviceFlowPollResult(
+            status="slow_down",
+            interval=result.get("interval", 10),
+        )
+
+    if status in ("expired", "denied"):
+        _pending_device_flow.clear()
+        return DeviceFlowPollResult(status=status)
+
+    # Still pending
+    return DeviceFlowPollResult(status="pending")
+
+
+@router.get("/github/user")
+async def github_user(request: Request):
+    """Get currently connected GitHub user info, or 404 if not connected."""
+    sync = _get_sync_state(request)
+    if sync is None:
+        raise HTTPException(status_code=503, detail="Sync service not initialized")
+
+    config = sync["config"]
+    if getattr(config, "GIT_AUTH_METHOD", "pat") != "oauth" or not getattr(config, "GITHUB_USERNAME", ""):
+        raise HTTPException(status_code=404, detail="Not connected to GitHub via OAuth")
+
+    from app.sync.github_oauth import get_authenticated_user
+    from app.dtos.sync_dtos import GitHubUserInfo
+
+    token = config.GIT_AUTH_TOKEN
+    if not token:
+        raise HTTPException(status_code=404, detail="No OAuth token stored")
+
+    try:
+        user_info = await get_authenticated_user(token)
+        return GitHubUserInfo(**user_info)
+    except Exception:
+        # Token may be revoked
+        raise HTTPException(status_code=401, detail="GitHub token expired or revoked. Please reconnect.")
+
+
+@router.get("/github/repos")
+async def github_repos(request: Request, page: int = 1, per_page: int = 30):
+    """List repos the connected GitHub user can push to."""
+    sync = _get_sync_state(request)
+    if sync is None:
+        raise HTTPException(status_code=503, detail="Sync service not initialized")
+
+    config = sync["config"]
+    token = config.GIT_AUTH_TOKEN
+    if not token or getattr(config, "GIT_AUTH_METHOD", "pat") != "oauth":
+        raise HTTPException(status_code=400, detail="Not connected to GitHub via OAuth")
+
+    from app.sync.github_oauth import list_user_repos
+    from app.dtos.sync_dtos import GitHubRepo
+
+    try:
+        repos = await list_user_repos(token, page=page, per_page=per_page)
+        return [GitHubRepo(**r) for r in repos]
+    except Exception as exc:
+        logger.error("Failed to list repos: %s", exc)
+        raise HTTPException(status_code=502, detail=f"GitHub API error: {exc}") from exc
+
+
+@router.post("/github/logout")
+async def github_logout(request: Request):
+    """Disconnect GitHub OAuth — clears stored token and username."""
+    sync = _get_sync_state(request)
+    if sync is None:
+        raise HTTPException(status_code=503, detail="Sync service not initialized")
+
+    config = sync["config"]
+    config.GIT_AUTH_TOKEN = ""
+    config.GIT_AUTH_METHOD = "pat"
+    config.GITHUB_USERNAME = ""
+    _persist_sync_config(config)
+
+    # Update git_sync service
+    git_sync = sync.get("git_sync")
+    if git_sync:
+        git_sync.update_config(remote_url=config.GIT_REMOTE_URL, auth_token="")
+
+    return {"message": "Disconnected from GitHub"}
+
+
 # ─── Conflicts ──────────────────────────────────────────────────────────────
 
 @router.get("/conflicts", response_model=list[SyncConflict])
@@ -363,6 +549,9 @@ def _persist_sync_config(config) -> None:
         "GIT_REMOTE_URL": config.GIT_REMOTE_URL,
         "GIT_AUTH_TOKEN": config.GIT_AUTH_TOKEN,
         "GIT_SYNC_INTERVAL": config.GIT_SYNC_INTERVAL,
+        "GITHUB_OAUTH_CLIENT_ID": getattr(config, "GITHUB_OAUTH_CLIENT_ID", ""),
+        "GIT_AUTH_METHOD": getattr(config, "GIT_AUTH_METHOD", "pat"),
+        "GITHUB_USERNAME": getattr(config, "GITHUB_USERNAME", ""),
     }
     text = json.dumps(data, indent=2)
     eff = Path(config.DATA_DIR) / ".sync-config.json"

@@ -5,7 +5,10 @@ import { databasesApi, leavesApi, trashApi } from '@/lib/api'
 import { emitLeafTreeChanged } from '@/lib/appEvents'
 import { resetWorkspaceDefaultsCache } from '@/lib/workspaceDefaults'
 import { syncApi } from '@/lib/api/sync'
-import type { SyncConfig, SyncConflict, SyncMode, SyncStatus } from '@/lib/api/syncTypes'
+import type {
+  SyncConfig, SyncConflict, SyncMode, SyncStatus,
+  DeviceFlowStart, GitHubUserInfo, GitHubRepo,
+} from '@/lib/api/syncTypes'
 import type { TrashDatabaseItem, TrashLeafItem } from '@/lib/api/types'
 
 function StatusDot({ state }: { state: SyncStatus['state'] }) {
@@ -80,6 +83,16 @@ export default function SettingsPage() {
   const [draftInterval, setDraftInterval] = useState(300)
   const [draftDataDir, setDraftDataDir] = useState('')
   const [, setDraftInitialized] = useState(false)
+  const [draftAuthMethod, setDraftAuthMethod] = useState<'pat' | 'oauth'>('pat')
+
+  // GitHub OAuth state
+  const [deviceFlow, setDeviceFlow] = useState<DeviceFlowStart | null>(null)
+  const [oauthPolling, setOauthPolling] = useState(false)
+  const [oauthError, setOauthError] = useState<string | null>(null)
+  const [githubUser, setGithubUser] = useState<GitHubUserInfo | null>(null)
+  const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([])
+  const [reposLoading, setReposLoading] = useState(false)
+  const [repoSearchQuery, setRepoSearchQuery] = useState('')
 
   const refresh = useCallback(async () => {
     try {
@@ -100,6 +113,13 @@ export default function SettingsPage() {
           setDraftGitUrl(conf.git_remote_url ?? '')
           setDraftInterval(conf.git_sync_interval)
           setDraftDataDir(conf.data_dir ?? '')
+          setDraftAuthMethod(conf.git_auth_method ?? 'pat')
+          // Load GitHub user if connected via OAuth
+          if (conf.git_auth_method === 'oauth' && conf.github_username) {
+            syncApi.getGitHubUser()
+              .then((u) => setGithubUser(u))
+              .catch(() => setGithubUser(null))
+          }
         }
         return true
       })
@@ -140,6 +160,7 @@ export default function SettingsPage() {
         git_remote_url: draftGitUrl || undefined,
         git_auth_token: draftGitToken || undefined,
         git_sync_interval: draftInterval,
+        git_auth_method: draftAuthMethod,
       })
       setConfig(updated)
       setDraftDataDir(updated.data_dir ?? '')
@@ -196,6 +217,98 @@ export default function SettingsPage() {
       // handle error
     }
   }
+
+  // ─── GitHub OAuth handlers ─────────────────────────────────────────
+  const handleGitHubLogin = async () => {
+    setOauthError(null)
+    try {
+      const flow = await syncApi.startGitHubLogin()
+      setDeviceFlow(flow)
+      setOauthPolling(true)
+      // Start polling
+      let interval = flow.interval
+      const pollLoop = async () => {
+        while (true) {
+          await new Promise((r) => setTimeout(r, interval * 1000))
+          try {
+            const result = await syncApi.pollGitHubLogin()
+            if (result.status === 'complete') {
+              setDeviceFlow(null)
+              setOauthPolling(false)
+              setDraftAuthMethod('oauth')
+              // Load user info
+              try {
+                const u = await syncApi.getGitHubUser()
+                setGithubUser(u)
+              } catch {
+                setGithubUser({ username: result.github_username ?? 'unknown', avatar_url: '' })
+              }
+              await refresh()
+              return
+            }
+            if (result.status === 'slow_down') {
+              interval = result.interval ?? 10
+              continue
+            }
+            if (result.status === 'expired') {
+              setOauthError('Login expired. Please try again.')
+              setDeviceFlow(null)
+              setOauthPolling(false)
+              return
+            }
+            if (result.status === 'denied') {
+              setOauthError('Access denied. Please try again.')
+              setDeviceFlow(null)
+              setOauthPolling(false)
+              return
+            }
+            // pending — continue
+          } catch {
+            setOauthError('Connection error while polling. Please try again.')
+            setDeviceFlow(null)
+            setOauthPolling(false)
+            return
+          }
+        }
+      }
+      void pollLoop()
+    } catch {
+      setOauthError('Failed to start GitHub login. Is GITHUB_OAUTH_CLIENT_ID configured?')
+    }
+  }
+
+  const handleGitHubLogout = async () => {
+    try {
+      await syncApi.logoutGitHub()
+      setGithubUser(null)
+      setDraftAuthMethod('pat')
+      setGithubRepos([])
+      await refresh()
+    } catch {
+      // ignore
+    }
+  }
+
+  const handleLoadRepos = async () => {
+    setReposLoading(true)
+    try {
+      const repos = await syncApi.getGitHubRepos()
+      setGithubRepos(repos)
+    } catch {
+      setGithubRepos([])
+    } finally {
+      setReposLoading(false)
+    }
+  }
+
+  const handleSelectRepo = (repo: GitHubRepo) => {
+    setDraftGitUrl(repo.clone_url)
+    setTestResult(null)
+  }
+
+  const filteredRepos = repoSearchQuery
+    ? githubRepos.filter((r) => r.full_name.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+    : githubRepos
 
   const modeOptions: { value: SyncMode; label: string; desc: string }[] = [
     { value: 'off', label: 'Off', desc: 'Local only, no sync' },
@@ -484,6 +597,263 @@ export default function SettingsPage() {
       {/* Git-specific config */}
       {draftMode === 'git' && (
         <div className="mt-4 flex flex-col gap-3">
+
+          {/* ── Auth method tabs ── */}
+          <div>
+            <Label>Authentication</Label>
+            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--leaf-border-soft)' }}>
+              {([
+                { value: 'oauth' as const, label: 'GitHub Login' },
+                { value: 'pat' as const, label: 'Access Token' },
+              ]).map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setDraftAuthMethod(tab.value)}
+                  className="flex-1 px-3 py-2 text-xs font-medium transition-colors"
+                  style={{
+                    background: draftAuthMethod === tab.value
+                      ? 'color-mix(in srgb, var(--leaf-green) 12%, transparent)'
+                      : 'var(--leaf-bg-elevated)',
+                    color: draftAuthMethod === tab.value ? 'var(--leaf-green)' : 'var(--leaf-text-muted)',
+                    borderRight: tab.value === 'oauth' ? '1px solid var(--leaf-border-soft)' : 'none',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── GitHub OAuth ── */}
+          {draftAuthMethod === 'oauth' && (
+            <div className="flex flex-col gap-3">
+              {/* Device flow modal / connected state */}
+              {deviceFlow && oauthPolling ? (
+                <div
+                  className="rounded-lg p-4"
+                  style={{
+                    background: 'var(--leaf-bg-elevated)',
+                    border: '1px solid color-mix(in srgb, var(--leaf-green) 30%, var(--leaf-border-soft))',
+                  }}
+                >
+                  <div className="text-sm font-medium mb-2" style={{ color: 'var(--leaf-text-body)' }}>
+                    Enter this code on GitHub
+                  </div>
+                  <div
+                    className="mb-3 select-all rounded-md px-4 py-3 text-center font-mono text-2xl font-bold tracking-widest"
+                    style={{
+                      background: 'var(--leaf-bg-base)',
+                      color: 'var(--leaf-text-title)',
+                      border: '1px solid var(--leaf-border-soft)',
+                      letterSpacing: '0.15em',
+                    }}
+                  >
+                    {deviceFlow.user_code}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <a
+                      href={deviceFlow.verification_uri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
+                      style={{
+                        background: 'var(--leaf-green)',
+                        color: 'var(--leaf-on-accent)',
+                      }}
+                    >
+                      Open GitHub
+                    </a>
+                    <span className="flex items-center gap-2 text-xs" style={{ color: 'var(--leaf-text-muted)' }}>
+                      <span
+                        className="inline-block h-2 w-2 animate-pulse rounded-full"
+                        style={{ background: 'var(--leaf-green)' }}
+                      />
+                      Waiting for authorization...
+                    </span>
+                  </div>
+                </div>
+              ) : githubUser ? (
+                /* ── Connected state ── */
+                <div
+                  className="flex items-center justify-between rounded-lg px-3 py-2.5"
+                  style={{
+                    background: 'color-mix(in srgb, var(--leaf-green) 6%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--leaf-green) 20%, transparent)',
+                  }}
+                >
+                  <div className="flex items-center gap-2.5">
+                    {githubUser.avatar_url ? (
+                      <img
+                        src={githubUser.avatar_url}
+                        alt=""
+                        className="h-7 w-7 rounded-full"
+                        style={{ border: '1px solid var(--leaf-border-soft)' }}
+                      />
+                    ) : (
+                      <span
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
+                        style={{ background: 'var(--leaf-bg-elevated)', color: 'var(--leaf-text-body)' }}
+                      >
+                        {githubUser.username.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <div>
+                      <span className="text-sm font-medium" style={{ color: 'var(--leaf-text-body)' }}>
+                        @{githubUser.username}
+                      </span>
+                      <span className="ml-2 text-[11px]" style={{ color: 'var(--leaf-green)' }}>Connected</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { void handleGitHubLogout() }}
+                    className="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
+                    style={{
+                      background: 'transparent',
+                      color: 'var(--leaf-text-muted)',
+                      border: '1px solid var(--leaf-border-soft)',
+                    }}
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                /* ── Not connected ── */
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => { void handleGitHubLogin() }}
+                    disabled={oauthPolling}
+                    className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
+                    style={{
+                      background: 'var(--leaf-bg-elevated)',
+                      color: 'var(--leaf-text-body)',
+                      border: '1px solid var(--leaf-border-soft)',
+                      opacity: oauthPolling ? 0.6 : 1,
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path fillRule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                    </svg>
+                    Connect to GitHub
+                  </button>
+                  {oauthError && (
+                    <div
+                      className="mt-2 rounded-md px-3 py-1.5 text-xs"
+                      style={{
+                        background: 'color-mix(in srgb, var(--leaf-red, #ef4444) 8%, transparent)',
+                        color: 'var(--leaf-red, #ef4444)',
+                        border: '1px solid color-mix(in srgb, var(--leaf-red, #ef4444) 25%, transparent)',
+                      }}
+                    >
+                      {oauthError}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Repo picker (when connected) */}
+              {githubUser && (
+                <div>
+                  <Label>Repository</Label>
+                  {githubRepos.length === 0 && !reposLoading ? (
+                    <button
+                      type="button"
+                      onClick={() => { void handleLoadRepos() }}
+                      className="rounded-md px-3 py-2 text-xs font-medium transition-colors"
+                      style={{
+                        background: 'var(--leaf-bg-elevated)',
+                        color: 'var(--leaf-text-body)',
+                        border: '1px solid var(--leaf-border-soft)',
+                      }}
+                    >
+                      Load my repositories
+                    </button>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        value={repoSearchQuery}
+                        onChange={(e) => setRepoSearchQuery(e.target.value)}
+                        placeholder="Search repos..."
+                        className="mb-2 w-full rounded-md px-3 py-2 text-xs outline-none"
+                        style={{
+                          background: 'var(--leaf-bg-elevated)',
+                          color: 'var(--leaf-text-body)',
+                          border: '1px solid var(--leaf-border-soft)',
+                        }}
+                      />
+                      <div
+                        className="flex max-h-40 flex-col gap-0.5 overflow-y-auto rounded-md p-1"
+                        style={{
+                          background: 'var(--leaf-bg-elevated)',
+                          border: '1px solid var(--leaf-border-soft)',
+                        }}
+                      >
+                        {reposLoading ? (
+                          <div className="px-3 py-2 text-xs" style={{ color: 'var(--leaf-text-muted)' }}>
+                            Loading...
+                          </div>
+                        ) : filteredRepos.length === 0 ? (
+                          <div className="px-3 py-2 text-xs" style={{ color: 'var(--leaf-text-muted)' }}>
+                            No repos found
+                          </div>
+                        ) : filteredRepos.map((repo) => (
+                          <button
+                            key={repo.full_name}
+                            type="button"
+                            onClick={() => handleSelectRepo(repo)}
+                            className="flex items-center justify-between rounded-md px-3 py-1.5 text-left text-xs transition-colors hover:opacity-80"
+                            style={{
+                              background: draftGitUrl === repo.clone_url
+                                ? 'color-mix(in srgb, var(--leaf-green) 10%, transparent)'
+                                : 'transparent',
+                              color: 'var(--leaf-text-body)',
+                            }}
+                          >
+                            <span className="font-mono">{repo.full_name}</span>
+                            {repo.private && (
+                              <span className="ml-2 rounded-full px-1.5 py-0.5 text-[10px]" style={{
+                                background: 'color-mix(in srgb, var(--leaf-yellow, #eab308) 15%, transparent)',
+                                color: 'var(--leaf-yellow, #eab308)',
+                              }}>
+                                private
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── PAT fallback ── */}
+          {draftAuthMethod === 'pat' && (
+            <div>
+              <Label>Personal Access Token (PAT)</Label>
+              <input
+                type="password"
+                value={draftGitToken}
+                onChange={(e) => { setDraftGitToken(e.target.value); setTestResult(null) }}
+                placeholder="ghp_xxxx or github_pat_xxxx"
+                className="w-full rounded-md px-3 py-2 text-sm outline-none"
+                style={{
+                  background: 'var(--leaf-bg-elevated)',
+                  color: 'var(--leaf-text-body)',
+                  border: '1px solid var(--leaf-border-soft)',
+                }}
+              />
+              <p className="mt-1 text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
+                Required for private repos. GitHub: Settings &rarr; Developer settings &rarr; Fine-grained tokens &rarr; Contents read/write.
+              </p>
+            </div>
+          )}
+
+          {/* Git Remote URL (shown for both auth methods) */}
           <div>
             <Label>Git Remote URL</Label>
             <div className="flex gap-2">
@@ -511,7 +881,7 @@ export default function SettingsPage() {
                   opacity: testing || !draftGitUrl ? 0.5 : 1,
                 }}
               >
-                {testing ? 'Testing…' : 'Test'}
+                {testing ? 'Testing...' : 'Test'}
               </button>
             </div>
             {testResult && (
@@ -527,28 +897,11 @@ export default function SettingsPage() {
                     : 'color-mix(in srgb, var(--leaf-red, #ef4444) 25%, transparent)'}`,
                 }}
               >
-                {testResult.ok ? '✓ ' : '✗ '}{testResult.message}
+                {testResult.ok ? '\u2713 ' : '\u2717 '}{testResult.message}
               </div>
             )}
           </div>
-          <div>
-            <Label>Personal Access Token (PAT)</Label>
-            <input
-              type="password"
-              value={draftGitToken}
-              onChange={(e) => { setDraftGitToken(e.target.value); setTestResult(null) }}
-              placeholder="ghp_xxxx or github_pat_xxxx"
-              className="w-full rounded-md px-3 py-2 text-sm outline-none"
-              style={{
-                background: 'var(--leaf-bg-elevated)',
-                color: 'var(--leaf-text-body)',
-                border: '1px solid var(--leaf-border-soft)',
-              }}
-            />
-            <p className="mt-1 text-[11px]" style={{ color: 'var(--leaf-text-muted)' }}>
-              Required for private repos. GitHub: Settings → Developer settings → Fine-grained tokens → Contents read/write.
-            </p>
-          </div>
+
           <div>
             <Label>Sync Interval</Label>
             <select

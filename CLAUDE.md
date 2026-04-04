@@ -42,7 +42,9 @@ You are helping build **Leaf**, a personal knowledge manager. Stack: **Next.js 1
 
 - **Windows CRLF in shell scripts.** Add `RUN sed -i 's/\r//' wait-for-it.sh && chmod +x wait-for-it.sh` in `backend/Dockerfile.dev`.
 
-- **Sync subsystem architecture.** Bidirectional file sync lives in `backend/app/sync/`. The file watcher uses `watchdog` to detect external changes to `.md` files and reverse-syncs into SQLite via `FileToDbSyncer`. Self-write suppression (`FileStorage._recently_written`) prevents the watcher from re-ingesting API writes. Sync config is persisted to `DATA_DIR/.sync-config.json` and loaded at startup. The frontend settings page is at `/settings`. The workspace `StatusBar` (footer on editor, database, graph, and home) polls `GET /sync/status` every 10s and supports click-to-trigger sync via `POST /sync/trigger` when sync is enabled. Git sync (`git_sync.py`) initializes a git repo in DATA_DIR, auto-commits, pulls with rebase, and pushes on a configurable interval via `SyncScheduler`. The `.gitignore` excludes `.leaf.db*`, `.sync-manifest.json`, `.sync-conflicts.json`, and `.sync-config.json`. PAT auth is embedded in the remote URL. `git` must be installed on the host.
+- **GitHub OAuth Device Flow.** `github_oauth.py` implements the three-step Device Flow protocol (start -> poll -> get user). The frontend polls `/sync/github/poll` every `interval` seconds during login. `GITHUB_OAUTH_CLIENT_ID` must be set (env or Settings) to enable OAuth login. PAT remains the fallback auth method. `GIT_AUTH_METHOD` ("pat" | "oauth") and `GITHUB_USERNAME` are persisted in `.sync-config.json`. The protocol spec (for cross-platform reuse) is in `docs/PLAN_GITHUB_OAUTH.md`.
+
+- **Sync subsystem architecture.** Bidirectional file sync lives in `backend/app/sync/`. The file watcher uses `watchdog` to detect external changes to `.md` files and reverse-syncs into SQLite via `FileToDbSyncer`. Self-write suppression (`FileStorage._recently_written`) prevents the watcher from re-ingesting API writes. Sync config is persisted to `DATA_DIR/.sync-config.json` and loaded at startup. The frontend settings page is at `/settings`. The workspace `StatusBar` (footer on editor, database, graph, and home) polls `GET /sync/status` every 10s and supports click-to-trigger sync via `POST /sync/trigger` when sync is enabled. Git sync (`git_sync.py`) initializes a git repo in DATA_DIR, auto-commits, pulls with rebase, and pushes on a configurable interval via `SyncScheduler`. The `.gitignore` excludes `.leaf.db*`, `.sync-manifest.json`, `.sync-conflicts.json`, and `.sync-config.json`. PAT or OAuth token auth is embedded in the remote URL. `git` must be installed on the host.
 
 ## Project layout (top-level)
 
@@ -68,6 +70,7 @@ Leaf/
 │   │   │   ├── conflict_store.py # persisted conflict tracking
 │   │   │   ├── cloud_detector.py # Google Drive/Dropbox/OneDrive conflict copies
 │   │   │   ├── git_sync.py     # git auto-commit/pull/push engine
+│   │   │   ├── github_oauth.py # GitHub OAuth Device Flow client
 │   │   │   └── scheduler.py    # periodic background sync loop
 │   │   ├── main.py
 │   │   └── config.py

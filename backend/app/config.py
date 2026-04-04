@@ -43,6 +43,11 @@ class ConfigSettings():
     GIT_AUTH_TOKEN: str
     GIT_SYNC_INTERVAL: int  # seconds between git push/pull cycles
 
+    # GitHub OAuth
+    GITHUB_OAUTH_CLIENT_ID: str  # public client ID for Device Flow
+    GIT_AUTH_METHOD: str  # "pat" or "oauth"
+    GITHUB_USERNAME: str  # set when authenticated via OAuth
+
     def __init__(self):
         load_dotenv()
         # Docker / CI often have no `.env` on disk; vars come from the process environment.
@@ -68,6 +73,11 @@ class ConfigSettings():
         self.GIT_REMOTE_URL = self.config("GIT_REMOTE_URL", cast=str, default="")
         self.GIT_AUTH_TOKEN = self.config("GIT_AUTH_TOKEN", cast=str, default="")
         self.GIT_SYNC_INTERVAL = self.config("GIT_SYNC_INTERVAL", cast=int, default=300)
+
+        # GitHub OAuth
+        self.GITHUB_OAUTH_CLIENT_ID = self.config("GITHUB_OAUTH_CLIENT_ID", cast=str, default="Ov23liowIwSPCtGhIPMm")
+        self.GIT_AUTH_METHOD = self.config("GIT_AUTH_METHOD", cast=str, default="pat")
+        self.GITHUB_USERNAME = self.config("GITHUB_USERNAME", cast=str, default="")
 
         # Trash: soft-deleted pages/databases are purged after this many days
         self.TRASH_RETENTION_DAYS = self.config("TRASH_RETENTION_DAYS", cast=int, default=7)

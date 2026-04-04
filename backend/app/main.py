@@ -69,6 +69,12 @@ def _load_persisted_sync_config(cfg: ConfigSettings) -> None:
             cfg.GIT_AUTH_TOKEN = data["GIT_AUTH_TOKEN"]
         if "GIT_SYNC_INTERVAL" in data:
             cfg.GIT_SYNC_INTERVAL = data["GIT_SYNC_INTERVAL"]
+        if "GITHUB_OAUTH_CLIENT_ID" in data:
+            cfg.GITHUB_OAUTH_CLIENT_ID = data["GITHUB_OAUTH_CLIENT_ID"]
+        if "GIT_AUTH_METHOD" in data:
+            cfg.GIT_AUTH_METHOD = data["GIT_AUTH_METHOD"]
+        if "GITHUB_USERNAME" in data:
+            cfg.GITHUB_USERNAME = data["GITHUB_USERNAME"]
     except Exception:
         logging.warning("Could not load .sync-config.json, using defaults")
 

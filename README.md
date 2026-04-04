@@ -61,7 +61,7 @@ For a fuller map of backend settings, read `backend/app/config.py`.
 - **Databases:** Collections where each row is a real page. Views: Table, Board, Gallery, List. Schema columns (text, number, date, tags, select). Resizable column headers. Standalone and inline (embedded) modes.
 - **Trash:** Deleted pages and databases kept for 7 days (configurable via `TRASH_RETENTION_DAYS`), then permanently purged. Restore from **Settings → Trash**.
 - **Local-first cache:** IndexedDB for instant load and offline edits; pending saves queue and sync when back online.
-- **Cross-device sync:** Folder sync (Google Drive, Dropbox, OneDrive) and Git sync (auto-commit/pull/push). Conflict detection and resolution UI. Configured from **Settings** — no restarts needed.
+- **Cross-device sync:** Folder sync (Google Drive, Dropbox, OneDrive) and Git sync (auto-commit/pull/push) with **GitHub OAuth Device Flow** login or PAT auth. Conflict detection and resolution UI. Configured from **Settings** — no restarts needed.
 - **Themes:** Classic (emerald/light) and **Campaign** (D&D dark palette, gold accent, Cinzel typography). Toggle via the top-bar `⋯` menu.
 
 ## Cross-device sync
@@ -76,11 +76,15 @@ Place your data directory inside a cloud-synced folder. Leaf's file watcher pick
 
 ### Git sync
 
-1. Select **Git sync** in Settings and enter the remote URL (HTTPS).
-2. For private repos, paste a **Personal Access Token** (PAT) with `Contents` read/write.
-3. Click **Test Connection**, set a sync interval, and **Save**.
+1. Select **Git sync** in Settings.
+2. **Authenticate** — choose one:
+   - **GitHub Login** (recommended): click "Connect to GitHub", enter the device code at github.com, and pick a repo from the dropdown. No token to copy.
+   - **Personal Access Token**: paste a PAT with `Contents` read/write scope for private repos (works with GitHub, GitLab, Gitea, etc.).
+3. Enter or select the remote URL, click **Test Connection**, set a sync interval, and **Save**.
 
 Leaf initializes a git repo in your data directory and runs: stage → commit → pull (rebase) → push on the configured interval. `.gitignore` excludes the SQLite DB and metadata files.
+
+> **Self-hosted / GitHub Enterprise:** set `GITHUB_OAUTH_CLIENT_ID` to your own OAuth App's client ID. The Device Flow requires the app to have "Enable Device Flow" checked in GitHub's OAuth App settings.
 
 ### Sync status
 

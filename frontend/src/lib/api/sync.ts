@@ -15,6 +15,10 @@ import type {
   SyncConflict,
   ConflictResolution,
   GitStatus,
+  DeviceFlowStart,
+  DeviceFlowPollResult,
+  GitHubUserInfo,
+  GitHubRepo,
 } from './syncTypes'
 
 const base = API_BASE_URL
@@ -50,4 +54,20 @@ export const syncApi = {
 
   getGitStatus: () =>
     axios.get<GitStatus>(`${base}/sync/git/status`).then(r => r.data),
+
+  // GitHub OAuth Device Flow
+  startGitHubLogin: () =>
+    axios.post<DeviceFlowStart>(`${base}/sync/github/login`).then(r => r.data),
+
+  pollGitHubLogin: () =>
+    axios.post<DeviceFlowPollResult>(`${base}/sync/github/poll`).then(r => r.data),
+
+  getGitHubUser: () =>
+    axios.get<GitHubUserInfo>(`${base}/sync/github/user`).then(r => r.data),
+
+  getGitHubRepos: (page = 1, perPage = 30) =>
+    axios.get<GitHubRepo[]>(`${base}/sync/github/repos`, { params: { page, per_page: perPage } }).then(r => r.data),
+
+  logoutGitHub: () =>
+    axios.post(`${base}/sync/github/logout`).then(r => r.data),
 }
